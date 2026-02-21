@@ -40,7 +40,7 @@ if DATABASE_URL:
 else:
     db = SQL("sqlite:///database.db")
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN")
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": [ALLOWED_ORIGIN]}})
+CORS(app, supports_credentials=True, origins=[ALLOWED_ORIGIN])
 COOKIE_NAME = "__Host-token"
 
 # ---- ENV + Encryption ----
