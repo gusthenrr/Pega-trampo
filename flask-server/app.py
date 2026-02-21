@@ -1,5 +1,3 @@
-
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from cs50 import SQL
@@ -60,7 +58,7 @@ def check_jwt_globally():
     # Protege todas as rotas que começarem por /api/
     if request.path.startswith('/api/'):
         # Exceções (rotas públicas)
-        public_routes = ['/api/login', '/api/register', '/api/user-profile', '/api/auth/']
+        public_routes = ['/api/login', '/api/register', '/api/user-profile', '/api/auth/', '/api/logout']
         is_public = any(request.path.startswith(route) for route in public_routes) or request.path.startswith('/api/cnpj/')
         
         if not is_public:
@@ -68,6 +66,20 @@ def check_jwt_globally():
                 verify_jwt_in_request()
             except Exception as e:
                 return jsonify({"success": False, "error": "Token expirado ou inválido", "msg": str(e)}), 401
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    resp = jsonify({"success": True, "message": "Logout realizado com sucesso"})
+    resp.set_cookie(
+        key=COOKIE_NAME,
+        value="",
+        max_age=0,
+        httponly=True,
+        secure=True,
+        samesite="None",
+        path="/",
+    )
+    return resp, 200
 
 def gerar_token(user_id):
     print('entrou no gerar token')
