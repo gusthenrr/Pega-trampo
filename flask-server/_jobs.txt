@@ -1,0 +1,3 @@
+('1', 'CONFEITEIRO PARA FESTA DE ANIVERSÁRIO', None, None, '{"name": "PANETTERIA DELICIAS DO PARQUE", "verified": true, "description": "Empresa especializada em eventos e festas h\\u00e1 8 anos", "totalJobs": 156, "rating": 4.7, "reviews": 89}')
+('2', 'DIARISTA PARA LIMPEZA SEMANAL', None, None, '{"name": "CLEAN HOUSE SERVI\\u00c7OS", "verified": true, "description": "Empresa de limpeza residencial e comercial", "totalJobs": 89, "rating": 4.5, "reviews": 67}')
+('3', 'JARDINEIRO PARA MANUTENÇÃO MENSAL', None, None, '{"name": "VERDE VIDA PAISAGISMO", "verified": true, "description": "Especialistas em jardinagem e paisagismo", "totalJobs": 67, "rating": 4.6, "reviews": 34}')
