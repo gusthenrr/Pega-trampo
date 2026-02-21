@@ -703,7 +703,7 @@ def save_resume():
     availability = json.dumps(data.get("availability") or [], ensure_ascii=False)
     
     bio = data.get("bio")
-    is_visible = 1 if data.get("isVisible") else 0
+    is_visible = True if data.get("isVisible") else False
 
     try:
         # Check if exists
