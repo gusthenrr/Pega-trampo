@@ -17,8 +17,8 @@ import requests
 app = Flask(__name__)
 #Config do jwt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-
-app.config["JWT_SECRET_KEY"] = "aquiumachavebemsegura"
+load_dotenv()
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
 app.config["JWT_ACCESS_COOKIE_NAME"] = "__Host-token"
 app.config["JWT_COOKIE_SECURE"] = True
@@ -26,7 +26,7 @@ app.config["JWT_COOKIE_SAMESITE"] = "None"
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False
 
 jwt = JWTManager(app)
-ALLOWED_ORIGIN = "https://"
+ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN")
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": [ALLOWED_ORIGIN]}})
 COOKIE_NAME = "__Host-token"
 
@@ -36,7 +36,7 @@ open(DB_PATH, "a").close()
 db = SQL(f"sqlite:///{DB_PATH}")
 
 # ---- ENV + Encryption ----
-load_dotenv()
+
 KEY = os.getenv("PROFILE_ENCRYPTION_KEY")
 
 if not KEY:
