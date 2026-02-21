@@ -22,13 +22,13 @@ def main():
         with psycopg.connect(url) as conn:
             with conn.cursor() as cur:
                 print("Convertendo 'jobs.posted_by_user_id' para INTEGER...")
-                cur.execute("ALTER TABLE jobs ALTER COLUMN posted_by_user_id TYPE INTEGER USING NULLIF(posted_by_user_id, '')::integer;")
+                cur.execute("ALTER TABLE jobs ALTER COLUMN posted_by_user_id TYPE INTEGER USING (CASE WHEN posted_by_user_id ~ '^[0-9]+$' THEN posted_by_user_id::integer ELSE NULL END);")
                 
                 print("Convertendo 'resumes.user_id' para INTEGER...")
-                cur.execute("ALTER TABLE resumes ALTER COLUMN user_id TYPE INTEGER USING NULLIF(user_id, '')::integer;")
+                cur.execute("ALTER TABLE resumes ALTER COLUMN user_id TYPE INTEGER USING (CASE WHEN user_id ~ '^[0-9]+$' THEN user_id::integer ELSE NULL END);")
                 
                 print("Convertendo 'job_applications.candidate_id' para INTEGER...")
-                cur.execute("ALTER TABLE job_applications ALTER COLUMN candidate_id TYPE INTEGER USING NULLIF(candidate_id, '')::integer;")
+                cur.execute("ALTER TABLE job_applications ALTER COLUMN candidate_id TYPE INTEGER USING (CASE WHEN candidate_id ~ '^[0-9]+$' THEN candidate_id::integer ELSE NULL END);")
                 
             conn.commit()
             print("✅ Sucesso! Todas as colunas foram atualizadas para INTEGER.")
