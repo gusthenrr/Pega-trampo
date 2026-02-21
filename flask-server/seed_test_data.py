@@ -1,10 +1,12 @@
-import sqlite3
 import uuid
 import json
 import os
 import argparse
 import math
+import re
 from datetime import datetime, timedelta
+
+import psycopg  # psycopg3
 
 # -------------------------
 # Password hash (opcional)
@@ -45,9 +47,6 @@ def enc(value):
     return fernet.encrypt(str(value).encode("utf-8")).decode("utf-8")
 
 
-DB_DEFAULT = os.path.join(os.path.dirname(__file__), "database.db")
-
-
 def now():
     return datetime.now().isoformat(timespec="seconds")
 
@@ -56,139 +55,108 @@ def today():
     return datetime.now().date().isoformat()
 
 
-def list_tables(conn: sqlite3.Connection) -> list[str]:
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT name
-        FROM sqlite_master
-        WHERE type='table'
-          AND name NOT LIKE 'sqlite_%'
-        ORDER BY name
-        """
-    )
-    return [r[0] for r in cur.fetchall()]
+def normalize_pg_url(url: str) -> str:
+    # Railway às vezes entrega postgres://, normaliza
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    return url
 
 
-def table_info(conn: sqlite3.Connection, table: str):
-    cur = conn.cursor()
-    cur.execute(f"PRAGMA table_info({table})")
-    # cid, name, type, notnull, dflt_value, pk
-    return cur.fetchall()
-
-
-def table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
-    return {row[1] for row in table_info(conn, table)}
-
-
-def ensure_columns(conn: sqlite3.Connection):
+def connect() -> psycopg.Connection:
     """
-    Mantém robusto se o schema mudar.
-    Só adiciona colunas faltantes (não remove nada).
+    Conecta no Postgres do Railway.
+    Preferência: DATABASE_URL (private).
+    Fallback: DATABASE_PUBLIC_URL se você criou.
     """
-    cur = conn.cursor()
-    tables = set(list_tables(conn))
+    url = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL") or os.getenv("DATABASE_PUBLIC_URL")
+    if not url:
+        raise RuntimeError("Faltou DATABASE_URL (ou DATABASE_PUBLIC_URL). Configure no Railway Variables.")
+    url = normalize_pg_url(url)
+    return psycopg.connect(url)
 
-    # ---------- usuarios ----------
-    if "usuarios" in tables:
-        u_cols = table_columns(conn, "usuarios")
-        if "email_verified" not in u_cols:
-            cur.execute("ALTER TABLE usuarios ADD COLUMN email_verified INTEGER DEFAULT 0")
-        if "email_verified_at" not in u_cols:
-            cur.execute("ALTER TABLE usuarios ADD COLUMN email_verified_at TEXT")
-        if "email_verification_code_hash" not in u_cols:
-            cur.execute("ALTER TABLE usuarios ADD COLUMN email_verification_code_hash TEXT")
-        if "email_verification_expires_at" not in u_cols:
-            cur.execute("ALTER TABLE usuarios ADD COLUMN email_verification_expires_at TEXT")
-        if "email_verification_sent_at" not in u_cols:
-            cur.execute("ALTER TABLE usuarios ADD COLUMN email_verification_sent_at TEXT")
-        if "email_verification_attempts" not in u_cols:
-            cur.execute("ALTER TABLE usuarios ADD COLUMN email_verification_attempts INTEGER DEFAULT 0")
 
-    # ---------- user_profiles ----------
-    if "user_profiles" in tables:
-        up_cols = table_columns(conn, "user_profiles")
-        if "worker_category" not in up_cols:
-            cur.execute("ALTER TABLE user_profiles ADD COLUMN worker_category TEXT")
-        if "lat" not in up_cols:
-            cur.execute("ALTER TABLE user_profiles ADD COLUMN lat REAL")
-        if "lng" not in up_cols:
-            cur.execute("ALTER TABLE user_profiles ADD COLUMN lng REAL")
-        if "cep" not in up_cols:
-            cur.execute("ALTER TABLE user_profiles ADD COLUMN cep TEXT")
-        if "birth_date" not in up_cols:
-            cur.execute("ALTER TABLE user_profiles ADD COLUMN birth_date TEXT")
+def list_tables(conn) -> list[str]:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+            ORDER BY table_name
+            """
+        )
+        return [r[0] for r in cur.fetchall()]
 
-    # ---------- jobs ----------
-    if "jobs" in tables:
-        j_cols = table_columns(conn, "jobs")
-        # garante campos que você mostrou no schema
-        for col, ctype in [
-            ("lat", "REAL"),
-            ("lng", "REAL"),
-            ("cep", "TEXT"),
-            ("posted_by_user_id", "TEXT"),
-            ("start_date", "TEXT"),
-            ("start_time", "TEXT"),
-        ]:
-            if col not in j_cols:
-                cur.execute(f"ALTER TABLE jobs ADD COLUMN {col} {ctype}")
 
-    # ---------- job_applications ----------
-    if "job_applications" in tables:
-        ja_cols = table_columns(conn, "job_applications")
-        if "resume_id" not in ja_cols:
-            cur.execute("ALTER TABLE job_applications ADD COLUMN resume_id TEXT")
+def table_info(conn, table: str):
+    """
+    Retorna lista: (column_name, data_type, is_nullable, column_default, is_identity)
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT column_name, data_type, is_nullable, column_default, is_identity
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = %s
+            ORDER BY ordinal_position
+            """,
+            (table,),
+        )
+        return cur.fetchall()
 
+
+def table_columns(conn, table: str) -> set[str]:
+    return {row[0] for row in table_info(conn, table)}
+
+
+def ensure_columns(conn):
+    """
+    No Postgres, o ideal é você ter aplicado o schema_postgres.sql antes.
+    Para evitar bagunça, aqui é NOOP.
+    """
+    return
+
+
+def wipe_all_data(conn):
+    """
+    Apaga 100% dos registros (mantém schema).
+    Usa TRUNCATE com CASCADE e RESTART IDENTITY.
+    """
+    tables = ["job_applications", "resumes", "user_profiles", "jobs", "usuarios"]
+    with conn.cursor() as cur:
+        cur.execute("TRUNCATE TABLE " + ", ".join(tables) + " RESTART IDENTITY CASCADE;")
     conn.commit()
 
 
-def wipe_all_data(conn: sqlite3.Connection):
-    """
-    Apaga 100% dos registros de todas as tabelas (mantém schema).
-    Reseta AUTOINCREMENT via sqlite_sequence.
-    """
-    cur = conn.cursor()
-    cur.execute("PRAGMA foreign_keys = OFF")
-
-    for t in list_tables(conn):
-        cur.execute(f"DELETE FROM {t}")
-
-    # reseta autoincrement
-    try:
-        cur.execute("DELETE FROM sqlite_sequence")
-    except Exception:
-        pass
-
-    conn.commit()
-    cur.execute("PRAGMA foreign_keys = ON")
-    conn.commit()
-
-
-def _default_for_col(col_type: str):
-    t = (col_type or "").upper()
-    if "INT" in t or "BOOL" in t:
+def _default_for_col(pg_type: str):
+    t = (pg_type or "").lower()
+    if "boolean" in t:
+        return False
+    if "integer" in t or "bigint" in t or "smallint" in t:
         return 0
-    if "REAL" in t or "FLOA" in t or "DOUB" in t:
+    if "double precision" in t or "numeric" in t or "real" in t:
         return 0.0
     return ""
 
 
-def insert_full_row(conn: sqlite3.Connection, table: str, data: dict):
+def insert_full_row(conn, table: str, data: dict):
     """
     Insere preenchendo 100% das colunas existentes no schema.
-    Se um campo não estiver no dict, recebe um default coerente por tipo.
+    - No Postgres não existe PRAGMA.
+    - Para colunas IDENTITY (id), se não vier no dict, omitimos e usamos RETURNING id.
     """
     info = table_info(conn, table)
     if not info:
-        raise RuntimeError(f"Tabela '{table}' não existe no banco (ou PRAGMA falhou).")
+        raise RuntimeError(f"Tabela '{table}' não existe no banco (information_schema não encontrou).")
 
     cols = []
     vals = []
+    returning_id = False
 
-    for cid, name, col_type, notnull, dflt, pk in info:
-        # Deixa o SQLite gerar INTEGER PRIMARY KEY (id) se não vier explicitamente
-        if pk == 1 and name == "id" and name not in data:
+    for (name, col_type, is_nullable, col_default, is_identity) in info:
+        # Deixa o Postgres gerar identity id
+        if name == "id" and is_identity == "YES" and name not in data:
+            returning_id = True
             continue
 
         cols.append(name)
@@ -201,12 +169,20 @@ def insert_full_row(conn: sqlite3.Connection, table: str, data: dict):
             else:
                 vals.append(_default_for_col(col_type))
 
-    qmarks = ",".join(["?"] * len(cols))
-    sql = f"INSERT INTO {table} ({','.join(cols)}) VALUES ({qmarks})"
-    cur = conn.cursor()
-    cur.execute(sql, vals)
+    placeholders = ",".join(["%s"] * len(cols))
+    sql = f"INSERT INTO {table} ({','.join(cols)}) VALUES ({placeholders})"
+    if returning_id:
+        sql += " RETURNING id"
+
+    with conn.cursor() as cur:
+        cur.execute(sql, vals)
+        if returning_id:
+            new_id = cur.fetchone()[0]
+            conn.commit()
+            return new_id
+
     conn.commit()
-    return cur.lastrowid
+    return None
 
 
 # ============================================================
@@ -222,7 +198,7 @@ def insert_user(conn, username: str, password: str, email: str, user_type: str, 
     created = now()
     updated = created
 
-    # campos de verificação preenchidos (mesmo se você não usar no frontend ainda)
+    # campos de verificação preenchidos
     code_hash = enc("seed_code_hash")
     expires = (datetime.now() + timedelta(days=1)).isoformat(timespec="seconds")
     sent_at = created
@@ -238,7 +214,7 @@ def insert_user(conn, username: str, password: str, email: str, user_type: str, 
             "type": user_type,  # 'company' | 'professional'
             "created_at": created,
             "updated_at": updated,
-            "email_verified": int(email_verified),
+            "email_verified": bool(email_verified),
             "email_verified_at": verified_at,
             "email_verification_code_hash": code_hash,
             "email_verification_expires_at": expires,
@@ -249,15 +225,11 @@ def insert_user(conn, username: str, password: str, email: str, user_type: str, 
 
 
 def insert_profile_company(conn, user_id: int, p: dict):
-    """
-    user_profiles (seu schema) não tem todos os campos do UserProfile do frontend,
-    então aqui a gente garante 100% DAS COLUNAS DO BANCO, com dados bem completos.
-    """
     insert_full_row(
         conn,
         "user_profiles",
         {
-            "user_id": user_id,
+            "user_id": int(user_id),
 
             # empresa
             "cnpj": enc(p["cnpj"]),
@@ -266,7 +238,7 @@ def insert_profile_company(conn, user_id: int, p: dict):
             "business_type": enc(p["businessType"]),
             "company_description": enc(p["description"]),
 
-            # pessoa responsável (preenchendo campos “de pessoa”)
+            # pessoa responsável
             "full_name": enc(p["responsibleName"]),
             "cpf": enc(p["responsibleCpf"]),
             "phone": enc(p["phone"]),
@@ -297,7 +269,7 @@ def insert_profile_professional(conn, user_id: int, p: dict):
         conn,
         "user_profiles",
         {
-            "user_id": user_id,
+            "user_id": int(user_id),
 
             # empresa (não se aplica, mas preenche)
             "cnpj": enc(""),
@@ -341,20 +313,20 @@ def insert_resume(conn, user_id: int, resume: dict):
         "resumes",
         {
             "id": rid,
-            "user_id": str(user_id),
+            "user_id": int(user_id),
 
-            # JSONs com chaves camelCase conforme types TS
             "personal_info_json": json.dumps(resume["personalInfo"], ensure_ascii=False),
             "professional_info_json": json.dumps(resume["professionalInfo"], ensure_ascii=False),
             "work_experience_json": json.dumps(resume["workExperience"], ensure_ascii=False),
             "education_json": json.dumps(resume["education"], ensure_ascii=False),
+            "skills_json": json.dumps(resume.get("skills", []), ensure_ascii=False),
 
             "bio": resume["bio"],
             "availability_json": json.dumps(resume["availability"], ensure_ascii=False),
 
             "created_at": now(),
             "updated_at": now(),
-            "is_visible": 1,
+            "is_visible": True,
         },
     )
     return rid
@@ -368,7 +340,6 @@ def insert_job(conn, j: dict):
     jid = f"job_{uuid.uuid4().hex[:12]}"
 
     companyInfo: dict = j["companyInfo"]
-    # garante o formato TS mínimo
     companyInfo.setdefault("name", "")
     companyInfo.setdefault("logo", "")
     companyInfo.setdefault("verified", False)
@@ -386,7 +357,6 @@ def insert_job(conn, j: dict):
             "description": j["description"],
             "category": j["category"],
 
-            # PaymentType TS: 'hourly' | 'daily' | 'project'
             "payment_type": j["paymentType"],
             "rate": float(j["rate"]),
 
@@ -400,7 +370,7 @@ def insert_job(conn, j: dict):
 
             "period": j.get("period", ""),
             "duration": j.get("duration", ""),
-            "is_urgent": int(bool(j["isUrgent"])),
+            "is_urgent": bool(j["isUrgent"]),
 
             "professional_rating": float(j["professionalRating"]),
             "professional_reviews": int(j["professionalReviews"]),
@@ -409,18 +379,16 @@ def insert_job(conn, j: dict):
             "comments": int(j["comments"]),
             "views": int(j["views"]),
 
-            "company_only": int(bool(j.get("companyOnly", False))),
-            "includes_food": int(bool(j.get("includesFood", False))),
+            "company_only": bool(j.get("companyOnly", False)),
+            "includes_food": bool(j.get("includesFood", False)),
 
-            # coordinates TS -> columns lat/lng
             "lat": float(j["coordinates"]["lat"]) if j.get("coordinates") else None,
             "lng": float(j["coordinates"]["lng"]) if j.get("coordinates") else None,
 
-            # companyInfo TS -> company_info_json
             "company_info_json": json.dumps(companyInfo, ensure_ascii=False),
 
             "created_at": now(),
-            "posted_by_user_id": str(j["postedByUserId"]),
+            "posted_by_user_id": int(j["postedByUserId"]),
             "cep": j.get("cep", ""),
 
             "start_date": j.get("startDate", today()),
@@ -439,7 +407,7 @@ def insert_job_application(conn, job_id: str, candidate_id: int, resume_id: str,
         {
             "id": app_id,
             "job_id": job_id,
-            "candidate_id": str(candidate_id),
+            "candidate_id": int(candidate_id),
             "status": status,
             "created_at": now(),
             "resume_id": resume_id,
@@ -449,7 +417,7 @@ def insert_job_application(conn, job_id: str, candidate_id: int, resume_id: str,
 
 
 # -------------------------
-# Distância (Haversine) - opcional debug
+# Distância (Haversine)
 # -------------------------
 def haversine_km(lat1, lng1, lat2, lng2):
     R = 6371.0
@@ -462,18 +430,19 @@ def haversine_km(lat1, lng1, lat2, lng2):
     return R * c
 
 
-def print_nearest_jobs(conn: sqlite3.Connection, username: str, limit: int = 10):
-    cur = conn.cursor()
-    cur.execute(
-        """
-        SELECT u.id, up.lat, up.lng, up.cep, up.worker_category
-        FROM usuarios u
-        JOIN user_profiles up ON up.user_id = u.id
-        WHERE u.username = ?
-        """,
-        (username,),
-    )
-    row = cur.fetchone()
+def print_nearest_jobs(conn, username: str, limit: int = 10):
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT u.id, up.lat, up.lng, up.cep, up.worker_category
+            FROM usuarios u
+            JOIN user_profiles up ON up.user_id = u.id
+            WHERE u.username = %s
+            """,
+            (username,),
+        )
+        row = cur.fetchone()
+
     if not row:
         print(f"❌ Usuário '{username}' não encontrado.")
         return
@@ -483,15 +452,16 @@ def print_nearest_jobs(conn: sqlite3.Connection, username: str, limit: int = 10)
         print(f"❌ Usuário '{username}' não tem lat/lng no profile.")
         return
 
-    cur.execute(
-        """
-        SELECT id, title, category, cep, lat, lng, posted_by
-        FROM jobs
-        WHERE lat IS NOT NULL AND lng IS NOT NULL
-        ORDER BY created_at DESC
-        """
-    )
-    jobs = cur.fetchall()
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT id, title, category, cep, lat, lng, posted_by
+            FROM jobs
+            WHERE lat IS NOT NULL AND lng IS NOT NULL
+            ORDER BY created_at DESC
+            """
+        )
+        jobs = cur.fetchall()
 
     scored = []
     for (jid, title, category, jcep, jlat, jlng, posted_by) in jobs:
@@ -505,10 +475,7 @@ def print_nearest_jobs(conn: sqlite3.Connection, username: str, limit: int = 10)
         print(f"- {d:6.2f} km | {title} | cat={category} | {posted_by} | cep={jcep} | id={jid}")
 
 
-def seed(conn: sqlite3.Connection):
-    # ===============================
-    # Tipos (iguais ao frontend)
-    # ===============================
+def seed(conn):
     BUSINESS_TYPES = [
         "padaria", "mercado", "restaurante", "bar", "eventos", "postos",
         "casa_bolos", "lanchonete", "pizzaria", "hamburger",
@@ -532,31 +499,26 @@ def seed(conn: sqlite3.Connection):
 
     # Santos/SP - pontos diferentes pra distância ficar real
     COORDS = {
-        "padaria":   (-23.9678, -46.3320),  # Gonzaga/Ana Costa (aprox)
-        "pizzaria":  (-23.9650, -46.3270),  # Boqueirão (aprox)
-        "pro":       (-23.9652, -46.3265),  # perto da pizzaria
+        "padaria": (-23.9678, -46.3320),
+        "pizzaria": (-23.9650, -46.3270),
+        "pro": (-23.9652, -46.3265),
     }
     CEPS = {
-        "padaria":  "11060-000",
+        "padaria": "11060-000",
         "pizzaria": "11055-000",
-        "pro":      "11055-001",
+        "pro": "11055-001",
     }
 
-    # ============================================================
-    # 1) 3 contas (2 company + 1 professional)
-    # ============================================================
+    # 1) Contas
     company1_id = insert_user(conn, "company_padaria_centro", "123456", "padaria@test.com", "company", email_verified=1)
     company2_id = insert_user(conn, "company_pizzaria_napoli", "123456", "pizzaria@test.com", "company", email_verified=1)
-    pro_id      = insert_user(conn, "professional_lucas", "123456", "lucas@test.com", "professional", email_verified=1)
+    pro_id = insert_user(conn, "professional_lucas", "123456", "lucas@test.com", "professional", email_verified=1)
 
-    # ============================================================
-    # 2) Profiles (100% colunas do banco preenchidas)
-    #    business_type usando os values do frontend
-    # ============================================================
+    # 2) Profiles
     insert_profile_company(conn, company1_id, {
         "cnpj": "11222333000199",
         "companyName": "Padaria do Centro",
-        "businessType": "padaria",  # <- businessTypes.value
+        "businessType": "padaria",
         "description": "Padaria tradicional, alto fluxo de manhã e fim de tarde. Equipe enxuta e organizada.",
         "email": "rh@padariadocentro.com",
         "responsibleName": "Marcos Vinícius (Gerente)",
@@ -577,7 +539,7 @@ def seed(conn: sqlite3.Connection):
     insert_profile_company(conn, company2_id, {
         "cnpj": "99888777000155",
         "companyName": "Pizzaria Napoli",
-        "businessType": "pizzaria",  # <- businessTypes.value
+        "businessType": "pizzaria",
         "description": "Pizzaria com alto volume à noite. Produção rápida e padrão de qualidade.",
         "email": "contato@pizzarianapoli.com",
         "responsibleName": "Ana Paula (Dona)",
@@ -595,7 +557,6 @@ def seed(conn: sqlite3.Connection):
         "lng": COORDS["pizzaria"][1],
     })
 
-    # profissional alinhado com workerCategories.name
     insert_profile_professional(conn, pro_id, {
         "name": "Lucas Henrique",
         "cpf": "32165498700",
@@ -608,14 +569,12 @@ def seed(conn: sqlite3.Connection):
         "neighborhood": "Boqueirão",
         "city": "Santos",
         "state": "SP",
-        "workerCategory": "Pizzaiolo",  # <- workerCategories.name
+        "workerCategory": "Pizzaiolo",
         "lat": COORDS["pro"][0],
         "lng": COORDS["pro"][1],
     })
 
-    # ============================================================
-    # 3) Resume (JSON no formato do TS)
-    # ============================================================
+    # 3) Resume
     resume_id = insert_resume(conn, pro_id, {
         "personalInfo": {
             "name": "Lucas Henrique",
@@ -626,15 +585,11 @@ def seed(conn: sqlite3.Connection):
             "maritalStatus": "solteiro"
         },
         "professionalInfo": {
-            "category": "Pizzaiolo",  # <- workerCategories.name
+            "category": "Pizzaiolo",
             "experience": "3 anos em pizzaria (forno + montagem + finalização)",
             "contractTypes": ["diaria", "freelancer", "fixo"],
             "workSchedule": "noite e fim de semana",
-            "salary": {
-                "value": 220,
-                "type": "daily",          # SalaryType: hourly | daily | monthly
-                "hideSalary": False
-            },
+            "salary": {"value": 220, "type": "daily", "hideSalary": False},
             "benefits": ["refeição", "vale transporte"]
         },
         "workExperience": [
@@ -670,12 +625,6 @@ def seed(conn: sqlite3.Connection):
 
     postedAt = now()
 
-    # ============================================================
-    # 4) Jobs (categories só do seu workerCategories)
-    #    paymentType só do seu TS: hourly | daily | project
-    #    businessType extra no companyInfo_json (chave extra)
-    # ============================================================
-
     def mk_company_info(name: str, description: str, business_type_value: str, totalJobs: int, rating: float, reviews: int):
         return {
             "name": name,
@@ -685,10 +634,10 @@ def seed(conn: sqlite3.Connection):
             "totalJobs": totalJobs,
             "rating": rating,
             "reviews": reviews,
-            "businessType": business_type_value,  # <- extra (ajuda no frontend)
+            "businessType": business_type_value,
         }
 
-    # ---------- PADARIA (padaria) ----------
+    # PADARIA
     job_pad_padeiro = insert_job(conn, {
         "title": "Padeiro (Manhã)",
         "description": "Produção de pães, massas e fermentação. Organização da bancada e limpeza do posto.",
@@ -803,7 +752,7 @@ def seed(conn: sqlite3.Connection):
         )
     })
 
-    # ---------- PIZZARIA (pizzaria) ----------
+    # PIZZARIA
     job_piz_pizzaiolo = insert_job(conn, {
         "title": "Pizzaiolo (Noite)",
         "description": "Montagem, forno e finalização. Produção em volume e padrão de qualidade.",
@@ -918,16 +867,10 @@ def seed(conn: sqlite3.Connection):
         )
     })
 
-    # ============================================================
-    # 5) Applications (minhas candidaturas)
-    # - pro (Pizzaiolo) aplica em Pizzaiolo + Auxiliar
-    # ============================================================
+    # Applications
     insert_job_application(conn, job_piz_pizzaiolo, pro_id, resume_id, status="pending")
     insert_job_application(conn, job_piz_aux, pro_id, resume_id, status="accepted")
 
-    # ============================================================
-    # 6) Print final
-    # ============================================================
     print("✅ RESET + SEED (businessTypes + workerCategories) concluído.\n")
     print("Logins (senha 123456):")
     print("- Empresa 1 (company/padaria): company_padaria_centro")
@@ -938,15 +881,12 @@ def seed(conn: sqlite3.Connection):
     print_nearest_jobs(conn, "professional_lucas", limit=10)
 
 
-
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--db", default=DB_DEFAULT)
     parser.add_argument("--no-wipe", action="store_true", help="Não apaga dados (só adiciona por cima).")
     args = parser.parse_args()
 
-    conn = sqlite3.connect(args.db)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = connect()
 
     ensure_columns(conn)
 
