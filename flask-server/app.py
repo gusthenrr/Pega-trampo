@@ -40,7 +40,7 @@ if DATABASE_URL:
 else:
     db = SQL("sqlite:///database.db")
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN")
-CORS(app, supports_credentials=True, origins=[ALLOWED_ORIGIN])
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": [ALLOWED_ORIGIN]}})
 COOKIE_NAME = "__Host-token"
 
 # ---- ENV + Encryption ----
@@ -126,68 +126,7 @@ def cnpj_digits(v):
     return d or None
 
 
-# ---- TABLES (Jobs & Resumes) ----
-db.execute("""
-CREATE TABLE IF NOT EXISTS jobs (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    description TEXT,
-    category TEXT,
-    payment_type TEXT,
-    rate REAL,
-    location TEXT,
-    area TEXT,
-    address TEXT,
-    work_hours TEXT,
-    posted_by TEXT,
-    posted_at TEXT,
-    period TEXT,
-    duration TEXT,
-    is_urgent BOOLEAN,
-    professional_rating REAL,
-    professional_reviews INTEGER,
-    completed_jobs INTEGER,
-    likes INTEGER,
-    comments INTEGER,
-    views INTEGER,
-    company_only BOOLEAN,
-    includes_food BOOLEAN,
-    lat REAL,
-    lng REAL,
-    company_info_json TEXT,  -- armazena JSON stringificado
-    created_at TEXT DEFAULT (datetime('now'))
-);
-""")
-
-db.execute("""
-CREATE TABLE IF NOT EXISTS resumes (
-    id TEXT PRIMARY KEY,
-    user_id TEXT,
-    personal_info_json TEXT,
-    professional_info_json TEXT,
-    work_experience_json TEXT,
-    education_json TEXT,
-    skills_json TEXT,
-    bio TEXT,
-    availability_json TEXT,
-    created_at TEXT,
-    updated_at TEXT,
-    is_visible BOOLEAN
-);
-""")
-
-db.execute("""
-CREATE TABLE IF NOT EXISTS job_applications (
-    id TEXT PRIMARY KEY,
-    job_id TEXT NOT NULL,
-    candidate_id TEXT NOT NULL,
-    status TEXT DEFAULT 'pending',
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY(job_id) REFERENCES jobs(id),
-    FOREIGN KEY(candidate_id) REFERENCES usuarios(id)
-);
-""")
-
+# ---- TABELAS AGORA GERENCIADAS PELO SCHEMA_POSTGRES.SQL ----
 @app.route("/api/jobs", methods=["POST"])
 def create_job():
     data = request.json or {}
@@ -223,7 +162,7 @@ def create_job():
         ) VALUES (
             ?, ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
-            ?, ?, datetime('now'),
+            ?, ?, CURRENT_TIMESTAMP,
             ?, ?, ?,
             ?, ?,
             ?, ?, ?,
@@ -781,7 +720,7 @@ def save_resume():
                     availability_json = ?,
                     bio = ?,
                     is_visible = ?,
-                    updated_at = datetime('now')
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """,
                 user_id,
@@ -806,7 +745,7 @@ def save_resume():
                     ?, ?, 
                     ?, ?, 
                     ?, ?, 
-                    datetime('now'), datetime('now')
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 )
             """, 
                 resume_id, user_id,
@@ -822,7 +761,7 @@ def save_resume():
             resume_phone = pi_data.get("phone")
             if resume_phone and user_id:
                 db.execute(
-                    "UPDATE user_profiles SET phone = ?, updated_at = datetime('now') WHERE user_id = ?",
+                    "UPDATE user_profiles SET phone = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
                     enc(resume_phone), user_id
                 )
         except Exception as sync_err:
@@ -951,7 +890,7 @@ def save_user_profile():
             db.execute(
                 """
                 INSERT INTO usuarios (username, senha_hash, email, type, created_at, updated_at)
-                VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
                 username, senha_hash, user_email, user_type
             )
@@ -1020,7 +959,7 @@ def save_user_profile():
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?,
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                datetime('now')
+                CURRENT_TIMESTAMP
             )
             ON CONFLICT(user_id) DO UPDATE SET
                 cnpj = excluded.cnpj,
@@ -1042,7 +981,7 @@ def save_user_profile():
                 lng = excluded.lng,
                 birth_date = excluded.birth_date,
                 imagem_profile = excluded.imagem_profile,
-                updated_at = datetime('now');
+                updated_at = CURRENT_TIMESTAMP;
             """,
             user_id,
             payload["cnpj"], payload["company_name"], payload["company_email"], payload["business_type"], payload["company_description"],
@@ -1059,7 +998,7 @@ def save_user_profile():
                 try:
                     pi = _json.loads(rr["personal_info_json"]) if rr.get("personal_info_json") else {}
                     pi["phone"] = raw_phone
-                    db.execute("UPDATE resumes SET personal_info_json = ?, updated_at = datetime('now') WHERE id = ?",
+                    db.execute("UPDATE resumes SET personal_info_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                                _json.dumps(pi, ensure_ascii=False), rr["id"])
                 except Exception as sync_err:
                     print(f"Aviso: falha ao sincronizar phone no currículo: {sync_err}")
@@ -1110,7 +1049,7 @@ def register_user():
         db.execute(
             """
             INSERT INTO usuarios (username, senha_hash, email, type, created_at, updated_at)
-            VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             """,
             username, senha_hash, email, "professional"
         )
@@ -1143,7 +1082,7 @@ def register_user():
                 user_id,
                 full_name, cpf, phone, business_type, imagem_profile,
                 updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """,
             user_id, enc_full_name, enc_cpf, enc_phone, enc_category, imagem_profile
         )
