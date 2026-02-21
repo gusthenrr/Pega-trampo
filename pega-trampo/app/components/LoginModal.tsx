@@ -35,7 +35,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         setError("")
 
         try {
-            const res = await fetch("https://pega-trampo-production.up.railway.app/api/login", {
+            const res = await fetch("https://pega-trampo-backend-production.up.railway.app/api/login", {
                 method: "POST",
                 credentials: "include",
                 headers: {
