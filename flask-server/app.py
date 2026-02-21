@@ -27,18 +27,21 @@ app.config["JWT_COOKIE_CSRF_PROTECT"] = False
 
 jwt = JWTManager(app)
 DATABASE_URL = os.getenv("DATABASE_URL") 
+
 if DATABASE_URL:
-    db = SQL(DATABASE_URL)   # ex: postgresql://...
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+    # força SQLAlchemy a usar psycopg3 (e não psycopg2)
+    if DATABASE_URL.startswith("postgresql://"):
+        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+
+    db = SQL(DATABASE_URL)
 else:
     db = SQL("sqlite:///database.db")
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN")
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": [ALLOWED_ORIGIN]}})
 COOKIE_NAME = "__Host-token"
-
-# ---- DB ----
-DB_PATH = os.path.join(os.path.dirname(__file__), "database.db")
-open(DB_PATH, "a").close()
-db = SQL(f"sqlite:///{DB_PATH}")
 
 # ---- ENV + Encryption ----
 
