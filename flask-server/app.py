@@ -183,9 +183,7 @@ CREATE TABLE IF NOT EXISTS job_applications (
 @app.route("/api/jobs", methods=["POST"])
 def create_job():
     data = request.json or {}
-    user_id = data.get("user_id")
-    if not user_id:
-        return api_error("user_id é obrigatório", 400)
+    user_id = get_jwt_identity()
 
     import uuid, json
     job_id = data.get("id") or str(uuid.uuid4())
@@ -255,8 +253,18 @@ def create_job():
 def get_jobs():
     print("get_jobs")
 
-    user_id = request.args.get("user_id")          # empresa: pegar vagas dela
-    candidate_id = request.args.get("candidate_id")# profissional: esconder vagas já candidatadas
+    identity = get_jwt_identity()
+    user_type = "professional"
+
+    if identity:
+        # Verifica se o usuario eh empresa ou profissional
+        user_rows = db.execute("SELECT type FROM usuarios WHERE id = ?", identity)
+        if user_rows and user_rows[0].get("type") in ["empresa", "company"]:
+            user_type = "company"
+
+    # Se for empresa, fetch vagas dela. Se profissional, fetch o feed normal (escondendo já aplicadas se logado)
+    user_id = identity if user_type == "company" else None
+    candidate_id = identity if user_type == "professional" else None
 
     try:
         if user_id:
@@ -343,10 +351,7 @@ def get_jobs():
 @app.route("/api/jobs/<job_id>", methods=["PUT"])
 def update_job(job_id):
     data = request.json or {}
-    user_id = data.get("user_id")
-
-    if not user_id:
-        return api_error("user_id é obrigatório para editar", 400)
+    user_id = get_jwt_identity()
 
     # 1. Verificar se a vaga existe e pertence à empresa
     row = db.execute("SELECT id, posted_by_user_id FROM jobs WHERE id = ?", job_id)
@@ -414,18 +419,7 @@ def update_job(job_id):
 
 @app.route("/api/jobs/<job_id>", methods=["DELETE"])
 def delete_job(job_id):
-    user_id = request.args.get("user_id")
-    # Se não vier na query string, tenta no body (caso passem JSON num DELETE, embora menos comum, mas vou suportar query string preferencialmente)
-    if not user_id:
-         # Tenta pegar do body se for json
-        try:
-            if request.is_json:
-                user_id = request.json.get("user_id")
-        except:
-            pass
-            
-    if not user_id:
-        return api_error("user_id é obrigatório para excluir", 400)
+    user_id = get_jwt_identity()
 
     # 1. Verificar se a vaga existe e pertence à empresa
     row = db.execute("SELECT id, posted_by_user_id FROM jobs WHERE id = ?", job_id)
@@ -453,9 +447,7 @@ def delete_job(job_id):
 
 @app.route("/api/my/applications", methods=["GET"])
 def get_my_applications():
-    user_id = request.args.get("user_id")
-    if not user_id:
-        return api_error("user_id é obrigatório", 400)
+    user_id = get_jwt_identity()
 
     try:
         rows = db.execute("""
@@ -737,10 +729,7 @@ def send_verification_email_brevo(to_email: str, code: str, ttl_min: int):
 @app.route("/api/resumes", methods=["POST"])
 def save_resume():
     data = request.json or {}
-    user_id = data.get("userId")
-
-    if not user_id:
-        return api_error("userId é obrigatório", 400)
+    user_id = get_jwt_identity()
 
     import json, uuid
     resume_id = data.get("id") or f"resume_{uuid.uuid4()}"
@@ -850,7 +839,7 @@ def delete_resume(resume_id):
 
 @app.route("/api/resumes", methods=["GET"])
 def get_resumes():
-    user_id = request.args.get("user_id")
+    user_id = get_jwt_identity()
     
     if user_id:
         rows = db.execute("""
@@ -1257,11 +1246,8 @@ def login():
 @app.route("/api/jobs/<job_id>/apply", methods=["POST"])
 def apply_to_job(job_id):
     data = request.json or {}
-    user_id = data.get("user_id") # Idealmente viria do token de sessão
+    user_id = get_jwt_identity()
     print(f"user_id: {user_id}")
-
-    if not user_id:
-        return api_error("Usuário não identificado", 401)
 
     # Verifica se já existe candidatura
     existing = db.execute(
@@ -1289,13 +1275,8 @@ def apply_to_job(job_id):
 
 @app.route("/api/company/applications", methods=["GET"])
 def get_company_applications():
-    # Identificar a empresa logada. 
-    # Como simplificação, vamos aceitar user_id ou company_id via query param
-    # Num cenário real, usaríamos sessão/token.
-    company_user_id = request.args.get("user_id")
-    
-    if not company_user_id:
-         return api_error("ID da empresa necessário", 400)
+    # Identificar a empresa logada via JWT securely.
+    company_user_id = get_jwt_identity()
 
     try:
         # 1. Buscar vagas publicadas por esta empresa (pelo user_id do dono, ou posted_by nome se for string solta)
@@ -1427,9 +1408,7 @@ def get_company_applications():
 
 @app.route("/api/get_dados", methods=["GET"])
 def get_dados():
-    user_id = request.args.get("user_id")
-    if not user_id:
-        return api_error("user_id é obrigatório", 400)
+    user_id = get_jwt_identity()
 
     try:
         # 1. Fetch User Profile

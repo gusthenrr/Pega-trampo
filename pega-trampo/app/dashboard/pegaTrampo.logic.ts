@@ -245,7 +245,7 @@ export const bootstrapInitialData = async (params: {
     try {
         if (currentUserType === 'company') {
             if (currentUserId) {
-                const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs?user_id=${encodeURIComponent(currentUserId)}`)
+                const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
                 if (jobsRes.ok) {
                     const jobsData = await jobsRes.json()
                     setJobs(jobsData)
@@ -253,7 +253,7 @@ export const bootstrapInitialData = async (params: {
 
                 console.log('Fetching company applications for user:', currentUserId)
                 try {
-                    const appsRes = await fetchWithAuth(`${API_BASE}/api/company/applications?user_id=${encodeURIComponent(currentUserId)}`)
+                    const appsRes = await fetchWithAuth(`${API_BASE}/api/company/applications`)
                     if (appsRes.ok) {
                         const appsData = await appsRes.json()
                         if (appsData.success && appsData.jobs) setCompanyJobsWithCandidates(appsData.jobs)
@@ -278,13 +278,13 @@ export const bootstrapInitialData = async (params: {
                 console.error('Erro ao buscar currículos', e)
             }
         } else {
-            const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs?candidate_id=${currentUserId}`)
+            const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
             if (jobsRes.ok) {
                 const jobsData = await jobsRes.json()
                 setJobs(jobsData)
             }
 
-            const appsRes = await fetchWithAuth(`${API_BASE}/api/my/applications?user_id=${currentUserId}`)
+            const appsRes = await fetchWithAuth(`${API_BASE}/api/my/applications`)
             if (appsRes.ok) {
                 const appsData = await appsRes.json()
                 if (appsData.success) setMyApplications(appsData.applications || [])
@@ -293,7 +293,7 @@ export const bootstrapInitialData = async (params: {
 
         if (currentUserId) {
             try {
-                const dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados?user_id=${currentUserId}`)
+                const dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
                 if (dadosRes.ok) {
                     const data = await dadosRes.json()
                     if (data.success) {
@@ -786,7 +786,7 @@ export const handleApplyToJob = async (params: {
         const res = await fetchWithAuth(`${API_BASE}/api/jobs/${job.id}/apply`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId }),
+            body: JSON.stringify({}),
         })
 
         const data = await res.json()
@@ -798,7 +798,7 @@ export const handleApplyToJob = async (params: {
 
         setJobs(prev => prev.filter(j => j.id !== job.id))
 
-        const appsRes = await fetchWithAuth(`${API_BASE}/api/my/applications?user_id=${userId}`)
+        const appsRes = await fetchWithAuth(`${API_BASE}/api/my/applications`)
         if (appsRes.ok) {
             const appsData = await appsRes.json()
             if (appsData.success) setMyApplications(appsData.applications || [])
@@ -846,7 +846,6 @@ export const handlePublishJob = async (params: {
     // Payload final
     const jobPayload = {
         ...newJobPost,
-        user_id: userData.id,
         companyInfo: userProfile.companyInfo,
         coordinates: finalCoordinates
     }
@@ -908,7 +907,6 @@ export const handleUpdateJob = async (params: {
     // Payload final
     const jobPayload = {
         ...updatedJobPost,
-        user_id: userData.id,
         companyInfo: userProfile.companyInfo,
         coordinates: finalCoordinates
     }
@@ -928,7 +926,7 @@ export const handleUpdateJob = async (params: {
         }
 
         // Atualiza a lista local
-        const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs?user_id=${userData.id}`)
+        const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
         if (jobsRes.ok) {
             const jobsData = await jobsRes.json()
             setJobs(jobsData)
@@ -962,7 +960,7 @@ export const handleDeleteJob = async (params: {
     const userData = JSON.parse(storedUser)
 
     try {
-        const res = await fetchWithAuth(`${API_BASE}/api/jobs/${jobId}?user_id=${userData.id}`, {
+        const res = await fetchWithAuth(`${API_BASE}/api/jobs/${jobId}`, {
             method: 'DELETE',
         })
 
@@ -1031,7 +1029,6 @@ export const handleSaveResume = async (params: {
     const newResume: Resume = {
         ...userResume,
         id: userResume.id || `resume_${Date.now()}`,
-        userId: realUserId,
         createdAt: userResume.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     }
