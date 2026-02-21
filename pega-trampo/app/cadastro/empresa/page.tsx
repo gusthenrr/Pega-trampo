@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Building2, HelpCircle, Check, Lock, User } from "lucide-react"
 import { CNPJApiData, CNPJAddress } from "@/app/types/pegatrampo"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://192.168.15.77:5000"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 
 // Tipos de negócio
 const businessTypes = [
