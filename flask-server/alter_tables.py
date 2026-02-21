@@ -1,0 +1,39 @@
+import os
+import psycopg
+from dotenv import load_dotenv
+
+load_dotenv()
+
+def normalize_pg_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+def main():
+    url = os.getenv("DATABASE_URL") or os.getenv("DATABASE_PUBLIC_URL")
+    if not url:
+        raise RuntimeError("Faltou DATABASE_URL. Configure no seu .env ou nas variáveis de ambiente.")
+    
+    url = normalize_pg_url(url)
+
+    print("Conectando ao banco de dados...")
+    
+    try:
+        with psycopg.connect(url) as conn:
+            with conn.cursor() as cur:
+                print("Convertendo 'jobs.posted_by_user_id' para INTEGER...")
+                cur.execute("ALTER TABLE jobs ALTER COLUMN posted_by_user_id TYPE INTEGER USING NULLIF(posted_by_user_id, '')::integer;")
+                
+                print("Convertendo 'resumes.user_id' para INTEGER...")
+                cur.execute("ALTER TABLE resumes ALTER COLUMN user_id TYPE INTEGER USING NULLIF(user_id, '')::integer;")
+                
+                print("Convertendo 'job_applications.candidate_id' para INTEGER...")
+                cur.execute("ALTER TABLE job_applications ALTER COLUMN candidate_id TYPE INTEGER USING NULLIF(candidate_id, '')::integer;")
+                
+            conn.commit()
+            print("✅ Sucesso! Todas as colunas foram atualizadas para INTEGER.")
+    except Exception as e:
+        print(f"❌ Erro ao alterar colunas: {e}")
+
+if __name__ == "__main__":
+    main()
