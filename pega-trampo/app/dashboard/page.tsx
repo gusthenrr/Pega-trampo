@@ -262,9 +262,21 @@ export default function PegaTrampoApp() {
     const [showMenu, setShowMenu] = useState(false)
     const [newJobPost, setNewJobPost] = useState<CompanyJobPost>(initialJobPostState)
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        if (!confirm('Tem certeza que deseja sair da sua conta?')) return
+
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+            await fetch(`${apiUrl}/api/logout`, {
+                method: 'POST',
+                credentials: 'include',
+            })
+        } catch (e) {
+            console.error('Erro ao fazer logout no servidor:', e)
+        }
+
         localStorage.removeItem('pegaTrampo.user')
-        window.location.reload()
+        window.location.href = '/'
     }
 
     const handleCepBlur = async () => {
