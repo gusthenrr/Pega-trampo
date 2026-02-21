@@ -35,7 +35,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         setError("")
 
         try {
-            const res = await fetch("http://192.168.15.77:5000/api/login", {
+            const res = await fetch("https://pega-trampo-production.up.railway.app/api/login", {
                 method: "POST",
                 credentials: "include",
                 headers: {
