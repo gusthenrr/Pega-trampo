@@ -1,6 +1,7 @@
 Flask==3.0.3
 flask-cors==4.0.0
 gunicorn==22.0.0
+flask-jwt-extended==4.6.0
 cs50==9.5.0
 python-dotenv==1.0.1
 cryptography==42.0.5
