@@ -26,6 +26,11 @@ app.config["JWT_COOKIE_SAMESITE"] = "None"
 app.config["JWT_COOKIE_CSRF_PROTECT"] = False
 
 jwt = JWTManager(app)
+DATABASE_URL = os.getenv("DATABASE_URL") 
+if DATABASE_URL:
+    db = SQL(DATABASE_URL)   # ex: postgresql://...
+else:
+    db = SQL("sqlite:///database.db")
 ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN")
 CORS(app, supports_credentials=True, resources={r"/*": {"origins": [ALLOWED_ORIGIN]}})
 COOKIE_NAME = "__Host-token"
