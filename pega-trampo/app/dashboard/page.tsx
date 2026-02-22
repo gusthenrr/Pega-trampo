@@ -2475,6 +2475,7 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
                                             setEditingJobId(null)
                                             setNewJobPost(initialJobPostState)
                                             setShowJobPostForm(true)
+                                            updateDuration(1, "dia")
                                         }}
                                         className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center space-x-2"
                                     >
@@ -2571,6 +2572,7 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
                                                 setEditingJobId(null)
                                                 setNewJobPost(initialJobPostState)
                                                 setShowJobPostForm(true)
+                                                updateDuration(1, "dia")
                                             }}
                                             className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
                                         >
