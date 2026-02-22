@@ -161,16 +161,22 @@ export const fetchCoordinates = async (address: string) => {
 
 
 export const formatRelativeDate = (dateString: string): string => {
+    if (!dateString) return ''
     const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = Math.abs(now.getTime() - date.getTime())
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    if (isNaN(date.getTime())) return ''
 
-    if (diffDays === 0) return 'Hoje'
+    const now = new Date()
+
+    // Compara por dia do calendário (ignora horas)
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const diffDays = Math.round((todayStart.getTime() - dateStart.getTime()) / (1000 * 60 * 60 * 24))
+
+    if (diffDays <= 0) return 'Hoje'
     if (diffDays === 1) return 'Ontem'
-    if (diffDays < 7) return `${diffDays}d`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)}sem`
-    return `${Math.floor(diffDays / 30)}m`
+    if (diffDays < 7) return `${diffDays}d atrás`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem atrás`
+    return `${Math.floor(diffDays / 30)} mês(es) atrás`
 }
 
 // =====================
