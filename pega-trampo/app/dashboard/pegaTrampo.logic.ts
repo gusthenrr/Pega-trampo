@@ -437,6 +437,12 @@ const ROLE_SIMILARITY: Record<string, Record<string, number>> = {
         ajudande_geral: 0.18,
     },
 
+    chapeiro: {
+        cozinheiro: 0.60,
+        auxiliar_da_cozinha: 0.30,
+        ajudande_geral: 0.18,
+    },
+
     copeiro_bartender: {
         atendente_garcom: 0.55,
         cozinheiro: 0.25,
