@@ -113,6 +113,19 @@ def clear_legacy_cookies(resp):
         resp.set_cookie("token", "", max_age=0, path="/", domain=d, secure=True, samesite="None")
     return resp
 
+def db_write(query, *args):
+    """
+    Wrapper para INSERT/UPDATE/DELETE no PostgreSQL via CS50.
+    O CS50 tenta ler linhas do resultado, mas essas queries não retornam linhas no Postgres.
+    Captura o erro e retorna None (a escrita já foi commitada com sucesso).
+    """
+    try:
+        return db.execute(query, *args)
+    except Exception as e:
+        if "does not return rows" in str(e):
+            return None
+        raise
+
 def enc(value):
     """Criptografa string (ou None) e devolve string base64."""
     if value is None:
@@ -168,7 +181,7 @@ def create_job():
     company_info = data.get("companyInfo") or {}
     company_info_json = json.dumps(company_info, ensure_ascii=False)
 
-    db.execute("""
+    db_write("""
         INSERT INTO jobs (
             id, title, description, category, payment_type, rate,
             location, area, address, work_hours,
@@ -333,7 +346,7 @@ def update_job(job_id):
     company_info_json = json.dumps(company_info, ensure_ascii=False)
 
     try:
-        db.execute("""
+        db_write("""
             UPDATE jobs
             SET title = ?,
                 description = ?,
@@ -402,8 +415,8 @@ def delete_job(job_id):
         # Verificando schema no step 7: FOREIGN KEY(job_id) REFERENCES jobs(id). Sem CASCADE.
         # Então preciso deletar applications primeiro.
         
-        db.execute("DELETE FROM job_applications WHERE job_id = ?", job_id)
-        db.execute("DELETE FROM jobs WHERE id = ?", job_id)
+        db_write("DELETE FROM job_applications WHERE job_id = ?", job_id)
+        db_write("DELETE FROM jobs WHERE id = ?", job_id)
         
         return api_ok(message="Vaga excluída com sucesso")
     except Exception as e:
@@ -573,7 +586,7 @@ def request_email_verification():
         now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
         expires = (now_naive + timedelta(minutes=EMAIL_CODE_TTL_MIN)).isoformat(timespec="seconds")
 
-        db.execute("""
+        db_write("""
             UPDATE usuarios
             SET email_verification_code_hash = ?,
                 email_verification_expires_at = ?,
@@ -640,14 +653,14 @@ def verify_email():
 
     got = hash_code(user_id, code)
     if not hmac.compare_digest(got, expected):
-        db.execute("""
+        db_write("""
             UPDATE usuarios
                SET email_verification_attempts = COALESCE(email_verification_attempts,0) + 1
              WHERE id = ?
         """, user_id)
         return jsonify({"success": False, "error": "Código incorreto"}), 400
 
-    db.execute("""
+    db_write("""
         UPDATE usuarios
            SET email_verified = 1,
                email_verified_at = ?,
@@ -727,7 +740,7 @@ def save_resume():
         # Check if exists
         row = db.execute("SELECT id FROM resumes WHERE id = ?", resume_id)
         if row:
-             db.execute("""
+             db_write("""
                 UPDATE resumes
                 SET user_id = ?,
                     personal_info_json = ?,
@@ -749,7 +762,7 @@ def save_resume():
                 resume_id
             )
         else:
-             db.execute("""
+             db_write("""
                 INSERT INTO resumes (
                     id, user_id, 
                     personal_info_json, professional_info_json, 
@@ -778,7 +791,7 @@ def save_resume():
             pi_data = data.get("personalInfo") or {}
             resume_phone = pi_data.get("phone")
             if resume_phone and user_id:
-                db.execute(
+                db_write(
                     "UPDATE user_profiles SET phone = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
                     enc(resume_phone), user_id
                 )
@@ -795,7 +808,7 @@ def save_resume():
 @app.route("/api/resumes/<resume_id>", methods=["DELETE"])
 def delete_resume(resume_id):
     try:
-        db.execute("DELETE FROM resumes WHERE id = ?", resume_id)
+        db_write("DELETE FROM resumes WHERE id = ?", resume_id)
         return api_ok(message="Currículo excluído")
     except Exception as e:
         print(f"Erro ao excluir currículo: {e}")
@@ -905,7 +918,7 @@ def save_user_profile():
 
             senha_hash = generate_password_hash(password)
 
-            db.execute(
+            db_write(
                 """
                 INSERT INTO usuarios (username, senha_hash, email, type, created_at, updated_at)
                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -966,7 +979,7 @@ def save_user_profile():
         except ValueError:
             return api_error("number precisa ser inteiro", 400)
 
-        db.execute(
+        db_write(
             """
             INSERT INTO user_profiles (
                 user_id,
@@ -1018,7 +1031,7 @@ def save_user_profile():
                 try:
                     pi = _json.loads(rr["personal_info_json"]) if rr.get("personal_info_json") else {}
                     pi["phone"] = raw_phone
-                    db.execute("UPDATE resumes SET personal_info_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                    db_write("UPDATE resumes SET personal_info_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                                _json.dumps(pi, ensure_ascii=False), rr["id"])
                 except Exception as sync_err:
                     print(f"Aviso: falha ao sincronizar phone no currículo: {sync_err}")
@@ -1066,7 +1079,7 @@ def register_user():
 
         # Create user
         senha_hash = generate_password_hash(password)
-        db.execute(
+        db_write(
             """
             INSERT INTO usuarios (username, senha_hash, email, type, created_at, updated_at)
             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -1097,7 +1110,7 @@ def register_user():
         enc_category = enc(category)
         imagem_profile = data.get("imagem_profile")
 
-        db.execute(
+        db_write(
             """
             INSERT INTO user_profiles (
                 user_id,
@@ -1230,7 +1243,7 @@ def apply_to_job(job_id):
     application_id = str(uuid.uuid4())
 
     try:
-        db.execute(
+        db_write(
             """
             INSERT INTO job_applications (id, job_id, candidate_id, status)
             VALUES (?, ?, ?, 'pending')
