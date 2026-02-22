@@ -578,7 +578,7 @@ def request_email_verification():
             if (now_utc - last).total_seconds() < EMAIL_RESEND_COOLDOWN_SEC:
                 return jsonify({"success": False, "error": "Aguarde um pouco para reenviar."}), 429
         
-        if u.get("email_verified") == 1:
+        if u.get("email_verified"):
             return jsonify({"success": True, "already_verified": True})
             
         code = gen_code()
@@ -627,7 +627,7 @@ def verify_email():
         return jsonify({"success": False, "error": "Usuário não encontrado"}), 404
 
     u = row[0]
-    if u["email_verified"] == 1:
+    if u["email_verified"]:
         return jsonify({"success": True, "already_verified": True})
 
     if int(u["attempts"]) >= 5:
@@ -662,7 +662,7 @@ def verify_email():
 
     db_write("""
         UPDATE usuarios
-           SET email_verified = 1,
+           SET email_verified = TRUE,
                email_verified_at = ?,
                email_verification_code_hash = NULL,
                email_verification_expires_at = NULL,
@@ -819,23 +819,26 @@ def delete_resume(resume_id):
 def get_resumes():
     user_id = current_user_id()
     
-    if user_id:
+    # Verifica o tipo do usuário para decidir o que retornar
+    user_rows = db.execute("SELECT type FROM usuarios WHERE id = ?", user_id)
+    user_type = user_rows[0]["type"] if user_rows else "professional"
+    
+    if user_type in ("empresa", "company"):
+        # Empresa vê TODOS os currículos visíveis dos profissionais
+        rows = db.execute("""
+            SELECT r.*, up.phone as up_phone 
+            FROM resumes r 
+            LEFT JOIN user_profiles up ON r.user_id = up.user_id
+            WHERE r.is_visible = true
+        """)
+    else:
+        # Profissional vê apenas o próprio currículo
         rows = db.execute("""
             SELECT r.*, up.phone as up_phone 
             FROM resumes r 
             LEFT JOIN user_profiles up ON r.user_id = up.user_id
             WHERE r.user_id = ?
         """, user_id)
-    else:
-        # Professional users (and potentially companies searching for resumes) might want all.
-        # However, the requirement says "na hora de chamar o endpoint para pegar os curriculos, ainda esta pegando todos os curriculos... se for professional, precisa pegar apenas o curriculo do proprio funcionario"
-        # Since this endpoint is general, we will return all if no user_id is passed, BUT the frontend will filter.
-        # Wait, if user_id is passed it returns THAT user's resume.
-        rows = db.execute("""
-            SELECT r.*, up.phone as up_phone 
-            FROM resumes r 
-            LEFT JOIN user_profiles up ON r.user_id = up.user_id
-        """)
 
     import json
     results = []
@@ -891,7 +894,14 @@ def save_user_profile():
             user_email = company_email
 
         user_type = "empresa"
-        user_id = data.get("user_id")  # opcional
+        
+        # Tenta usar JWT se o usuário já está logado (edição de perfil)
+        user_id = None
+        try:
+            verify_jwt_in_request()
+            user_id = current_user_id()
+        except:
+            pass  # Sem JWT = cadastro novo (vai criar usuário abaixo)
 
         # ====== cria usuário se não veio user_id ======
         if not user_id:
