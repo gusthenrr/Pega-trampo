@@ -1239,17 +1239,26 @@ def apply_to_job(job_id):
     if existing:
         return api_error("Você já se candidatou para esta vaga", 409)
 
+    # Busca o resume_id do candidato automaticamente
+    resume_id = None
+    resume_rows = db.execute(
+        "SELECT id FROM resumes WHERE user_id = ? LIMIT 1",
+        user_id
+    )
+    if resume_rows:
+        resume_id = resume_rows[0]["id"]
+
     import uuid
     application_id = str(uuid.uuid4())
 
     try:
         db_write(
             """
-            INSERT INTO job_applications (id, job_id, candidate_id, status)
-            VALUES (?, ?, ?, 'pending')
+            INSERT INTO job_applications (id, job_id, candidate_id, status, resume_id)
+            VALUES (?, ?, ?, 'pending', ?)
             RETURNING id
             """,
-            application_id, job_id, user_id
+            application_id, job_id, user_id, resume_id
         )
         return api_ok(message="Candidatura realizada com sucesso!", applicationId=application_id)
     except Exception as e:
