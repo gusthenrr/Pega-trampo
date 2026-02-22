@@ -159,9 +159,9 @@ export default function CompanySignupPage() {
         const u = username.trim()
         if (!u) return false
         if (u.length < 3) return false
-        if (/\s/.test(u)) return false
         return true
     }, [username])
+
 
     const step1Ok = useMemo(() => emailOk && passwordOk, [emailOk, passwordOk])
 
@@ -491,7 +491,7 @@ export default function CompanySignupPage() {
                                 </div>
                             </div>
                             {username.length > 0 && !usernameOk && (
-                                <p className="text-red-500 text-sm mt-1">Use no mínimo 3 caracteres e não use espaços.</p>
+                                <p className="text-red-500 text-sm mt-1">Use no mínimo 3 caracteres.</p>
                             )}
                         </div>
                     </div>
