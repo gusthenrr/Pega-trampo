@@ -1153,8 +1153,8 @@ mx-auto mb-1">
                                         ...prev,
                                         personalInfo: { ...prev.personalInfo, name: e.target.value }
                                     }))}
-                                    placeholder="Nome completo"
-                                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Ex: Maria da Silva"
+                                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
 
@@ -1167,8 +1167,8 @@ mx-auto mb-1">
                                         ...prev,
                                         personalInfo: { ...prev.personalInfo, phone: e.target.value }
                                     }))}
-                                    placeholder="Telefone"
-                                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Ex: (11) 91234-5678"
+                                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
 
@@ -1181,8 +1181,8 @@ mx-auto mb-1">
                                         ...prev,
                                         personalInfo: { ...prev.personalInfo, email: e.target.value }
                                     }))}
-                                    placeholder="E-mail"
-                                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Ex: maria@email.com"
+                                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
 
@@ -1195,8 +1195,8 @@ mx-auto mb-1">
                                         ...prev,
                                         personalInfo: { ...prev.personalInfo, address: e.target.value }
                                     }))}
-                                    placeholder="Endereço completo"
-                                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Ex: Rua das Flores, 123 - Centro, São Paulo"
+                                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
 
@@ -1211,7 +1211,7 @@ mx-auto mb-1">
                                             ...prev,
                                             personalInfo: { ...prev.personalInfo, birthDate: e.target.value }
                                         }))}
-                                        className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     />
                                 </div>
 
@@ -1223,7 +1223,7 @@ mx-auto mb-1">
                                             ...prev,
                                             personalInfo: { ...prev.personalInfo, maritalStatus: e.target.value }
                                         }))}
-                                        className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     >
                                         <option value="">Estado civil</option>
                                         <option value="solteiro">Solteiro(a)</option>
@@ -1321,8 +1321,8 @@ mx-auto mb-1">
                                 <input
                                     type="text"
                                     value={userResume.workExperience[0]?.company || ''}
-                                    placeholder="Empresa onde trabalhou"
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Ex: Padaria Pão Quente"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newExperience = [...userResume.workExperience]
                                         if (newExperience.length > 0) {
@@ -1338,8 +1338,8 @@ mx-auto mb-1">
                                 <input
                                     type="text"
                                     value={userResume.workExperience[0]?.position || ''}
-                                    placeholder="Cargo/Função"
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Ex: Atendente de balcão"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newExperience = [...userResume.workExperience]
                                         if (newExperience.length > 0) {
@@ -1356,7 +1356,7 @@ mx-auto mb-1">
                                     <input
                                         type="month"
                                         value={userResume.workExperience[0]?.startDate || ''}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                         onChange={(e) => {
                                             const newExperience = [...userResume.workExperience]
                                             if (newExperience.length > 0) {
@@ -1372,7 +1372,7 @@ mx-auto mb-1">
                                         type="month"
                                         value={userResume.workExperience[0]?.endDate || ''}
                                         disabled={userResume.workExperience[0]?.isCurrentJob}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                                         onChange={(e) => {
                                             const newExperience = [...userResume.workExperience]
                                             if (newExperience.length > 0) {
@@ -1408,8 +1408,8 @@ mx-auto mb-1">
                                 <textarea
                                     rows={3}
                                     value={userResume.workExperience[0]?.description || ''}
-                                    placeholder="Descreva suas principais atividades e responsabilidades"
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Ex: Atendimento ao cliente, organização do balcão e reposição de produtos"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newExperience = [...userResume.workExperience]
                                         if (newExperience.length === 0) {
@@ -1440,7 +1440,7 @@ mx-auto mb-1">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Nível de Escolaridade</label>
                                 <select
                                     value={userResume.education[0]?.level || ''}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newEducation = [...userResume.education]
                                         if (newEducation.length === 0) {
@@ -1471,8 +1471,8 @@ mx-auto mb-1">
                                 <input
                                     type="text"
                                     value={userResume.education[0]?.institution || ''}
-                                    placeholder="Nome da instituição"
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Ex: SENAI São Paulo"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newEducation = [...userResume.education]
                                         if (newEducation.length === 0) {
@@ -1496,7 +1496,7 @@ mx-auto mb-1">
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                                     <select
                                         value={userResume.education[0]?.status || 'completo'}
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                         onChange={(e) => {
                                             const newEducation = [...userResume.education]
                                             if (newEducation.length > 0) {
@@ -1516,10 +1516,10 @@ mx-auto mb-1">
                                     <input
                                         type="number"
                                         value={userResume.education[0]?.year || ''}
-                                        placeholder="Ano"
+                                        placeholder="Ex: 2024"
                                         min="1950"
                                         max="2024"
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                         onChange={(e) => {
                                             const newEducation = [...userResume.education]
                                             if (newEducation.length > 0) {
@@ -1606,8 +1606,8 @@ hover:bg-gray-100 rounded-full">
                                 type="text"
                                 value={newJobPost.title}
                                 onChange={(e) => setNewJobPost({ ...newJobPost, title: e.target.value })}
-                                placeholder="Ex: Confeiteiro para Festa de Aniversário"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Ex: Preciso de confeiteiro para festa infantil"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                             />
                             <p className="text-gray-500 text-xs mt-1">
                                 O título aparecerá em MAIÚSCULO nas propostas
@@ -1622,9 +1622,9 @@ hover:bg-gray-100 rounded-full">
                                 rows={4}
                                 value={newJobPost.description}
                                 onChange={(e) => setNewJobPost({ ...newJobPost, description: e.target.value })}
-                                placeholder="Descreva detalhadamente o trabalho que precisa ser realizado..."
+                                placeholder="Descreva tarefas, horário, local e requisitos da proposta"
                                 maxLength={70}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                             />
                             <p className="text-gray-500 text-xs mt-1">
                                 Máximo 70 caracteres ({newJobPost.description.length}/70)
@@ -1638,7 +1638,7 @@ hover:bg-gray-100 rounded-full">
                             <select
                                 value={newJobPost.category}
                                 onChange={(e) => setNewJobPost({ ...newJobPost, category: e.target.value })}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                             >
                                 <option value="">Selecione a categoria</option>
                                 {categoryData.map(cat => (
@@ -1655,7 +1655,7 @@ hover:bg-gray-100 rounded-full">
                                 <select
                                     value={newJobPost.paymentType}
                                     onChange={(e) => setNewJobPost({ ...newJobPost, paymentType: e.target.value as 'hourly' | 'daily' | 'project' })}
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 >
                                     <option value="hourly">Por Hora</option>
                                     <option value="daily">Por Dia</option>
@@ -1673,8 +1673,8 @@ hover:bg-gray-100 rounded-full">
                                         ...newJobPost, rate:
                                             Number(e.target.value)
                                     })}
-                                    placeholder="150"
-                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                    placeholder="Ex: 150,00"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
                         </div>
@@ -1691,8 +1691,8 @@ hover:bg-gray-100 rounded-full">
                                     setNewJobPost({ ...newJobPost, cep: val })
                                 }}
                                 onBlur={handleCepBlur}
-                                placeholder="00000-000"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Ex: 01310-000"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                             />
                         </div>
 
@@ -1706,8 +1706,8 @@ hover:bg-gray-100 rounded-full">
                                 type="text"
                                 value={newJobPost.address}
                                 onChange={(e) => setNewJobPost({ ...newJobPost, address: e.target.value })}
-                                placeholder="Rua das Flores, 123 - Vila Madalena"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                placeholder="Ex: Rua das Flores, 123 - Vila Madalena"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                             />
                         </div>
 
@@ -1740,7 +1740,7 @@ hover:bg-gray-100 rounded-full">
                                         <select
                                             value={newJobPost.period}
                                             onChange={(e) => setNewJobPost({ ...newJobPost, period: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                         >
                                             <option value="">Selecione</option>
                                             <option value="Manhã">Manhã</option>
