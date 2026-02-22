@@ -1,3 +1,5 @@
+
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from cs50 import SQL
@@ -86,6 +88,10 @@ def gerar_token(user_id):
     token = create_access_token(identity=str(user_id), expires_delta=timedelta(hours=2))
     return token
 
+def current_user_id():
+    """Retorna o user_id do JWT como int (compatível com colunas INTEGER do Postgres)."""
+    return int(get_jwt_identity())
+
 def set_auth_cookie(resp, jwt_value: str):
     resp.set_cookie(
         key=COOKIE_NAME,
@@ -142,7 +148,7 @@ def cnpj_digits(v):
 @app.route("/api/jobs", methods=["POST"])
 def create_job():
     data = request.json or {}
-    user_id = get_jwt_identity()
+    user_id = current_user_id()
 
     import uuid, json
     job_id = data.get("id") or str(uuid.uuid4())
@@ -212,7 +218,7 @@ def create_job():
 def get_jobs():
     print("get_jobs")
 
-    identity = get_jwt_identity()
+    identity = current_user_id()
     user_type = "professional"
 
     if identity:
@@ -310,7 +316,7 @@ def get_jobs():
 @app.route("/api/jobs/<job_id>", methods=["PUT"])
 def update_job(job_id):
     data = request.json or {}
-    user_id = get_jwt_identity()
+    user_id = current_user_id()
 
     # 1. Verificar se a vaga existe e pertence à empresa
     row = db.execute("SELECT id, posted_by_user_id FROM jobs WHERE id = ?", job_id)
@@ -378,7 +384,7 @@ def update_job(job_id):
 
 @app.route("/api/jobs/<job_id>", methods=["DELETE"])
 def delete_job(job_id):
-    user_id = get_jwt_identity()
+    user_id = current_user_id()
 
     # 1. Verificar se a vaga existe e pertence à empresa
     row = db.execute("SELECT id, posted_by_user_id FROM jobs WHERE id = ?", job_id)
@@ -406,7 +412,7 @@ def delete_job(job_id):
 
 @app.route("/api/my/applications", methods=["GET"])
 def get_my_applications():
-    user_id = get_jwt_identity()
+    user_id = current_user_id()
 
     try:
         rows = db.execute("""
@@ -688,7 +694,7 @@ def send_verification_email_brevo(to_email: str, code: str, ttl_min: int):
 @app.route("/api/resumes", methods=["POST"])
 def save_resume():
     data = request.json or {}
-    user_id = get_jwt_identity()
+    user_id = current_user_id()
 
     import json, uuid
     resume_id = data.get("id") or f"resume_{uuid.uuid4()}"
@@ -798,7 +804,7 @@ def delete_resume(resume_id):
 
 @app.route("/api/resumes", methods=["GET"])
 def get_resumes():
-    user_id = get_jwt_identity()
+    user_id = current_user_id()
     
     if user_id:
         rows = db.execute("""
@@ -1205,7 +1211,7 @@ def login():
 @app.route("/api/jobs/<job_id>/apply", methods=["POST"])
 def apply_to_job(job_id):
     data = request.json or {}
-    user_id = get_jwt_identity()
+    user_id = current_user_id()
     print(f"user_id: {user_id}")
 
     # Verifica se já existe candidatura
@@ -1235,7 +1241,7 @@ def apply_to_job(job_id):
 @app.route("/api/company/applications", methods=["GET"])
 def get_company_applications():
     # Identificar a empresa logada via JWT securely.
-    company_user_id = get_jwt_identity()
+    company_user_id = current_user_id()
 
     try:
         # 1. Buscar vagas publicadas por esta empresa (pelo user_id do dono, ou posted_by nome se for string solta)
@@ -1367,7 +1373,7 @@ def get_company_applications():
 
 @app.route("/api/get_dados", methods=["GET"])
 def get_dados():
-    user_id = get_jwt_identity()
+    user_id = current_user_id()
 
     try:
         # 1. Fetch User Profile
