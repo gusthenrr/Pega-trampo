@@ -62,6 +62,12 @@ const categoryData = [
         color: "bg-amber-100 text-amber-700",
     },
     {
+        name: "Chapeiro",
+        icon: Utensils,
+        description: "Chapa, lanches, hamburgueria",
+        color: "bg-amber-100 text-amber-700",
+    },
+    {
         name: "Auxiliar da cozinha",
         icon: Utensils,
         description: "Pré-preparo, apoio, limpeza do posto",
@@ -248,7 +254,7 @@ export default function PegaTrampoApp() {
         location: '',
         area: '',
         address: '',
-        workHours: '',
+        workHours: '8 horas',
         period: '',
         duration: '',
         isUrgent: false,
@@ -1543,6 +1549,30 @@ hover:bg-blue-600 transition-colors"
         )
     }
 
+type DurationUnit = "dia" | "semana" | "mes"
+
+const formatDuration = (qty: number, unit: DurationUnit) => {
+  const n = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1
+
+  if (unit === "dia") return `${n} ${n === 1 ? "dia" : "dias"}`
+  if (unit === "semana") return `${n} ${n === 1 ? "semana" : "semanas"}`
+  return `${n} ${n === 1 ? "mês" : "meses"}`
+}
+
+// estados só pra controlar o input/select (UI)
+const [durationQty, setDurationQty] = useState<number>(1)
+const [durationUnit, setDurationUnit] = useState<DurationUnit>("dia")
+
+const updateDuration = (qty: number, unit: DurationUnit) => {
+  const safeQty = qty > 0 ? qty : 1
+  setDurationQty(safeQty)
+  setDurationUnit(unit)
+
+  setNewJobPost((prev: any) => ({
+    ...prev,
+    duration: formatDuration(safeQty, unit),
+  }))
+}
 
 
     // Formulário de Publicação de Trabalho (Empresas) - MELHORADO COM HORAS DIRETAS 
@@ -1695,8 +1725,7 @@ hover:bg-gray-100 rounded-full">
                                         type="text"
                                         value={newJobPost.workHours}
                                         onChange={(e) => setNewJobPost({ ...newJobPost, workHours: e.target.value })}
-                                        placeholder="8 horas"
-                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-black focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-400 focus:ring-blue-500 focus:border-transparent"
                                     />
                                     <p className="text-gray-600 text-xs mt-1">
                                         Digite diretamente (ex: 8 horas, 6,5 horas)
@@ -1728,14 +1757,30 @@ hover:bg-gray-100 rounded-full">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Duração da Vaga *
                                         </label>
-                                        <input
-                                            type="text"
-                                            value={newJobPost.duration}
-                                            onChange={(e) => setNewJobPost({ ...newJobPost, duration: e.target.value })}
-                                            placeholder="Ex: 1 dia, 1 semana"
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 
-focus:ring-blue-500 focus:border-transparent"
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                value={durationQty}
+                                                onChange={(e) => updateDuration(Number(e.target.value || 1), durationUnit)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black focus:ring-blue-500 focus:border-transparent"
+                                            />
+
+                                            <select
+                                                value={durationUnit}
+                                                onChange={(e) => updateDuration(durationQty, e.target.value as DurationUnit)}
+                                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black focus:ring-blue-500 focus:border-transparent"
+                                            >
+                                                <option value="dia">dia(s)</option>
+                                                <option value="semana">semana(s)</option>
+                                                <option value="mes">mês(es)</option>
+                                            </select>
+                                        </div>
+
+                                        <p className="text-gray-600 text-xs mt-1">
+                                            Por quanto tempo (será salvo como: <span className="font-medium">{formatDuration(durationQty, durationUnit)}</span>)
+                                        </p>
+
                                         <p className="text-gray-600 text-xs mt-1">
                                             Por quanto tempo
                                         </p>
