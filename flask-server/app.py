@@ -1271,40 +1271,8 @@ def get_company_applications():
     company_user_id = current_user_id()
 
     try:
-        # 1. Buscar vagas publicadas por esta empresa (pelo user_id do dono, ou posted_by nome se for string solta)
-        # No endpoint de POST /api/jobs, salvamos "posted_by" como nome. 
-        # Mas o ideal é linkar com o ID do usuário.
-        # Vamos assumir que o frontend manda o ID do usuário que é dono da empresa.
-        
-        # Precisamos descobrir quais jobs pertencem a esse user_id.
-        # O user_profiles tem company_name. A tabela jobs tem posted_by (nome da empresa). 
-        # Vamos buscar o profile primeiro para pegar o nome da empresa.
-        
-        profile_rows = db.execute("SELECT company_name, full_name FROM user_profiles WHERE user_id = ?", company_user_id)
-        if not profile_rows:
-            return api_ok(jobs=[])
-            
-        profile = profile_rows[0]
-        # Tenta pegar nome da empresa, ou nome do usuário se não tiver empresa (profissional autônomo q posta vaga?)
-        poster_name = None
-        if profile.get("company_name"):
-            try:
-                poster_name = fernet.decrypt(profile["company_name"].encode()).decode()
-            except:
-                poster_name = profile["company_name"] # Fallback se não for criptografado
-        elif profile.get("full_name"):
-            try:
-                poster_name = fernet.decrypt(profile["full_name"].encode()).decode()
-            except:
-                poster_name = profile["full_name"]
-            
-        if not poster_name:
-            return api_ok(jobs=[])
-
-        # 2. Buscar Jobs
-        # ATENÇÃO: posted_by no jobs é o Nome. Isso é frágil se houver nomes duplicados.
-        # Mas seguindo a estrutura atual:
-        my_jobs = db.execute("SELECT * FROM jobs WHERE posted_by = ?", poster_name)
+        # Buscar vagas publicadas por esta empresa pelo user_id (confiável)
+        my_jobs = db.execute("SELECT * FROM jobs WHERE posted_by_user_id = ?", company_user_id)
         
         results = []
         import json
