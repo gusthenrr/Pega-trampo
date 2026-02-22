@@ -871,7 +871,7 @@ export const handlePublishJob = async (params: {
         }
 
         // Re-fetch da lista de vagas do servidor para garantir dados atualizados
-        const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs?user_id=${userData.id}`)
+        const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
         if (jobsRes.ok) {
             const jobsData = await jobsRes.json()
             setJobs(jobsData)
@@ -1197,7 +1197,6 @@ export const handleSaveProfile = async (params: {
 
         // Map frontend UserProfile fields to the backend's expected field names
         const payload: Record<string, any> = {
-            user_id: storedUser.id,
             username: userProfile.username || storedUser.username,
             email: userProfile.email || storedUser.email,
 
