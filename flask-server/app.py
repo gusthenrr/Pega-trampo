@@ -185,7 +185,7 @@ def create_job():
             ?, ?,
             ?, ?, ?,
             ?, ?
-        )
+        ) RETURNING id
     """,
         job_id,
         data.get("title"),
@@ -201,9 +201,9 @@ def create_job():
         user_id,
         data.get("period"),
         data.get("duration"),
-        1 if data.get("isUrgent") else 0,
-        1 if data.get("companyOnly") else 0,
-        1 if data.get("includesFood") else 0,
+        True if data.get("isUrgent") else False,
+        True if data.get("companyOnly") else False,
+        True if data.get("includesFood") else False,
         (data.get("coordinates") or {}).get("lat"),
         (data.get("coordinates") or {}).get("lng"),
         company_info_json,
@@ -764,7 +764,7 @@ def save_resume():
                     ?, ?, 
                     ?, ?, 
                     CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-                )
+                ) RETURNING id
             """, 
                 resume_id, user_id,
                 personal_info, professional_info,
@@ -909,6 +909,7 @@ def save_user_profile():
                 """
                 INSERT INTO usuarios (username, senha_hash, email, type, created_at, updated_at)
                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                RETURNING id
                 """,
                 username, senha_hash, user_email, user_type
             )
@@ -999,7 +1000,8 @@ def save_user_profile():
                 lng = excluded.lng,
                 birth_date = excluded.birth_date,
                 imagem_profile = excluded.imagem_profile,
-                updated_at = CURRENT_TIMESTAMP;
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING id;
             """,
             user_id,
             payload["cnpj"], payload["company_name"], payload["company_email"], payload["business_type"], payload["company_description"],
@@ -1068,6 +1070,7 @@ def register_user():
             """
             INSERT INTO usuarios (username, senha_hash, email, type, created_at, updated_at)
             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            RETURNING id
             """,
             username, senha_hash, email, "professional"
         )
@@ -1101,6 +1104,7 @@ def register_user():
                 full_name, cpf, phone, business_type, imagem_profile,
                 updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            RETURNING id
             """,
             user_id, enc_full_name, enc_cpf, enc_phone, enc_category, imagem_profile
         )
@@ -1230,6 +1234,7 @@ def apply_to_job(job_id):
             """
             INSERT INTO job_applications (id, job_id, candidate_id, status)
             VALUES (?, ?, ?, 'pending')
+            RETURNING id
             """,
             application_id, job_id, user_id
         )
