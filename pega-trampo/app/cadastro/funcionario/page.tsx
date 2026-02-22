@@ -14,6 +14,7 @@ const workerCategories = [
     { name: "Copeiro/Bartender", icon: Utensils, description: "Bebidas, drinks, atendimento" },
     { name: "Atendente/Garçom", icon: User, description: "Atendimento, mesa, eventos" },
     { name: "Churrasqueiro", icon: Utensils, description: "Churrasco, carnes, eventos" },
+    { name: "Chapeiro", icon: Utensils, description: "Chapeiro" },
     { name: "Diarista", icon: Sparkles, description: "Limpeza residencial e comercial" },
     { name: "Auxiliar da cozinha", icon: Utensils, description: "Auxiliar da cozinha" },
     { name: "Pizzaiolo", icon: Utensils, description: "Pizzaiolo" },
