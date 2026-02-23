@@ -27,15 +27,10 @@ const workerCategories = [
 type Step = 1 | 2 | 3
 
 type RegisterForm = {
-    // credenciais
     email: string
     password: string
     passwordConfirm: string
-
-    // categoria
     category: string
-
-    // dados pessoais + login
     fullName: string
     cpf: string
     phone: string
@@ -81,14 +76,17 @@ function validateCPF(cpf: string): boolean {
     return true
 }
 
+// ✅ Igual ao verificar-email: se success=false, lança erro
 async function postJSON(url: string, body: any) {
     const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
     })
-    const json = await res.json().catch(() => ({}))
-    if (!res.ok) throw new Error((json as any)?.error || (json as any)?.message || "Erro na requisição")
+    const json = await res.json().catch(() => ({} as any))
+    if (!res.ok || json?.success === false) {
+        throw new Error(json?.error || json?.message || "Erro na requisição")
+    }
     return json as any
 }
 
@@ -182,8 +180,7 @@ export default function CadastroPage() {
 
             const userId = data?.user_id ?? data?.id
             if (!userId) {
-                setSuccessMsg("Conta criada, mas o backend não retornou user_id. Ajuste o endpoint para retornar user_id.")
-                return
+                throw new Error("Conta criada, mas o backend não retornou user_id.")
             }
 
             await postJSON(`${API_URL}/api/auth/request-email-verification`, { user_id: userId })
@@ -225,7 +222,7 @@ export default function CadastroPage() {
                     <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">{successMsg}</div>
                 ) : null}
 
-                {/* STEP 1: email + senha */}
+                {/* STEP 1 */}
                 {step === 1 && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
                         <div className="text-center">
@@ -301,7 +298,7 @@ export default function CadastroPage() {
                     </div>
                 )}
 
-                {/* STEP 2: categoria */}
+                {/* STEP 2 */}
                 {step === 2 && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                         <h2 className="text-xl font-bold text-gray-900 mb-2">Escolha sua categoria</h2>
@@ -355,7 +352,7 @@ export default function CadastroPage() {
                     </div>
                 )}
 
-                {/* STEP 3: dados + username */}
+                {/* STEP 3 */}
                 {step === 3 && (
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                         <h2 className="text-xl font-bold text-gray-900 mb-1">Seus dados</h2>
@@ -451,7 +448,6 @@ export default function CadastroPage() {
                 )}
             </div>
 
-            {/* Rodapé */}
             <div className="bg-white border-t p-4">
                 <div className="max-w-md mx-auto text-xs text-gray-500">
                     Categoria: <span className="font-semibold text-gray-700">{form.category || "—"}</span>

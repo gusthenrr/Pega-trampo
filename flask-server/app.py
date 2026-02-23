@@ -1100,84 +1100,168 @@ def save_user_profile():
 def register_user():
     data = request.json or {}
 
-    # Basic fields
-    username = norm_username(data.get("username"))
-    email = norm_email(data.get("email"))
-    password = data.get("password")
-    
-    # Profile fields (Employee)
-    full_name = data.get("full_name") or data.get("name") # support both
-    cpf = only_digits(data.get("cpf"))
-    phone = data.get("phone")
-    category = data.get("category")
-    
-    # Validate required fields
-    if not username or len(username) < 3:
-        return api_error("Username deve ter no mínimo 3 caracteres", 400)
-    if not email:
-        return api_error("Email é obrigatório", 400)
-    if not password or len(password) < 6:
-        return api_error("Senha deve ter no mínimo 6 caracteres", 400)
-    if not full_name:
-        return api_error("Nome completo é obrigatório", 400)
-    if not cpf or len(cpf) != 11:
-        return api_error("CPF inválido", 400)
-
     try:
-        # Check if user exists
-        exists = db.execute("SELECT id FROM usuarios WHERE username = ? OR email = ?", username, email)
-        if exists:
-            return api_error("Username ou Email já cadastrado", 409)
+        # ====== USUÁRIO ======
+        username = norm_username(data.get("username"))
+        password = (data.get("password") or "")
 
-        # Create user
+        # email (mesmo fallback do user-profile)
+        user_email = norm_email(data.get("email"))
+        company_email = norm_email(data.get("company_email"))
+        if not user_email:
+            user_email = company_email
+
+        # type do usuário (funcionário)
+        user_type = (data.get("userType") or data.get("type") or "professional")
+        user_type = str(user_type).strip().lower()
+
+        # ====== PERFIL (FUNCIONÁRIO) ======
+        full_name = (data.get("full_name") or data.get("name") or "").strip()
+        cpf = only_digits(data.get("cpf") or "")
+        phone_raw = (data.get("phone") or "").strip()
+        category = (data.get("category") or "").strip()
+        imagem_profile = data.get("imagem_profile")
+
+        # ====== VALIDAÇÕES ======
+        if not username:
+            return api_error("username é obrigatório", 400)
+        if len(username) < 3 or re.search(r"\s", username):
+            return api_error("username inválido (mín. 3 caracteres e sem espaços)", 400)
+
+        if not password:
+            return api_error("password é obrigatório", 400)
+        if len(password) < 6:
+            return api_error("password inválido (mín. 6 caracteres)", 400)
+
+        if not user_email:
+            return api_error("email é obrigatório", 400)
+
+        if not full_name:
+            return api_error("Nome completo é obrigatório", 400)
+
+        if not cpf or len(cpf) != 11:
+            return api_error("CPF inválido", 400)
+
+        if not category:
+            return api_error("category é obrigatória", 400)
+
+        # ====== DUPLICIDADE ======
+        exists = db.execute(
+            "SELECT id FROM usuarios WHERE username = ? OR email = ? LIMIT 1",
+            username, user_email
+        )
+        if exists:
+            return api_error("username ou email já cadastrado", 409)
+
+        # ====== CRIA USUÁRIO (SEM RETURNING!) ======
         senha_hash = generate_password_hash(password)
+
         db_write(
             """
             INSERT INTO usuarios (username, senha_hash, email, type, created_at, updated_at)
             VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            RETURNING id
             """,
-            username, senha_hash, email, "professional"
+            username, senha_hash, user_email, user_type
         )
-        
-        # Get user ID
-        user_row = db.execute("SELECT id FROM usuarios WHERE username = ?", username)
-        if not user_row:
-             return api_error("Erro ao criar usuário", 500)
-        user_id = user_row[0]["id"]
-        
-        # Create profile
-        # Encrypt sensitive data
-        enc_full_name = enc(full_name)
-        enc_cpf = enc(cpf)
-        enc_phone = enc(phone)
-        
-        # We store category in "business_type" or "company_description" or separate field?
-        # The Current `user_profiles` table has `business_type` which is used for company type.
-        # For employee, `category` is akin to that. Let's use `business_type` column for category as well for now, 
-        # or `company_description` if it fits better.
-        # Looking at `manipule.py`, there isn't a specific `category` column for employees in `user_profiles`.
-        # `business_type` seems appropriate enough for "profession/category".
-        
-        enc_category = enc(category)
-        imagem_profile = data.get("imagem_profile")
 
+        row = db.execute("SELECT id FROM usuarios WHERE username = ? LIMIT 1", username)
+        if not row:
+            return api_error("Falha ao criar usuário", 500)
+
+        user_id = row[0]["id"]
+
+        # ====== PERFIL (mesmo padrão do /api/user-profile) ======
+        # PONTO-CHAVE: company_email recebe o mesmo email do usuário (fallback usado em alguns fluxos)
+        payload = {
+            "cnpj": None,
+            "company_name": None,
+            "company_email": user_email,
+            "business_type": enc(category),          # categoria vai aqui (como você já fazia)
+            "company_description": None,
+
+            "full_name": enc(full_name),
+            "cpf": enc(cpf),
+            "phone": enc(phone_raw) if phone_raw else None,
+
+            "address": None,
+            "number": None,
+            "complement": None,
+            "neighborhood": None,
+            "city": None,
+            "state": None,
+            "cep": None,
+            "lat": None,
+            "lng": None,
+            "birth_date": None,
+            "imagem_profile": imagem_profile,
+        }
+
+        # UPSERT SEM RETURNING!
         db_write(
             """
             INSERT INTO user_profiles (
                 user_id,
-                full_name, cpf, phone, business_type, imagem_profile,
+                cnpj, company_name, company_email, business_type, company_description,
+                full_name, cpf, phone,
+                address, number, complement, neighborhood, city, state, cep, lat, lng, birth_date, imagem_profile,
                 updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            RETURNING id
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?,
+                ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                CURRENT_TIMESTAMP
+            )
+            ON CONFLICT(user_id) DO UPDATE SET
+                cnpj = excluded.cnpj,
+                company_name = excluded.company_name,
+                company_email = excluded.company_email,
+                business_type = excluded.business_type,
+                company_description = excluded.company_description,
+                full_name = excluded.full_name,
+                cpf = excluded.cpf,
+                phone = excluded.phone,
+                address = excluded.address,
+                number = excluded.number,
+                complement = excluded.complement,
+                neighborhood = excluded.neighborhood,
+                city = excluded.city,
+                state = excluded.state,
+                cep = excluded.cep,
+                lat = excluded.lat,
+                lng = excluded.lng,
+                birth_date = excluded.birth_date,
+                imagem_profile = excluded.imagem_profile,
+                updated_at = CURRENT_TIMESTAMP
             """,
-            user_id, enc_full_name, enc_cpf, enc_phone, enc_category, imagem_profile
+            user_id,
+            payload["cnpj"], payload["company_name"], payload["company_email"], payload["business_type"], payload["company_description"],
+            payload["full_name"], payload["cpf"], payload["phone"],
+            payload["address"], payload["number"], payload["complement"], payload["neighborhood"], payload["city"], payload["state"],
+            payload["cep"], payload["lat"], payload["lng"], payload["birth_date"], payload["imagem_profile"]
         )
+
+        # ---- Sync phone: profile → resume (igual ao user-profile) ----
+        raw_phone = data.get("phone")
+        if raw_phone and user_id:
+            import json as _json
+            resume_rows = db.execute("SELECT id, personal_info_json FROM resumes WHERE user_id = ?", user_id)
+            for rr in resume_rows:
+                try:
+                    pi = _json.loads(rr["personal_info_json"]) if rr.get("personal_info_json") else {}
+                    pi["phone"] = raw_phone
+                    db_write(
+                        "UPDATE resumes SET personal_info_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+                        _json.dumps(pi, ensure_ascii=False), rr["id"]
+                    )
+                except Exception as sync_err:
+                    print(f"Aviso: falha ao sincronizar phone no currículo: {sync_err}")
 
         return api_ok(user_id=user_id, message="Cadastro realizado com sucesso!")
 
     except Exception as e:
-        print(f"Erro no /api/register: {e}")
+        import traceback
+        print("ERRO NO /api/register:", e)
+        traceback.print_exc()
         return api_error("Erro interno no servidor ao registrar", 500)
 
 def only_digits(s):
