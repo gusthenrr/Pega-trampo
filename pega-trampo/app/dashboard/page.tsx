@@ -442,6 +442,31 @@ export default function PegaTrampoApp() {
     const filteredJobs = logic.filterJobs({ jobs, searchTerm, selectedCategory, userProfile })
     const filteredResumes = logic.filterResumes({ resumes, resumeSearchTerm, userProfile })
 
+    type DurationUnit = "dia" | "semana" | "mes"
+
+    const formatDuration = (qty: number, unit: DurationUnit) => {
+        const n = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1
+
+        if (unit === "dia") return `${n} ${n === 1 ? "dia" : "dias"}`
+        if (unit === "semana") return `${n} ${n === 1 ? "semana" : "semanas"}`
+        return `${n} ${n === 1 ? "mês" : "meses"}`
+    }
+
+    // estados só pra controlar o input/select (UI)
+    const [durationQty, setDurationQty] = useState<number>(1)
+    const [durationUnit, setDurationUnit] = useState<DurationUnit>("dia")
+
+    const updateDuration = (qty: number, unit: DurationUnit) => {
+        const safeQty = qty > 0 ? qty : 1
+        setDurationQty(safeQty)
+        setDurationUnit(unit)
+
+        setNewJobPost((prev: any) => ({
+            ...prev,
+            duration: formatDuration(safeQty, unit),
+        }))
+    }
+
     // handlers (mantém o MESMO nome)
     const handleNextStep = () => logic.handleNextStep({ currentStep, setCurrentStep, userProfile })
     const handlePrevStep = () => logic.handlePrevStep({ currentStep, setCurrentStep })
@@ -1548,31 +1573,6 @@ hover:bg-blue-600 transition-colors"
             </div>
         )
     }
-
-type DurationUnit = "dia" | "semana" | "mes"
-
-const formatDuration = (qty: number, unit: DurationUnit) => {
-  const n = Number.isFinite(qty) && qty > 0 ? Math.floor(qty) : 1
-
-  if (unit === "dia") return `${n} ${n === 1 ? "dia" : "dias"}`
-  if (unit === "semana") return `${n} ${n === 1 ? "semana" : "semanas"}`
-  return `${n} ${n === 1 ? "mês" : "meses"}`
-}
-
-// estados só pra controlar o input/select (UI)
-const [durationQty, setDurationQty] = useState<number>(1)
-const [durationUnit, setDurationUnit] = useState<DurationUnit>("dia")
-
-const updateDuration = (qty: number, unit: DurationUnit) => {
-  const safeQty = qty > 0 ? qty : 1
-  setDurationQty(safeQty)
-  setDurationUnit(unit)
-
-  setNewJobPost((prev: any) => ({
-    ...prev,
-    duration: formatDuration(safeQty, unit),
-  }))
-}
 
 
     // Formulário de Publicação de Trabalho (Empresas) - MELHORADO COM HORAS DIRETAS 

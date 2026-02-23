@@ -18,14 +18,37 @@ app = Flask(__name__)
 #Config do jwt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 load_dotenv()
-app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+
+def env_bool(name: str, default: bool = False) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    return v.strip().lower() in ("1", "true", "yes", "y", "on")
+
+JWT_ENABLED = env_bool("JWT_ENABLED", True)
+DEV_USER_ID = int(os.getenv("DEV_USER_ID", "1"))
+
+COOKIE_NAME = (os.getenv("JWT_COOKIE_NAME") or "__Host-token").strip()
+COOKIE_SECURE = env_bool("JWT_COOKIE_SECURE", True)
+COOKIE_SAMESITE = (os.getenv("JWT_COOKIE_SAMESITE") or "None").strip()
+
+# Se tentar usar __Host- sem Secure, o browser pode ignorar.
+# Então: em dev, use cookie_name=token e secure=0
+if COOKIE_NAME.startswith("__Host-") and not COOKIE_SECURE:
+    # você pode ou dar erro, ou trocar automaticamente:
+    # raise RuntimeError("__Host- exige JWT_COOKIE_SECURE=1 (HTTPS).")
+    COOKIE_NAME = "token"
+
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY") or "dev-secret"
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
-app.config["JWT_ACCESS_COOKIE_NAME"] = "__Host-token"
-app.config["JWT_COOKIE_SECURE"] = True
-app.config["JWT_COOKIE_SAMESITE"] = "None"
-app.config["JWT_COOKIE_CSRF_PROTECT"] = False
+app.config["JWT_ACCESS_COOKIE_NAME"] = COOKIE_NAME
+app.config["JWT_COOKIE_SECURE"] = COOKIE_SECURE
+app.config["JWT_COOKIE_SAMESITE"] = COOKIE_SAMESITE
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # como você já usa
 
 jwt = JWTManager(app)
+
+#Config do banco de dados
 DATABASE_URL = os.getenv("DATABASE_URL") 
 
 if DATABASE_URL:
@@ -39,9 +62,13 @@ if DATABASE_URL:
     db = SQL(DATABASE_URL)
 else:
     db = SQL("sqlite:///database.db")
-ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN")
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": [ALLOWED_ORIGIN]}})
-COOKIE_NAME = "__Host-token"
+
+ALLOWED_ORIGIN = (os.getenv("ALLOWED_ORIGIN") or "http://localhost:3000").strip()
+CORS(
+    app,
+    supports_credentials=True,
+    resources={r"/*": {"origins": [ALLOWED_ORIGIN]}},
+)
 
 # ---- ENV + Encryption ----
 
@@ -57,12 +84,14 @@ from flask_jwt_extended.exceptions import NoAuthorizationError
 
 @app.before_request
 def check_jwt_globally():
-    # Protege todas as rotas que começarem por /api/
+    # ✅ Se JWT estiver desligado no .env, não bloqueia nada
+    if not JWT_ENABLED:
+        return
+
     if request.path.startswith('/api/'):
-        # Exceções (rotas públicas)
         public_routes = ['/api/login', '/api/register', '/api/user-profile', '/api/auth/', '/api/logout']
         is_public = any(request.path.startswith(route) for route in public_routes) or request.path.startswith('/api/cnpj/')
-        
+
         if not is_public:
             try:
                 verify_jwt_in_request()
@@ -77,8 +106,8 @@ def logout():
         value="",
         max_age=0,
         httponly=True,
-        secure=True,
-        samesite="None",
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
         path="/",
     )
     return resp, 200
@@ -89,7 +118,8 @@ def gerar_token(user_id):
     return token
 
 def current_user_id():
-    """Retorna o user_id do JWT como int (compatível com colunas INTEGER do Postgres)."""
+    if not JWT_ENABLED:
+        return DEV_USER_ID
     return int(get_jwt_identity())
 
 def set_auth_cookie(resp, jwt_value: str):
@@ -97,13 +127,12 @@ def set_auth_cookie(resp, jwt_value: str):
         key=COOKIE_NAME,
         value=jwt_value,
         httponly=True,
-        secure=True,
-        samesite="None",
-        path="/",          # obrigatório para __Host-
-        # sem Domain -> host-only
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+        path="/",
         max_age=60*60*24,
     )
-    return resp
+    return resp 
 
 def clear_legacy_cookies(resp):
     # apaga qualquer 'token' residual (host-only)
@@ -134,6 +163,18 @@ def enc(value):
     if s == "":
         return None
     return fernet.encrypt(s.encode("utf-8")).decode("utf-8")
+
+def dec(value):
+    """Tenta descriptografar; se não for token Fernet válido, retorna como está."""
+    if value is None:
+        return None
+    s = str(value)
+    if not s.strip():
+        return None
+    try:
+        return fernet.decrypt(s.encode("utf-8")).decode("utf-8")
+    except Exception:
+        return s
 
 def api_ok(**extra):
     return jsonify({"success": True, **extra})
@@ -817,8 +858,9 @@ def delete_resume(resume_id):
 
 @app.route("/api/resumes", methods=["GET"])
 def get_resumes():
+    print("get_resumes")
     user_id = current_user_id()
-    
+    print(user_id)
     # Verifica o tipo do usuário para decidir o que retornar
     user_rows = db.execute("SELECT type FROM usuarios WHERE id = ?", user_id)
     user_type = user_rows[0]["type"] if user_rows else "professional"
@@ -1221,17 +1263,8 @@ def login():
             "cnpj": cnpj_val
         }
     })
-    
-    resp.set_cookie(
-        key=COOKIE_NAME,
-        value=jwt_token,
-        httponly=True,
-        secure=True,
-        samesite="None",
-        path="/",          # obrigatório para __Host-
-        max_age=60*60*24,
-    )
-
+    if JWT_ENABLED:
+        set_auth_cookie(resp, jwt_token)
     return resp, 200
 
 
@@ -1379,7 +1412,6 @@ def get_company_applications():
 @app.route("/api/get_dados", methods=["GET"])
 def get_dados():
     user_id = current_user_id()
-
     try:
         # 1. Fetch User Profile
         profile_rows = db.execute("SELECT * FROM user_profiles WHERE user_id = ?", user_id)
@@ -1402,7 +1434,8 @@ def get_dados():
                     profile_data[key] = None
             
             # Non-encrypted fields
-            profile_data["company_email"] = p.get("company_email")
+            raw_company_email = p.get("company_email")
+            profile_data["company_email"] = dec(raw_company_email)
             profile_data["number"] = p.get("number")
             # localização (lat/lng) vão em texto plano
             profile_data["lat"] = p.get("lat")
@@ -1410,12 +1443,14 @@ def get_dados():
             profile_data["imagem_profile"] = p.get("imagem_profile")
         
         if user_rows:
-            profile_data["email"] = user_rows[0]["email"]
+            profile_data["email"] = user_rows[0].get("email")
             profile_data["userType"] = user_rows[0]["type"]
             profile_data["username"] = user_rows[0]["username"]
 
         # 2. Fetch Resume
         resume_rows = db.execute("SELECT * FROM resumes WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1", user_id)
+        print("resume_rows")
+        print(resume_rows)
         resume_data = None
         if resume_rows:
             r = dict(resume_rows[0])
@@ -1449,7 +1484,8 @@ def get_dados():
             r["personalInfo"]["phone"] = profile_data.get("phone") or ""
                 
             resume_data = r
-
+        print("resume_data")
+        print(resume_data)
         return jsonify({"success": True, "profile": profile_data, "resume": resume_data})
 
     except Exception as e:
