@@ -130,6 +130,11 @@ def wipe_all_data(conn):
 
 def _default_for_col(pg_type: str):
     t = (pg_type or "").lower()
+
+    # ✅ ARRAYS
+    if "array" in t or t.endswith("[]"):
+        return []  # ou None, se sua coluna aceitar NULL
+
     if "boolean" in t:
         return False
     if "integer" in t or "bigint" in t or "smallint" in t:
@@ -293,7 +298,7 @@ def insert_profile_professional(conn, user_id: int, p: dict):
             "cep": enc(p["cep"]),
 
             "birth_date": enc(p["birthDate"]),
-            "worker_category": p["workerCategory"],
+            "worker_category": [p["workerCategory"]],
 
             "lat": float(p["lat"]),
             "lng": float(p["lng"]),
