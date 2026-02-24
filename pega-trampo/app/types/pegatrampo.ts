@@ -129,7 +129,7 @@ export interface UserProfile {
     preferences: UserProfilePreferences
 
     companyInfo?: UserProfileCompanyInfo
-    workerCategory?: string
+    workerCategory?: string[]
     evaluationData?: UserProfileEvaluationData
     lat?: number
     lng?: number

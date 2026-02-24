@@ -317,7 +317,7 @@ export const bootstrapInitialData = async (params: {
                                 neighborhood: data.profile.neighborhood || prev.neighborhood,
                                 city: data.profile.city || prev.city,
                                 state: data.profile.state || prev.state,
-                                workerCategory: data.profile.business_type || prev.workerCategory,
+                                workerCategory: data.profile.worker_category || prev.workerCategory,
                                 birthDate: data.profile.birth_date || prev.birthDate,
                                 lat: data.profile.lat,
                                 lng: data.profile.lng,
@@ -372,6 +372,44 @@ export const bootstrapInitialData = async (params: {
 // Filtros (jobs / resumes)
 // =====================
 // pega-trampo/app/dashboard/pegaTrampo.logic.ts
+
+
+// -------------------------
+// helpers (add)
+// -------------------------
+const getWorkerCategoryList = (userProfile: any): string[] => {
+    // aceita vários formatos sem quebrar:
+    // - array direto: ["Padeiro", "Cozinheiro"]
+    // - string JSON: '["Padeiro","Cozinheiro"]'
+    // - string com separador: "Padeiro | Cozinheiro"
+    const raw =
+        userProfile?.workerCategory ??
+        userProfile?.workerCategories ??
+        userProfile?.categories ??
+        ""
+
+    if (Array.isArray(raw)) return raw.map(String).map(s => s.trim()).filter(Boolean)
+
+    if (typeof raw === "string") {
+        const s = raw.trim()
+        if (!s) return []
+
+        // tenta JSON
+        try {
+            const parsed = JSON.parse(s)
+            if (Array.isArray(parsed)) return parsed.map(String).map(x => x.trim()).filter(Boolean)
+        } catch { }
+
+        // fallback separadores comuns
+        return s
+            .split("|")
+            .map(x => x.trim())
+            .filter(Boolean)
+    }
+
+    return []
+}
+
 
 // -------------------------
 // Helpers de normalização
@@ -515,28 +553,57 @@ const distanceScore = (km: number) => {
 }
 
 // -------------------------
-// Score do job pro profissional
+// Score do job pro profissional (UPDATED)
 // -------------------------
 const computeJobScoreForProfessional = (job: any, userProfile: any) => {
-    const workerRole = slugRole(userProfile?.workerCategory || "")
+    const workerCategories = getWorkerCategoryList(userProfile) // <- lista
+    const workerRoles = workerCategories.map(slugRole).filter(Boolean)
     const jobRole = slugRole(job?.category || "")
 
-    // 1) Match de role
+    // 1) Match de role (melhor similaridade; desempate pela ordem da lista)
     let roleMatch = 0
-    if (workerRole && jobRole) {
-        if (workerRole === jobRole) roleMatch = 1
-        else roleMatch = ROLE_SIMILARITY[workerRole]?.[jobRole] || 0
+    if (workerRoles.length && jobRole) {
+        // match exato tem prioridade (e respeita a ordem)
+        const exactIdx = workerRoles.indexOf(jobRole)
+        if (exactIdx >= 0) {
+            roleMatch = 1
+        } else {
+            // pega o melhor score, mas se empatar fica o primeiro da lista
+            let best = 0
+            for (const wr of workerRoles) {
+                const sim = ROLE_SIMILARITY[wr]?.[jobRole] || 0
+                if (sim > best) best = sim
+            }
+            roleMatch = best
+        }
     }
 
-    // 2) Match por texto (título/descrição)
+    // 2) Match por texto (título/descrição) -> checa na ordem da lista
     const haystack = normalizeText(`${job?.title || ""} ${job?.description || ""} ${job?.category || ""}`)
-    const wcText = normalizeText(userProfile?.workerCategory || "")
+
     let textMatch = 0
-    if (wcText && haystack.includes(wcText)) textMatch = 1
-    else if (workerRole && haystack.includes(workerRole.replace(/_/g, " "))) textMatch = 0.75
+
+    // primeiro tenta bater o texto da categoria (em ordem)
+    for (const cat of workerCategories) {
+        const wcText = normalizeText(cat)
+        if (wcText && haystack.includes(wcText)) {
+            textMatch = 1
+            break
+        }
+    }
+
+    // se não achou por texto, tenta pelo slug em formato "palavra palavra" (em ordem)
+    if (textMatch === 0) {
+        for (const wr of workerRoles) {
+            const wrText = wr.replace(/_/g, " ")
+            if (wrText && haystack.includes(wrText)) {
+                textMatch = 0.75
+                break
+            }
+        }
+    }
 
     // 3) Distância (se tiver coords)
-    // Você pode preencher coords do profissional por geolocation ou no profile.
     const uLat = Number(userProfile?.lat)
     const uLng = Number(userProfile?.lng)
     const jLat = Number(job?.lat)
@@ -551,14 +618,13 @@ const computeJobScoreForProfessional = (job: any, userProfile: any) => {
     // 4) Boosts
     const urgentBoost = job?.isUrgent ? 0.15 : 0
 
-    // Pesos (ajustáveis)
+    // Pesos (mantidos)
     const score01 =
         roleMatch * 0.50 +
         textMatch * 0.20 +
         distPart * 0.30 +
         urgentBoost
 
-    // clamp
     const s = Math.max(0, Math.min(1, score01))
     return Math.round(s * 100)
 }

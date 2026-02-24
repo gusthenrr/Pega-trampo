@@ -1101,17 +1101,61 @@ def register_user():
     data = request.json or {}
 
     try:
+        import json as _json
+
+        def parse_categories(d):
+            raw = (
+                d.get("categories")
+                or d.get("worker_category")
+                or d.get("workerCategory")
+                or d.get("category")
+            )
+
+            if raw is None:
+                return []
+
+            # já é lista
+            if isinstance(raw, list):
+                items = [str(x).strip() for x in raw]
+            else:
+                s = str(raw).strip()
+                if not s:
+                    return []
+                # string JSON tipo '["Padeiro","Cozinheiro"]'
+                if s.startswith("["):
+                    try:
+                        arr = _json.loads(s)
+                        items = [str(x).strip() for x in arr] if isinstance(arr, list) else [s]
+                    except:
+                        items = [s]
+                else:
+                    # "Padeiro|Cozinheiro" ou "Padeiro, Cozinheiro"
+                    import re as _re
+                    items = [x.strip() for x in _re.split(r"[|,]", s)]
+
+            # remove vazios, remove duplicados preservando ordem e corta em 3
+            seen = set()
+            out = []
+            for it in items:
+                if not it:
+                    continue
+                if it in seen:
+                    continue
+                seen.add(it)
+                out.append(it)
+                if len(out) == 3:
+                    break
+            return out
+
         # ====== USUÁRIO ======
         username = norm_username(data.get("username"))
         password = (data.get("password") or "")
 
-        # email (mesmo fallback do user-profile)
         user_email = norm_email(data.get("email"))
         company_email = norm_email(data.get("company_email"))
         if not user_email:
             user_email = company_email
 
-        # type do usuário (funcionário)
         user_type = (data.get("userType") or data.get("type") or "professional")
         user_type = str(user_type).strip().lower()
 
@@ -1119,7 +1163,7 @@ def register_user():
         full_name = (data.get("full_name") or data.get("name") or "").strip()
         cpf = only_digits(data.get("cpf") or "")
         phone_raw = (data.get("phone") or "").strip()
-        category = (data.get("category") or "").strip()
+        categories = parse_categories(data)  # <-- LISTA AQUI
         imagem_profile = data.get("imagem_profile")
 
         # ====== VALIDAÇÕES ======
@@ -1142,8 +1186,10 @@ def register_user():
         if not cpf or len(cpf) != 11:
             return api_error("CPF inválido", 400)
 
-        if not category:
-            return api_error("category é obrigatória", 400)
+        if not categories:
+            return api_error("Selecione pelo menos 1 categoria", 400)
+        if len(categories) > 3:
+            return api_error("Selecione no máximo 3 categorias", 400)
 
         # ====== DUPLICIDADE ======
         exists = db.execute(
@@ -1153,7 +1199,7 @@ def register_user():
         if exists:
             return api_error("username ou email já cadastrado", 409)
 
-        # ====== CRIA USUÁRIO (SEM RETURNING!) ======
+        # ====== CRIA USUÁRIO ======
         senha_hash = generate_password_hash(password)
 
         db_write(
@@ -1167,16 +1213,14 @@ def register_user():
         row = db.execute("SELECT id FROM usuarios WHERE username = ? LIMIT 1", username)
         if not row:
             return api_error("Falha ao criar usuário", 500)
-
         user_id = row[0]["id"]
 
-        # ====== PERFIL (mesmo padrão do /api/user-profile) ======
-        # PONTO-CHAVE: company_email recebe o mesmo email do usuário (fallback usado em alguns fluxos)
+        # ====== PERFIL ======
         payload = {
             "cnpj": None,
             "company_name": None,
             "company_email": user_email,
-            "business_type": enc(category),          # categoria vai aqui (como você já fazia)
+            "business_type": None,
             "company_description": None,
 
             "full_name": enc(full_name),
@@ -1193,22 +1237,30 @@ def register_user():
             "lat": None,
             "lng": None,
             "birth_date": None,
+
+            # agora é TEXT[] no Postgres -> salva lista direto
+            "worker_category": categories if user_type == "professional" else None,
+
             "imagem_profile": imagem_profile,
         }
 
-        # UPSERT SEM RETURNING!
+        # IMPORTANTE: incluir worker_category no INSERT também
         db_write(
             """
             INSERT INTO user_profiles (
                 user_id,
                 cnpj, company_name, company_email, business_type, company_description,
                 full_name, cpf, phone,
-                address, number, complement, neighborhood, city, state, cep, lat, lng, birth_date, imagem_profile,
+                address, number, complement, neighborhood, city, state, cep, lat, lng, birth_date,
+                worker_category,
+                imagem_profile,
                 updated_at
             ) VALUES (
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?,
+                ?,
                 CURRENT_TIMESTAMP
             )
             ON CONFLICT(user_id) DO UPDATE SET
@@ -1230,6 +1282,7 @@ def register_user():
                 lat = excluded.lat,
                 lng = excluded.lng,
                 birth_date = excluded.birth_date,
+                worker_category = excluded.worker_category,
                 imagem_profile = excluded.imagem_profile,
                 updated_at = CURRENT_TIMESTAMP
             """,
@@ -1237,7 +1290,9 @@ def register_user():
             payload["cnpj"], payload["company_name"], payload["company_email"], payload["business_type"], payload["company_description"],
             payload["full_name"], payload["cpf"], payload["phone"],
             payload["address"], payload["number"], payload["complement"], payload["neighborhood"], payload["city"], payload["state"],
-            payload["cep"], payload["lat"], payload["lng"], payload["birth_date"], payload["imagem_profile"]
+            payload["cep"], payload["lat"], payload["lng"], payload["birth_date"],
+            payload["worker_category"],
+            payload["imagem_profile"]
         )
 
         # ---- Sync phone: profile → resume (igual ao user-profile) ----

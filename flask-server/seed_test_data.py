@@ -254,7 +254,7 @@ def insert_profile_company(conn, user_id: int, p: dict):
 
             # extra
             "birth_date": enc(p["birthDate"]),
-            "worker_category": enc(""),  # empresas não usam
+            "worker_category": "",
 
             "lat": float(p["lat"]),
             "lng": float(p["lng"]),
@@ -293,7 +293,7 @@ def insert_profile_professional(conn, user_id: int, p: dict):
             "cep": enc(p["cep"]),
 
             "birth_date": enc(p["birthDate"]),
-            "worker_category": enc(p["workerCategory"]),
+            "worker_category": p["workerCategory"],
 
             "lat": float(p["lat"]),
             "lng": float(p["lng"]),

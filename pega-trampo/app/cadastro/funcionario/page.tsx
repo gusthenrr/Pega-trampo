@@ -30,7 +30,7 @@ type RegisterForm = {
     email: string
     password: string
     passwordConfirm: string
-    category: string
+    category: string[]
     fullName: string
     cpf: string
     phone: string
@@ -102,7 +102,7 @@ export default function CadastroPage() {
         email: "",
         password: "",
         passwordConfirm: "",
-        category: "",
+        category: [],
         fullName: "",
         cpf: "",
         phone: "",
@@ -338,11 +338,28 @@ export default function CadastroPage() {
                         <div className="space-y-3">
                             {workerCategories.map((c) => {
                                 const Icon = c.icon
-                                const selected = form.category === c.name
+                                const selected = form.category.includes(c.name)
                                 return (
                                     <button
                                         key={c.name}
-                                        onClick={() => setForm((p) => ({ ...p, category: c.name }))}
+                                        onClick={() => {
+                                            setForm((p) => {
+                                                const selected = p.category.includes(c.name)
+
+                                                // se já está selecionada -> remove
+                                                if (selected) {
+                                                    return { ...p, category: p.category.filter((cat) => cat !== c.name) }
+                                                }
+
+                                                // se não está e já tem 3 -> não adiciona
+                                                if (p.category.length >= 3) {
+                                                    return p
+                                                }
+
+                                                // se não está -> adiciona
+                                                return { ...p, category: [...p.category, c.name] }
+                                            })
+                                        }}
                                         className={[
                                             "w-full rounded-xl border p-4 flex items-center gap-4 transition-all",
                                             selected ? "bg-blue-50 border-blue-300 shadow-sm" : "bg-white border-gray-200 hover:bg-gray-50",

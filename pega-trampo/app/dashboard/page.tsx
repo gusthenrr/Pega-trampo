@@ -373,7 +373,7 @@ export default function PegaTrampoApp() {
             reviews: 0,
             email: ''
         },
-        workerCategory: '',
+        workerCategory: [],
         evaluationData: {
             totalEvaluations: 0,
             attendanceCount: 0,
