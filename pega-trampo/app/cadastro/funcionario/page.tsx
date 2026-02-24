@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, HelpCircle, User, Utensils, Sparkles, Lock, Check } from "lucide-react"
+import { ArrowLeft, HelpCircle, User, Utensils, Sparkles, Lock, Check, Eye, EyeOff } from "lucide-react"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
 const REGISTER_ENDPOINT = "/api/register"
@@ -109,6 +109,9 @@ export default function CadastroPage() {
         username: "",
         imagemProfile: "",
     })
+
+    const [showPassword, setShowPassword] = useState(false)
+    const [showPassword2, setShowPassword2] = useState(false)
 
     const emailOk = useMemo(() => {
         const e = form.email.trim().toLowerCase()
@@ -258,25 +261,53 @@ export default function CadastroPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Senha *</label>
-                            <input
-                                type="password"
-                                value={form.password}
-                                onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                                placeholder="mínimo 6 caracteres"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    value={form.password}
+                                    onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+                                    placeholder="mínimo 6 caracteres"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-100"
+                                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="h-5 w-5 text-gray-500" />
+                                    ) : (
+                                        <Eye className="h-5 w-5 text-gray-500" />
+                                    )}
+                                </button>
+                            </div>
                             {form.password && form.password.length < 6 ? <p className="text-red-600 text-xs mt-1">Senha muito curta.</p> : null}
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar senha *</label>
-                            <input
-                                type="password"
-                                value={form.passwordConfirm}
-                                onChange={(e) => setForm((p) => ({ ...p, passwordConfirm: e.target.value }))}
-                                placeholder="repita a senha"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showPassword2 ? "text" : "password"}
+                                    value={form.passwordConfirm}
+                                    onChange={(e) => setForm((p) => ({ ...p, passwordConfirm: e.target.value }))}
+                                    placeholder="repita a senha"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword2((v) => !v)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-100"
+                                    aria-label={showPassword2 ? "Ocultar senha" : "Mostrar senha"}
+                                >
+                                    {showPassword2 ? (
+                                        <EyeOff className="h-5 w-5 text-gray-500" />
+                                    ) : (
+                                        <Eye className="h-5 w-5 text-gray-500" />
+                                    )}
+                                </button>
+                            </div>
                             {form.passwordConfirm && form.passwordConfirm !== form.password ? (
                                 <p className="text-red-600 text-xs mt-1">As senhas não conferem.</p>
                             ) : null}

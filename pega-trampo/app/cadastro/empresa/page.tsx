@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Building2, HelpCircle, Check, Lock, User } from "lucide-react"
+import { ArrowLeft, Building2, HelpCircle, Check, Lock, User, Eye, EyeOff } from "lucide-react"
 import { CNPJApiData, CNPJAddress } from "@/app/types/pegatrampo"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
@@ -120,6 +120,9 @@ export default function CompanySignupPage() {
     const [companyEmail, setCompanyEmail] = useState("")
     const [password, setPassword] = useState("")
     const [password2, setPassword2] = useState("")
+
+    const [showpassword, setShowPassword] = useState(false)
+    const [showPassword2, setShowPassword2] = useState(false)
 
     // dados empresa
     const [cnpj, setCnpj] = useState("")
@@ -354,13 +357,27 @@ export default function CompanySignupPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Senha *</label>
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="********"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showpassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="********"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-100"
+                                    aria-label={showpassword ? "Ocultar senha" : "Mostrar senha"}
+                                >
+                                    {showpassword ? (
+                                        <EyeOff className="h-5 w-5 text-gray-500" />
+                                    ) : (
+                                        <Eye className="h-5 w-5 text-gray-500" />
+                                    )}
+                                </button>
+                            </div>
                             {password && password.length > 0 && password.length < 8 && (
                                 <p className="text-red-500 text-sm mt-1">Senha muito curta (mín. 8).</p>
                             )}
@@ -368,13 +385,27 @@ export default function CompanySignupPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar senha *</label>
-                            <input
-                                type="password"
-                                value={password2}
-                                onChange={(e) => setPassword2(e.target.value)}
-                                placeholder="********"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showPassword2 ? "text" : "password"}
+                                    value={password2}
+                                    onChange={(e) => setPassword2(e.target.value)}
+                                    placeholder="********"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword2((v) => !v)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md hover:bg-gray-100"
+                                    aria-label={showPassword2 ? "Ocultar senha" : "Mostrar senha"}
+                                >
+                                    {showPassword2 ? (
+                                        <EyeOff className="h-5 w-5 text-gray-500" />
+                                    ) : (
+                                        <Eye className="h-5 w-5 text-gray-500" />
+                                    )}
+                                </button>
+                            </div>
                             {password2 && password !== password2 && (
                                 <p className="text-red-500 text-sm mt-1">As senhas não coincidem.</p>
                             )}
