@@ -182,6 +182,12 @@ def api_ok(**extra):
 def api_error(message: str, status: int = 400):
     return jsonify({"success": False, "error": message}), status
 
+class ApiTxError(Exception):
+    def __init__(self, message: str, status: int = 400):
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
 def norm_email(v):
     s = (v or "").strip().lower()
     return s or None
@@ -923,6 +929,7 @@ def get_resumes():
 @app.route("/api/user-profile", methods=["POST"])
 def save_user_profile():
     data = request.json or {}
+    tx_started = False
 
     try:
         # ====== USUÁRIO (admin da empresa) ======
@@ -969,6 +976,8 @@ def save_user_profile():
                 return api_error("username ou email já cadastrado", 409)
 
             senha_hash = generate_password_hash(password)
+            db.execute("BEGIN")
+            tx_started = True
 
             db_write(
                 """
@@ -981,7 +990,7 @@ def save_user_profile():
 
             row = db.execute("SELECT id FROM usuarios WHERE username = ? LIMIT 1", username)
             if not row:
-                return api_error("Falha ao criar usuário", 500)
+                raise ApiTxError("Falha ao criar usuario", 500)
 
             user_id = row[0]["id"]
 
@@ -993,7 +1002,7 @@ def save_user_profile():
                 today_date = datetime.now()
                 age = today_date.year - bdate.year - ((today_date.month, today_date.day) < (bdate.month, bdate.day))
                 if age < 18:
-                    return api_error("Você precisa ter pelo menos 18 anos de idade.", 400)
+                    raise ApiTxError("Voce precisa ter pelo menos 18 anos de idade.", 400)
             except ValueError:
                 pass
 
@@ -1029,7 +1038,11 @@ def save_user_profile():
             elif isinstance(payload["number"], str):
                 payload["number"] = int(payload["number"])
         except ValueError:
-            return api_error("number precisa ser inteiro", 400)
+            raise ApiTxError("number precisa ser inteiro", 400)
+
+        if not tx_started:
+            db.execute("BEGIN")
+            tx_started = True
 
         db_write(
             """
@@ -1086,8 +1099,10 @@ def save_user_profile():
                     db_write("UPDATE resumes SET personal_info_json = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                                _json.dumps(pi, ensure_ascii=False), rr["id"])
                 except Exception as sync_err:
-                    print(f"Aviso: falha ao sincronizar phone no currículo: {sync_err}")
+                    raise ApiTxError(f"Falha ao sincronizar phone no curriculo: {sync_err}", 500)
 
+        db.execute("COMMIT")
+        tx_started = False
         return api_ok(user_id=user_id)
 
 
@@ -1099,6 +1114,7 @@ def save_user_profile():
 @app.route("/api/register", methods=["POST"])
 def register_user():
     data = request.json or {}
+    tx_started = False
 
     try:
         import json as _json
@@ -1207,6 +1223,8 @@ def register_user():
 
         # ====== CRIA USUÁRIO ======
         senha_hash = generate_password_hash(password)
+        db.execute("BEGIN")
+        tx_started = True
 
         db_write(
             """
@@ -1218,7 +1236,7 @@ def register_user():
 
         row = db.execute("SELECT id FROM usuarios WHERE username = ? LIMIT 1", username)
         if not row:
-            return api_error("Falha ao criar usuário", 500)
+            raise ApiTxError("Falha ao criar usuario", 500)
         user_id = row[0]["id"]
 
         # ====== PERFIL ======
@@ -1317,9 +1335,16 @@ def register_user():
                 except Exception as sync_err:
                     print(f"Aviso: falha ao sincronizar phone no currículo: {sync_err}")
 
+        db.execute("COMMIT")
+        tx_started = False
         return api_ok(user_id=user_id, message="Cadastro realizado com sucesso!")
 
     except Exception as e:
+        if tx_started:
+            try:
+                db.execute("ROLLBACK")
+            except Exception:
+                pass
         import traceback
         print("ERRO NO /api/register:", e)
         traceback.print_exc()
@@ -1691,3 +1716,6 @@ def get_dados():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+

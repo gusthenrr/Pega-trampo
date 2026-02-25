@@ -1266,8 +1266,22 @@ mx-auto mb-1">
                     <div className="max-w-md mx-auto">
                         <button
                             onClick={() => {
-                                if (userResume.personalInfo.name && userResume.personalInfo.phone &&
-                                    userResume.personalInfo.email && userResume.personalInfo.birthDate) {
+                                if (!userResume.personalInfo.name?.trim()) {
+                                    logic.showToastMessage('Campo obrigatorio nao preenchido: Nome Completo.')
+                                    return
+                                }
+                                if (!userResume.personalInfo.phone?.trim()) {
+                                    logic.showToastMessage('Campo obrigatorio nao preenchido: Telefone.')
+                                    return
+                                }
+                                if (!userResume.personalInfo.email?.trim()) {
+                                    logic.showToastMessage('Campo obrigatorio nao preenchido: E-mail.')
+                                    return
+                                }
+                                if (!userResume.personalInfo.birthDate?.trim()) {
+                                    logic.showToastMessage('Campo obrigatorio nao preenchido: Data de Nascimento.')
+                                    return
+                                }
 
                                     // Age Validation
                                     const today = new Date();
@@ -1279,7 +1293,7 @@ mx-auto mb-1">
                                     }
 
                                     if (age < 18) {
-                                        alert("Você precisa ter pelo menos 18 anos para se cadastrar.");
+                                        logic.showToastMessage('Voce precisa ter pelo menos 18 anos para se cadastrar.')
                                         return;
                                     }
 
@@ -1299,12 +1313,9 @@ mx-auto mb-1">
                                     }
 
                                     setResumeStep(2)
-                                }
                             }}
-                            disabled={!userResume.personalInfo.name || !userResume.personalInfo.phone ||
-                                !userResume.personalInfo.email}
                             className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold 
-disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"
+hover:bg-blue-600 transition-colors"
                         >
                             Continuar
                         </button>
@@ -1848,18 +1859,8 @@ hover:bg-gray-100 rounded-full">
                     <div className="max-w-md mx-auto">
                         <button
                             onClick={handlePublishJob}
-                            disabled={
-                                !newJobPost.title ||
-                                !newJobPost.description ||
-                                !newJobPost.category ||
-                                !newJobPost.rate ||
-                                !newJobPost.address ||
-                                !newJobPost.workHours ||
-                                !newJobPost.period ||
-                                !newJobPost.duration
-                            }
                             className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold 
-disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600 transition-colors"
+hover:bg-blue-600 transition-colors"
                         >
                             {editingJobId ? 'Salvar Alterações' : 'Publicar Proposta'}
                         </button>

@@ -31,6 +31,71 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     return res
 }
 
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+
+export const showToastMessage = (message: string) => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+
+    const previous = document.getElementById('pega-trampo-toast')
+    if (previous) previous.remove()
+
+    const toast = document.createElement('div')
+    toast.id = 'pega-trampo-toast'
+    toast.textContent = message
+    toast.style.position = 'fixed'
+    toast.style.left = '50%'
+    toast.style.bottom = '24px'
+    toast.style.transform = 'translateX(-50%)'
+    toast.style.background = '#111827'
+    toast.style.color = '#ffffff'
+    toast.style.padding = '10px 14px'
+    toast.style.borderRadius = '10px'
+    toast.style.fontSize = '14px'
+    toast.style.fontWeight = '600'
+    toast.style.zIndex = '99999'
+    toast.style.boxShadow = '0 10px 30px rgba(0,0,0,0.25)'
+    toast.style.maxWidth = '90vw'
+    toast.style.textAlign = 'center'
+
+    document.body.appendChild(toast)
+
+    if (toastTimer) clearTimeout(toastTimer)
+    toastTimer = setTimeout(() => {
+        const current = document.getElementById('pega-trampo-toast')
+        if (current) current.remove()
+    }, 2800)
+}
+
+const isBlank = (value: unknown): boolean => {
+    if (value === null || value === undefined) return true
+    if (typeof value === 'string') return value.trim().length === 0
+    if (typeof value === 'number') return !Number.isFinite(value) || value <= 0
+    return false
+}
+
+const getMissingJobRequiredField = (job: CompanyJobPost): string | null => {
+    if (isBlank(job.title)) return 'Titulo da Proposta'
+    if (isBlank(job.description)) return 'Descricao'
+    if (isBlank(job.category)) return 'Categoria'
+    if (isBlank(job.paymentType)) return 'Tipo de Pagamento'
+    if (isBlank(job.rate)) return 'Valor (R$)'
+    if (isBlank(job.address)) return 'Endereco Completo'
+    if (isBlank(job.workHours)) return 'Horas de Trabalho'
+    if (isBlank(job.period)) return 'Periodo do Dia'
+    if (isBlank(job.duration)) return 'Duracao da Vaga'
+    return null
+}
+
+const getMissingResumeRequiredField = (resume: Resume): string | null => {
+    if (isBlank(resume.personalInfo.name)) return 'Nome Completo'
+    if (isBlank(resume.personalInfo.phone)) return 'Telefone'
+    if (isBlank(resume.personalInfo.email)) return 'E-mail'
+    if (isBlank(resume.personalInfo.birthDate)) return 'Data de Nascimento'
+    if (isBlank(resume.professionalInfo.category)) return 'Categoria Profissional'
+    if (isBlank(resume.professionalInfo.experience)) return 'Experiencia Profissional'
+    return null
+}
+
 // =====================
 // Helpers (validação / formatação)
 // =====================
@@ -919,6 +984,11 @@ export const handlePublishJob = async (params: {
     setShowJobPostForm: SetState<boolean>
 }) => {
     const { newJobPost, userProfile, setJobs, setShowJobPostForm } = params
+    const missingField = getMissingJobRequiredField(newJobPost)
+    if (missingField) {
+        showToastMessage(`Campo obrigatorio nao preenchido: ${missingField}.`)
+        return
+    }
 
     const storedUser = localStorage.getItem('pegaTrampo.user')
     if (!storedUser) {
@@ -955,12 +1025,48 @@ export const handlePublishJob = async (params: {
             return
         }
 
-        // Re-fetch da lista de vagas do servidor para garantir dados atualizados
-        const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
-        if (jobsRes.ok) {
-            const jobsData = await jobsRes.json()
-            setJobs(jobsData)
+        // Atualiza imediatamente no estado local para refletir no dashboard sem reload.
+        const createdJob: Job = {
+            id: data.id || `job_${Date.now()}`,
+            title: newJobPost.title,
+            description: newJobPost.description,
+            category: newJobPost.category,
+            paymentType: newJobPost.paymentType,
+            rate: newJobPost.rate,
+            location: newJobPost.location || '',
+            area: newJobPost.area || '',
+            address: newJobPost.address,
+            workHours: newJobPost.workHours,
+            postedBy: userProfile.companyInfo?.companyName || userProfile.name || 'Empresa',
+            postedAt: new Date().toISOString(),
+            period: newJobPost.period,
+            duration: newJobPost.duration,
+            isUrgent: !!newJobPost.isUrgent,
+            professionalRating: 0,
+            professionalReviews: 0,
+            completedJobs: 0,
+            likes: 0,
+            comments: 0,
+            views: 0,
+            companyOnly: false,
+            includesFood: !!newJobPost.includesFood,
+            companyInfo: (userProfile.companyInfo as any) || undefined,
+            coordinates: finalCoordinates,
+            startDate: newJobPost.startDate,
+            startTime: newJobPost.startTime,
         }
+        setJobs(prev => [createdJob, ...prev])
+
+        // Mantém sincronizado com backend sem bloquear atualização visual imediata.
+        fetchWithAuth(`${API_BASE}/api/jobs`)
+            .then(async (jobsRes) => {
+                if (!jobsRes.ok) return
+                const jobsData = await jobsRes.json()
+                setJobs(jobsData)
+            })
+            .catch((syncErr) => {
+                console.error('Erro ao sincronizar vagas após publicação:', syncErr)
+            })
 
         setShowJobPostForm(false)
         alert('Vaga publicada com sucesso!')
@@ -980,6 +1086,11 @@ export const handleUpdateJob = async (params: {
     setEditingJobId: SetState<string | null>
 }) => {
     const { jobId, updatedJobPost, userProfile, setJobs, setShowJobPostForm, setEditingJobId } = params
+    const missingField = getMissingJobRequiredField(updatedJobPost)
+    if (missingField) {
+        showToastMessage(`Campo obrigatorio nao preenchido: ${missingField}.`)
+        return
+    }
 
     const storedUser = localStorage.getItem('pegaTrampo.user')
     if (!storedUser) {
@@ -1108,6 +1219,11 @@ export const handleSaveResume = async (params: {
         setResumeStep,
         setNotifications,
     } = params
+    const missingField = getMissingResumeRequiredField(userResume)
+    if (missingField) {
+        showToastMessage(`Campo obrigatorio nao preenchido: ${missingField}.`)
+        return
+    }
 
     const storedUser = getStoredUser()
     const realUserId = storedUser?.id
@@ -1119,6 +1235,7 @@ export const handleSaveResume = async (params: {
 
     const newResume: Resume = {
         ...userResume,
+        userId: String(realUserId),
         id: userResume.id || `resume_${Date.now()}`,
         createdAt: userResume.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
