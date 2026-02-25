@@ -91,8 +91,15 @@ const getMissingResumeRequiredField = (resume: Resume): string | null => {
     if (isBlank(resume.personalInfo.phone)) return 'Telefone'
     if (isBlank(resume.personalInfo.email)) return 'E-mail'
     if (isBlank(resume.personalInfo.birthDate)) return 'Data de Nascimento'
-    if (isBlank(resume.professionalInfo.category)) return 'Categoria Profissional'
-    if (isBlank(resume.professionalInfo.experience)) return 'Experiencia Profissional'
+
+    const firstExperience = resume.workExperience?.[0]
+    if (!firstExperience) return 'Experiencia Profissional'
+    if (isBlank(firstExperience.company)) return 'Empresa'
+    if (isBlank(firstExperience.position)) return 'Cargo/Funcao'
+    if (isBlank(firstExperience.startDate)) return 'Data de inicio'
+    if (!firstExperience.isCurrentJob && isBlank(firstExperience.endDate)) return 'Data de saida'
+    if (isBlank(firstExperience.description)) return 'Descricao das Atividades'
+
     return null
 }
 
