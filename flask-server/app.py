@@ -1473,7 +1473,7 @@ def get_company_applications():
                     u.username,
                     up.full_name,
                     up.phone,
-                    up.business_type as category, -- usando business_type como categoria pro profissional
+                    up.worker_category as category,
                     r.id as resume_id,
                     r.professional_info_json,
                     r.work_experience_json
@@ -1502,9 +1502,18 @@ def get_company_applications():
                     except: c_phone = app["phone"]
                 
                 c_category = ""
-                if app.get("category"):
-                    try: c_category = fernet.decrypt(app["category"].encode()).decode()
-                    except: c_category = app["category"]
+                raw_category = app.get("category")
+                if raw_category:
+                    if isinstance(raw_category, list):
+                        c_category = ", ".join([str(x).strip() for x in raw_category if str(x).strip()])
+                    else:
+                        c_category = str(raw_category)
+                        if c_category.startswith("{") and c_category.endswith("}"):
+                            inner = c_category[1:-1].strip()
+                            if inner:
+                                c_category = ", ".join([x.strip().strip('"') for x in inner.split(",") if x.strip()])
+                            else:
+                                c_category = ""
 
                 # Parse resume info if available
                 resume_info = {}
@@ -1552,6 +1561,47 @@ def get_company_applications():
 def get_dados():
     user_id = current_user_id()
     try:
+        def normalize_worker_categories(raw):
+            if raw is None:
+                return []
+
+            if isinstance(raw, list):
+                items = [str(x).strip() for x in raw]
+            else:
+                s = str(raw).strip()
+                if not s:
+                    return []
+
+                # PostgreSQL array literal: {"Padeiro","Cozinheiro"}
+                if s.startswith("{") and s.endswith("}"):
+                    inner = s[1:-1].strip()
+                    if not inner:
+                        return []
+                    items = [x.strip().strip('"') for x in inner.split(",")]
+                # JSON string list: ["Padeiro","Cozinheiro"]
+                elif s.startswith("["):
+                    import json as _json
+                    try:
+                        parsed = _json.loads(s)
+                        if isinstance(parsed, list):
+                            items = [str(x).strip() for x in parsed]
+                        else:
+                            items = [s]
+                    except Exception:
+                        items = [s]
+                else:
+                    import re as _re
+                    items = [x.strip() for x in _re.split(r"[|,]", s)]
+
+            seen = set()
+            out = []
+            for it in items:
+                if not it or it in seen:
+                    continue
+                seen.add(it)
+                out.append(it)
+            return out
+
         # 1. Fetch User Profile
         profile_rows = db.execute("SELECT * FROM user_profiles WHERE user_id = ?", user_id)
         user_rows = db.execute("SELECT email, type, username FROM usuarios WHERE id = ?", user_id)
@@ -1580,6 +1630,7 @@ def get_dados():
             profile_data["lat"] = p.get("lat")
             profile_data["lng"] = p.get("lng")
             profile_data["imagem_profile"] = p.get("imagem_profile")
+            profile_data["worker_category"] = normalize_worker_categories(p.get("worker_category"))
         
         if user_rows:
             profile_data["email"] = user_rows[0].get("email")

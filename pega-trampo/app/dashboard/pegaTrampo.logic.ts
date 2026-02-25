@@ -348,7 +348,10 @@ export const bootstrapInitialData = async (params: {
                                 },
                                 professionalInfo: {
                                     ...prev.professionalInfo,
-                                    category: data.profile.business_type || prev.professionalInfo.category,
+                                    category:
+                                        (Array.isArray(data.profile.worker_category) ? data.profile.worker_category[0] : '') ||
+                                        data.profile.business_type ||
+                                        prev.professionalInfo.category,
                                 },
                             }))
                         }
@@ -393,6 +396,16 @@ const getWorkerCategoryList = (userProfile: any): string[] => {
     if (typeof raw === "string") {
         const s = raw.trim()
         if (!s) return []
+
+        // array literal do Postgres: {"Padeiro","Cozinheiro"}
+        if (s.startsWith("{") && s.endsWith("}")) {
+            const inner = s.slice(1, -1).trim()
+            if (!inner) return []
+            return inner
+                .split(",")
+                .map(x => x.trim().replace(/^"(.*)"$/, "$1"))
+                .filter(Boolean)
+        }
 
         // tenta JSON
         try {

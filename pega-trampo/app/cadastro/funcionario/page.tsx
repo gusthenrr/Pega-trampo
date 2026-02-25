@@ -134,7 +134,7 @@ export default function CadastroPage() {
     }, [form.cpf])
 
     const canGoStep2 = emailOk && passwordOk
-    const canGoStep3 = !!form.category
+    const canGoStep3 = form.category.length > 0
 
     const canSubmit =
         form.fullName.trim().length >= 3 &&
