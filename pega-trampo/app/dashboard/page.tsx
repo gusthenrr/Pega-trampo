@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from 'react'
 import {
@@ -892,7 +892,7 @@ shadow-lg flex items-center justify-center space-x-3"
                     <div className="bg-white rounded-2xl border border-gray-100 p-4">
                         <div className="flex items-start justify-between gap-3">
                             <h2 className="text-xl font-bold text-gray-900 leading-snug">
-                                {selectedJob.title}
+                                {selectedJob.title.toUpperCase()}
                             </h2>
 
                             <div className="flex flex-col items-end gap-2">
@@ -940,7 +940,9 @@ shadow-lg flex items-center justify-center space-x-3"
                                         ? '/hora'
                                         : selectedJob.paymentType === 'daily'
                                             ? '/dia'
-                                            : ' (projeto)'}
+                                            : selectedJob.paymentType === 'monthly'
+                                                ? '/mês'
+                                                : ' (projeto)'}
                                 </span>
                             </div>
 
@@ -1283,36 +1285,36 @@ mx-auto mb-1">
                                     return
                                 }
 
-                                    // Age Validation
-                                    const today = new Date();
-                                    const birthDate = new Date(userResume.personalInfo.birthDate);
-                                    let age = today.getFullYear() - birthDate.getFullYear();
-                                    const m = today.getMonth() - birthDate.getMonth();
-                                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                                        age--;
-                                    }
+                                // Age Validation
+                                const today = new Date();
+                                const birthDate = new Date(userResume.personalInfo.birthDate);
+                                let age = today.getFullYear() - birthDate.getFullYear();
+                                const m = today.getMonth() - birthDate.getMonth();
+                                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                                    age--;
+                                }
 
-                                    if (age < 18) {
-                                        logic.showToastMessage('Voce precisa ter pelo menos 18 anos para se cadastrar.')
-                                        return;
-                                    }
+                                if (age < 18) {
+                                    logic.showToastMessage('Voce precisa ter pelo menos 18 anos para se cadastrar.')
+                                    return;
+                                }
 
-                                    // Initialize workExperience if empty to avoid errors in Step 2
-                                    if (userResume.workExperience.length === 0) {
-                                        setUserResume(prev => ({
-                                            ...prev,
-                                            workExperience: [{
-                                                company: '',
-                                                position: '',
-                                                startDate: '',
-                                                endDate: '',
-                                                description: '',
-                                                isCurrentJob: false
-                                            }]
-                                        }));
-                                    }
+                                // Initialize workExperience if empty to avoid errors in Step 2
+                                if (userResume.workExperience.length === 0) {
+                                    setUserResume(prev => ({
+                                        ...prev,
+                                        workExperience: [{
+                                            company: '',
+                                            position: '',
+                                            startDate: '',
+                                            endDate: '',
+                                            description: '',
+                                            isCurrentJob: false
+                                        }]
+                                    }));
+                                }
 
-                                    setResumeStep(2)
+                                setResumeStep(2)
                             }}
                             className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold 
 hover:bg-blue-600 transition-colors"
@@ -1665,12 +1667,13 @@ hover:bg-gray-100 rounded-full">
                                 </label>
                                 <select
                                     value={newJobPost.paymentType}
-                                    onChange={(e) => setNewJobPost({ ...newJobPost, paymentType: e.target.value as 'hourly' | 'daily' | 'project' })}
+                                    onChange={(e) => setNewJobPost({ ...newJobPost, paymentType: e.target.value as 'hourly' | 'daily' | 'project' | 'monthly' })}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 >
                                     <option value="hourly">Por Hora</option>
                                     <option value="daily">Por Dia</option>
                                     <option value="project">Por Projeto</option>
+                                    <option value="monthly">Por Mês</option>
                                 </select>
                             </div>
                             <div>
@@ -2359,7 +2362,7 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
 
                                                     <div className="min-w-0">
                                                         <h4 className="font-bold text-gray-900 text-lg leading-snug truncate">
-                                                            {job.title}
+                                                            {job.title.toUpperCase()}
                                                         </h4>
 
                                                         <p className="text-sm text-gray-600 truncate">
@@ -2392,7 +2395,9 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
                                                             ? '/hora'
                                                             : job.paymentType === 'daily'
                                                                 ? '/dia'
-                                                                : ' (projeto)'}
+                                                                : job.paymentType === 'monthly'
+                                                                    ? '/mês'
+                                                                    : ' (projeto)'}
                                                     </span>
                                                 </div>
 
@@ -2488,7 +2493,7 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
                                 {filteredJobs.map((job) => (
                                     <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                                         <div className="flex items-center justify-between mb-3">
-                                            <h3 className="font-bold text-gray-900 text-lg">{job.title}</h3>
+                                            <h3 className="font-bold text-gray-900 text-lg">{job.title.toUpperCase()}</h3>
                                             <div className="flex items-center space-x-2">
                                                 {job.isUrgent && (
                                                     <div className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
@@ -2516,7 +2521,7 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
                                             <div className="flex items-center text-gray-600">
                                                 <DollarSign className="h-4 w-4 mr-2" />
                                                 <span className="font-medium text-green-600">
-                                                    R$ {job.rate}{job.paymentType === 'hourly' ? '/hora' : job.paymentType === 'daily' ? '/dia' : ' (projeto)'}
+                                                    R$ {job.rate}{job.paymentType === 'hourly' ? '/hora' : job.paymentType === 'daily' ? '/dia' : job.paymentType === 'monthly' ? '/mês' : ' (projeto)'}
                                                 </span>
                                             </div>
                                             <div className="flex items-center text-gray-600">
@@ -2604,7 +2609,7 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
                                 <div key={app.applicationId} className="bg-white p-4 rounded-xl border">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <p className="font-bold text-gray-900">{app.job.title}</p>
+                                            <p className="font-bold text-gray-900">{app.job.title.toUpperCase()}</p>
                                             <p className="text-sm text-gray-600">{app.job.address}</p>
                                             <div className="flex gap-4 mt-2 text-xs text-gray-600">
                                                 <span className="flex items-center gap-1">

@@ -1,6 +1,6 @@
 // src/types/pegaTrampo.ts
 
-export type PaymentType = 'hourly' | 'daily' | 'project'
+export type PaymentType = 'hourly' | 'daily' | 'project' | 'monthly'
 export type UserType = 'client' | 'professional' | 'company'
 export type NotificationType = 'new_proposal' | 'message' | 'booking'
 
