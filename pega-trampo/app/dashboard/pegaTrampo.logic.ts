@@ -322,6 +322,8 @@ export const bootstrapInitialData = async (params: {
 
     try {
         if (currentUserType === 'company') {
+            let companyCandidateIds = new Set<string>()
+
             if (currentUserId) {
                 const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
                 if (jobsRes.ok) {
@@ -334,7 +336,15 @@ export const bootstrapInitialData = async (params: {
                     const appsRes = await fetchWithAuth(`${API_BASE}/api/company/applications`)
                     if (appsRes.ok) {
                         const appsData = await appsRes.json()
-                        if (appsData.success && appsData.jobs) setCompanyJobsWithCandidates(appsData.jobs)
+                        if (appsData.success && appsData.jobs) {
+                            setCompanyJobsWithCandidates(appsData.jobs)
+                            companyCandidateIds = new Set<string>(
+                                (appsData.jobs || [])
+                                    .flatMap((job: any) => job?.candidates || [])
+                                    .map((candidate: any) => String(candidate?.candidateId || '').trim())
+                                    .filter((id: string) => id.length > 0),
+                            )
+                        }
                     } else {
                         console.error('Failed to fetch company applications:', appsRes.status, appsRes.statusText)
                     }
@@ -345,15 +355,25 @@ export const bootstrapInitialData = async (params: {
                 setJobs([])
             }
 
-            // Fetch ALL resumes for company view
+            // Fetch only resumes from candidates that applied to this company's jobs
             try {
-                const resumesRes = await fetchWithAuth(`${API_BASE}/api/resumes`)
-                if (resumesRes.ok) {
-                    const resumesData = await resumesRes.json()
-                    setResumes(resumesData)
+                if (companyCandidateIds.size === 0) {
+                    setResumes([])
+                } else {
+                    const resumesRes = await fetchWithAuth(`${API_BASE}/api/resumes`)
+                    if (resumesRes.ok) {
+                        const resumesData = await resumesRes.json()
+                        const filteredResumes = (resumesData || []).filter((resume: Resume) =>
+                            companyCandidateIds.has(String(resume.userId)),
+                        )
+                        setResumes(filteredResumes)
+                    } else {
+                        setResumes([])
+                    }
                 }
             } catch (e) {
                 console.error('Erro ao buscar currículos', e)
+                setResumes([])
             }
         } else {
             const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
