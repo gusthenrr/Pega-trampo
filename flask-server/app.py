@@ -1147,6 +1147,12 @@ def register_user():
                     break
             return out
 
+        def to_pg_text_array(items):
+            if not items:
+                return None
+            safe = [str(x).replace("\\", "\\\\").replace('"', '\\"') for x in items]
+            return "{" + ",".join(f'"{x}"' for x in safe) + "}"
+
         # ====== USUÁRIO ======
         username = norm_username(data.get("username"))
         password = (data.get("password") or "")
@@ -1238,8 +1244,8 @@ def register_user():
             "lng": None,
             "birth_date": None,
 
-            # agora é TEXT[] no Postgres -> salva lista direto
-            "worker_category": categories if user_type == "professional" else None,
+            # com cs50: envia literal de array e faz cast no SQL
+            "worker_category": to_pg_text_array(categories) if user_type == "professional" else None,
 
             "imagem_profile": imagem_profile,
         }
@@ -1259,7 +1265,7 @@ def register_user():
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?,
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?,
+                ?::text[],
                 ?,
                 CURRENT_TIMESTAMP
             )
