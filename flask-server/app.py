@@ -1511,7 +1511,7 @@ def apply_to_job(job_id):
     except Exception as e:
         print(f"Erro ao candidatar: {e}")
         return api_error("Erro ao processar candidatura", 500)
-
+#mudança
 @app.route("/api/notifications", methods=["GET"])
 def get_notifications():
     user_id = current_user_id()
