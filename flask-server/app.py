@@ -1737,7 +1737,14 @@ def get_dados():
         
         if user_rows:
             profile_data["email"] = user_rows[0].get("email")
-            profile_data["userType"] = user_rows[0]["type"]
+            
+            # Normalize userType for frontend
+            db_type = user_rows[0].get("type")
+            if db_type in ["empresa", "company"]:
+                profile_data["userType"] = "company"
+            else:
+                profile_data["userType"] = "professional"
+                
             profile_data["username"] = user_rows[0]["username"]
 
         # 2. Fetch Resume
