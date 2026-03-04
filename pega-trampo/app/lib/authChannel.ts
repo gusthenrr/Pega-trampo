@@ -7,21 +7,26 @@
 const CHANNEL_NAME = 'pegaTrampo_auth'
 const STORAGE_KEY = 'auth:event'
 
+// Generate a random ID for THIS specific browser tab
+const TAB_ID = typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : Math.random().toString(36).substring(2) + Date.now().toString(36)
+
 let _channel: BroadcastChannel | null = null
 let _storageHandler: ((e: StorageEvent) => void) | null = null
-let _selfTriggered = false
 
 /**
  * Broadcast that the session changed (login or logout).
  * Call this BEFORE redirecting so other tabs receive the message.
  */
 export function broadcastSessionChanged(): void {
-    _selfTriggered = true
+    const payload = JSON.stringify({ tabId: TAB_ID, ts: Date.now() })
 
     // Primary: BroadcastChannel
     try {
         const ch = new BroadcastChannel(CHANNEL_NAME)
-        ch.postMessage({ type: 'SESSION_CHANGED', ts: Date.now() })
+        // Send as string to avoid cloning issues across different browsers
+        ch.postMessage(payload)
         // Close after a small delay to ensure delivery
         setTimeout(() => ch.close(), 300)
     } catch {
@@ -30,13 +35,10 @@ export function broadcastSessionChanged(): void {
 
     // Fallback: localStorage event (fires in OTHER tabs only)
     try {
-        localStorage.setItem(STORAGE_KEY, Date.now().toString())
+        localStorage.setItem(STORAGE_KEY, payload)
     } catch {
         // Private/incognito mode may block localStorage
     }
-
-    // Reset flag after a tick so subsequent events from other tabs are not ignored
-    setTimeout(() => { _selfTriggered = false }, 500)
 }
 
 /**
@@ -48,9 +50,15 @@ export function installSessionWatcher(onInvalidate: () => void): void {
     try {
         _channel = new BroadcastChannel(CHANNEL_NAME)
         _channel.onmessage = (event) => {
-            if (_selfTriggered) return
-            if (event.data?.type === 'SESSION_CHANGED') {
-                onInvalidate()
+            try {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+                // Ignore messages originating from THIS tab
+                if (data?.tabId === TAB_ID) return
+                if (data?.tabId) { // Check that it's actually our payload
+                    onInvalidate()
+                }
+            } catch {
+                // Ignore malformed messages
             }
         }
     } catch {
@@ -59,9 +67,17 @@ export function installSessionWatcher(onInvalidate: () => void): void {
 
     // Fallback: storage event
     _storageHandler = (event: StorageEvent) => {
-        if (_selfTriggered) return
         if (event.key === STORAGE_KEY && event.newValue) {
-            onInvalidate()
+            try {
+                const data = JSON.parse(event.newValue)
+                // Ignore messages originating from THIS tab
+                if (data?.tabId === TAB_ID) return
+                if (data?.tabId) {
+                    onInvalidate()
+                }
+            } catch {
+                // Ignore malformed messages
+            }
         }
     }
 
