@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { User, X, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
+import { broadcastSessionChanged } from "../lib/authChannel"
 
 interface LoginModalProps {
     isOpen: boolean
@@ -48,6 +49,8 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             const data = await res.json()
 
             if (res.ok && data.success) {
+                // Notify other tabs that session changed
+                broadcastSessionChanged()
                 // Redirecionar para dashboard
                 router.push("/dashboard")
                 onClose()

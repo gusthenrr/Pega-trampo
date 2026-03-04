@@ -1,15 +1,32 @@
 // app/(public)/welcome-03/page.tsx
 "use client"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Briefcase, Check, Building2, User, MapPin, Sparkles } from "lucide-react"
 import LoginModal from "./components/LoginModal"
 
 export default function Welcome03Page() {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [sessionToast, setSessionToast] = useState("")
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("reason") === "session_changed") {
+      setSessionToast("Sua sessão foi alterada em outra aba. Faça login novamente.")
+      window.history.replaceState({}, "", "/")
+      const timer = setTimeout(() => setSessionToast(""), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700">
+      {/* Session changed toast */}
+      {sessionToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold animate-in fade-in slide-in-from-top duration-300 max-w-[90vw] text-center">
+          {sessionToast}
+        </div>
+      )}
       {/* HERO */}
       <section className="px-4 pt-8 pb-6 md:pt-14 md:pb-10">
         <div className="mx-auto max-w-5xl">

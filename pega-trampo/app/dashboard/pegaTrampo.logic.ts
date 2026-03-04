@@ -22,6 +22,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     const newOptions: RequestInit = {
         ...options,
         credentials: 'include',
+        cache: 'no-store',
     }
     const res = await fetch(url, newOptions)
     if (res.status === 401) {

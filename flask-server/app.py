@@ -786,8 +786,11 @@ def save_resume():
 
     try:
         # Check if exists
-        row = db.execute("SELECT id FROM resumes WHERE id = ?", resume_id)
+        row = db.execute("SELECT id, user_id FROM resumes WHERE id = ?", resume_id)
         if row:
+             # Ownership check: only the owner can update their resume
+             if row[0]["user_id"] != user_id:
+                 return api_error("Não autorizado a editar este currículo", 403)
              db_write("""
                 UPDATE resumes
                 SET user_id = ?,
@@ -855,12 +858,27 @@ def save_resume():
 
 @app.route("/api/resumes/<resume_id>", methods=["DELETE"])
 def delete_resume(resume_id):
+    user_id = current_user_id()
     try:
+        # Ownership check
+        row = db.execute("SELECT user_id FROM resumes WHERE id = ?", resume_id)
+        if not row:
+            return api_error("Currículo não encontrado", 404)
+        if row[0]["user_id"] != user_id:
+            return api_error("Não autorizado a excluir este currículo", 403)
+
         db_write("DELETE FROM resumes WHERE id = ?", resume_id)
         return api_ok(message="Currículo excluído")
     except Exception as e:
         print(f"Erro ao excluir currículo: {e}")
         return api_error(str(e), 500)
+
+
+@app.route("/api/auth/me", methods=["GET"])
+def auth_me():
+    """Returns basic session info for session validation."""
+    user_id = current_user_id()
+    return api_ok(user_id=user_id)
 
 
 @app.route("/api/resumes", methods=["GET"])

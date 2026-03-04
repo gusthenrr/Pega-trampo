@@ -24,6 +24,7 @@ import type {
 import * as logic from './pegaTrampo.logic'
 import AgendaFilterPopover, { AgendaFilterValue } from '../components/AgendaFilterPopover'
 import { useRef } from 'react'
+import { broadcastSessionChanged } from '../lib/authChannel'
 
 const categoryData = [
     {
@@ -283,25 +284,7 @@ export default function PegaTrampoApp() {
         }
     }, [activeTab, showProfile, showSupport])
 
-    // Listener de Storage para Prevenir Bugs de Sessão Simultânea (Cross-Tab Session)
-    useEffect(() => {
-        const handleStorageChange = (event: StorageEvent) => {
-            if (event.key === 'pegaTrampo.user') {
-                console.warn('Mudança de sessão detectada em outra aba. Atualizando estado atual...');
-                window.location.reload();
-            }
-        };
-
-        if (typeof window !== 'undefined') {
-            window.addEventListener('storage', handleStorageChange);
-        }
-
-        return () => {
-            if (typeof window !== 'undefined') {
-                window.removeEventListener('storage', handleStorageChange);
-            }
-        };
-    }, []);
+    // Cross-tab session invalidation is now handled globally by SessionWatcher in layout.tsx
     const [showChat, setShowChat] = useState(false)
     const [selectedJobForChat, setSelectedJobForChat] = useState<Job | null>(null)
     const [newMessage, setNewMessage] = useState('')
@@ -351,6 +334,9 @@ export default function PegaTrampoApp() {
     const handleLogout = async () => {
         if (!confirm('Tem certeza que deseja sair da sua conta?')) return
 
+        // Notify other tabs BEFORE clearing the cookie
+        broadcastSessionChanged()
+
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
             await fetch(`${apiUrl}/api/logout`, {
@@ -361,6 +347,8 @@ export default function PegaTrampoApp() {
             console.error('Erro ao fazer logout no servidor:', e)
         }
 
+        // Clear local UI state
+        sessionStorage.clear()
         window.location.href = '/'
     }
 
