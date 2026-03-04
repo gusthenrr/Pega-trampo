@@ -294,7 +294,7 @@ def get_jobs():
     try:
         if user_id:
             rows = db.execute("""
-                SELECT j.*, up.phone as up_phone 
+                SELECT j.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile 
                 FROM jobs j 
                 LEFT JOIN user_profiles up ON j.posted_by_user_id = up.user_id 
                 WHERE j.posted_by_user_id = ? 
@@ -303,7 +303,7 @@ def get_jobs():
 
         elif candidate_id:
             rows = db.execute("""
-                SELECT j.*, up.phone as up_phone,
+                SELECT j.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile,
                        CASE WHEN ja.id IS NOT NULL THEN 1 ELSE 0 END AS already_applied
                 FROM jobs j
                 LEFT JOIN job_applications ja
@@ -315,7 +315,7 @@ def get_jobs():
 
         else:
             rows = db.execute("""
-                SELECT j.*, up.phone as up_phone 
+                SELECT j.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile 
                 FROM jobs j 
                 LEFT JOIN user_profiles up ON j.posted_by_user_id = up.user_id 
                 ORDER BY j.created_at DESC
@@ -328,6 +328,7 @@ def get_jobs():
             item = dict(r)
 
             up_phone = item.pop("up_phone", None)
+            up_imagem_profile = item.pop("up_imagem_profile", None)
             real_phone = ""
             if up_phone:
                 try: real_phone = fernet.decrypt(up_phone.encode()).decode()
@@ -343,6 +344,8 @@ def get_jobs():
                 
             # Force exactly the profile's phone. If none exists, clear out any buggy old data.
             item["companyInfo"]["phone"] = real_phone
+            if up_imagem_profile:
+                item["companyInfo"]["imagem_profile"] = up_imagem_profile
 
             item["paymentType"] = item.pop("payment_type", None)
             item["workHours"] = item.pop("work_hours", None)
@@ -482,7 +485,8 @@ def get_my_applications():
                 ja.status AS application_status,
                 ja.created_at AS applied_at,
                 j.*,
-                up.phone AS up_phone
+                up.phone AS up_phone,
+                up.imagem_profile AS up_imagem_profile
             FROM job_applications ja
             JOIN jobs j ON j.id = ja.job_id
             LEFT JOIN user_profiles up ON j.posted_by_user_id = up.user_id
@@ -497,6 +501,7 @@ def get_my_applications():
             item = dict(r)
 
             up_phone = item.pop("up_phone", None)
+            up_imagem_profile = item.pop("up_imagem_profile", None)
             real_phone = ""
             if up_phone:
                 try: real_phone = fernet.decrypt(up_phone.encode()).decode()
@@ -513,6 +518,8 @@ def get_my_applications():
                 
             # Force exactly the profile's phone. If none exists, clear out any buggy old data.
             item["companyInfo"]["phone"] = real_phone
+            if up_imagem_profile:
+                item["companyInfo"]["imagem_profile"] = up_imagem_profile
 
             # job fields -> frontend shape
             item["paymentType"] = item.pop("payment_type", None)
@@ -788,9 +795,12 @@ def save_resume():
         # Check if exists
         row = db.execute("SELECT id, user_id FROM resumes WHERE id = ?", resume_id)
         if row:
-             # Ownership check: only the owner can update their resume
-             if row[0]["user_id"] != user_id:
-                 return api_error("Não autorizado a editar este currículo", 403)
+             # Ownership check: only the owner can update their resume
+
+             if row[0]["user_id"] != user_id:
+
+                 return api_error("Não autorizado a editar este currículo", 403)
+
              db_write("""
                 UPDATE resumes
                 SET user_id = ?,
@@ -965,11 +975,14 @@ def save_user_profile():
         
         # Tenta usar JWT se o usuário já está logado (edição de perfil)
         user_id = None
-        try:
-            verify_jwt_in_request()
-            user_id = current_user_id()
-        except:
-            pass  # Sem JWT = cadastro novo (vai criar usuário abaixo)
+        if not JWT_ENABLED:
+            user_id = DEV_USER_ID
+        else:
+            try:
+                verify_jwt_in_request()
+                user_id = current_user_id()
+            except:
+                pass  # Sem JWT = cadastro novo (vai criar usuário abaixo)
 
         # ====== cria usuário se não veio user_id ======
         if not user_id:

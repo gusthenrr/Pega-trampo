@@ -2513,7 +2513,11 @@ justify-center">
                                             {/* Cabeçalho: logo + nome do estabelecimento + cargo */}
                                             <div className="flex items-start gap-3">
                                                 <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                                    <Building2 className="h-5 w-5 text-gray-700" />
+                                                    {(job.companyInfo as any)?.imagem_profile || (job.companyInfo as any)?.profile_image_url || (job.companyInfo as any)?.logo || (job.companyInfo as any)?.profilePhoto ? (
+                                                        <img src={(job.companyInfo as any)?.imagem_profile || (job.companyInfo as any)?.profile_image_url || (job.companyInfo as any)?.logo || (job.companyInfo as any)?.profilePhoto} alt={job.companyInfo?.name || "Empresa"} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <Building2 className="h-5 w-5 text-gray-700" />
+                                                    )}
                                                 </div>
 
                                                 <div className="min-w-0">
@@ -2621,7 +2625,16 @@ justify-center">
                                 {filteredJobs.map((job) => (
                                     <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
                                         <div className="flex flex-wrap items-start justify-between mb-3 gap-2">
-                                            <h3 className="font-bold text-gray-900 text-lg break-words flex-1 min-w-[150px]">{job.title.toUpperCase()}</h3>
+                                            <div className="flex items-center gap-3 flex-1 min-w-[150px]">
+                                                <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
+                                                    {(job.companyInfo as any)?.imagem_profile || (job.companyInfo as any)?.profile_image_url || (job.companyInfo as any)?.logo || (job.companyInfo as any)?.profilePhoto ? (
+                                                        <img src={(job.companyInfo as any)?.imagem_profile || (job.companyInfo as any)?.profile_image_url || (job.companyInfo as any)?.logo || (job.companyInfo as any)?.profilePhoto} alt={job.companyInfo?.name || "Empresa"} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <Building2 className="h-4 w-4 text-gray-700" />
+                                                    )}
+                                                </div>
+                                                <h3 className="font-bold text-gray-900 text-lg break-words">{job.title.toUpperCase()}</h3>
+                                            </div>
                                             <div className="flex flex-wrap items-center gap-2 shrink-0">
                                                 {job.isUrgent && (
                                                     <div className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
