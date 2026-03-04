@@ -137,12 +137,13 @@ export interface UserProfile {
 }
 
 export interface Notification {
-    id: string
-    title: string
+    id: string | number
+    title?: string
     message: string
-    type: NotificationType
+    type: string
     timestamp: string
     read: boolean
+    reference_id?: string
 }
 
 export interface CompanyJobPost {

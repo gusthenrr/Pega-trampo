@@ -1111,6 +1111,12 @@ def save_user_profile():
         # (se quiser, aqui você faz print/ logger.exception)
         return api_error("Erro interno ao salvar cadastro", 500)
 
+
+@app.route("/")
+def connect():
+    return "Conectado"
+
+
 @app.route("/api/register", methods=["POST"])
 def register_user():
     data = request.json or {}
@@ -1162,6 +1168,8 @@ def register_user():
                 if len(out) == 3:
                     break
             return out
+
+
 
         def to_pg_text_array(items):
             if not items:
@@ -1444,6 +1452,7 @@ def apply_to_job(job_id):
     user_id = current_user_id()
     print(f"user_id: {user_id}")
 
+    # --- 1. BUSCA DE DADOS (LEITURA) ---
     # Verifica se já existe candidatura
     existing = db.execute(
         "SELECT id FROM job_applications WHERE job_id = ? AND candidate_id = ?",
@@ -1452,31 +1461,94 @@ def apply_to_job(job_id):
     if existing:
         return api_error("Você já se candidatou para esta vaga", 409)
 
-    # Busca o resume_id do candidato automaticamente
+    # Busca o resume_id do candidato
     resume_id = None
-    resume_rows = db.execute(
-        "SELECT id FROM resumes WHERE user_id = ? LIMIT 1",
-        user_id
-    )
+    resume_rows = db.execute("SELECT id FROM resumes WHERE user_id = ? LIMIT 1", user_id)
     if resume_rows:
         resume_id = resume_rows[0]["id"]
 
+    # Buscar dados para a notificação (Empresa e vaga)
+    company_id = None
+    job_title = "vaga"
+    job_info = db.execute("SELECT posted_by_user_id, title FROM jobs WHERE id = ?", job_id)
+    if job_info:
+        company_id = job_info[0]["posted_by_user_id"]
+        job_title = job_info[0]["title"]
+
+    # Buscar nome do candidato
+    candidate_name = "Um profissional"
+    profile_info = db.execute("SELECT full_name FROM user_profiles WHERE user_id = ?", user_id)
+    if profile_info and profile_info[0]["full_name"]:
+        try: 
+            candidate_name = fernet.decrypt(profile_info[0]["full_name"].encode()).decode()
+        except: 
+            candidate_name = profile_info[0]["full_name"]
+    else:
+        user_info = db.execute("SELECT username FROM usuarios WHERE id = ?", user_id)
+        if user_info:
+            candidate_name = user_info[0]["username"]
+
+    # --- 2. OPERAÇÕES DE ESCRITA ---
     import uuid
     application_id = str(uuid.uuid4())
 
     try:
-        db_write(
-            """
-            INSERT INTO job_applications (id, job_id, candidate_id, status, resume_id)
-            VALUES (?, ?, ?, 'pending', ?)
-            RETURNING id
-            """,
+        # Inserir candidatura
+        db.execute(
+            "INSERT INTO job_applications (id, job_id, candidate_id, status, resume_id) VALUES (?, ?, ?, 'pending', ?)",
             application_id, job_id, user_id, resume_id
         )
+
+        # Inserir notificação se tiver empresa
+        if company_id:
+            message = f"{candidate_name} se candidatou a vaga de {job_title}."
+            db.execute(
+                "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (?, 'application', ?, ?)",
+                company_id, message, resume_id
+            )
+
         return api_ok(message="Candidatura realizada com sucesso!", applicationId=application_id)
     except Exception as e:
         print(f"Erro ao candidatar: {e}")
         return api_error("Erro ao processar candidatura", 500)
+
+@app.route("/api/notifications", methods=["GET"])
+def get_notifications():
+    user_id = current_user_id()
+    try:
+        # Busca notificações mais recentes
+        rows = db.execute("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", user_id)
+        
+        notifications = []
+        for r in rows:
+            notifications.append({
+                "id": r["id"],
+                "type": r["type"],
+                "message": r["message"],
+                "reference_id": r["reference_id"],
+                "read": bool(r["visto"]),
+                "timestamp": r["created_at"]
+            })
+            
+        return api_ok(notifications=notifications)
+    except Exception as e:
+        print(f"Erro ao buscar notificações: {e}")
+        return api_error("Erro ao buscar notificações", 500)
+
+@app.route("/api/notifications/<int:notification_id>/read", methods=["PUT"])
+def mark_notification_read(notification_id):
+    user_id = current_user_id()
+    try:
+        # Verifica se pertence ao usuário
+        existing = db.execute("SELECT id FROM notifications WHERE id = ? AND user_id = ?", notification_id, user_id)
+        if not existing:
+            return api_error("Notificação não encontrada", 404)
+            
+        db_write("UPDATE notifications SET visto = TRUE WHERE id = ?", notification_id)
+        return api_ok()
+    except Exception as e:
+        print(f"Erro ao marcar notificação como lida: {e}")
+        return api_error("Erro ao marcar notificação como lida", 500)
 
 @app.route("/api/company/applications", methods=["GET"])
 def get_company_applications():

@@ -742,17 +742,25 @@ export const filterJobs = (params: {
     searchTerm: string
     selectedCategory: string
     userProfile: any
+    selectedDate?: string
 }) => {
-    const { jobs, searchTerm, selectedCategory, userProfile } = params
+    const { jobs, searchTerm, selectedCategory, userProfile, selectedDate } = params
 
     const searchLower = normalizeText(searchTerm || "")
     const selectedSlug = selectedCategory === "Todas" ? "todas" : slugRole(selectedCategory)
 
-    // 1) Filtro básico por busca (se houver)
+    // 1) Filtro básico por busca e por data (se houver)
     const baseFiltered = jobs.filter(job => {
-        if (!searchLower) return true
-        const text = normalizeText(`${job.title || ""} ${job.description || ""} ${job.category || ""} ${job.address || ""}`)
-        return text.includes(searchLower)
+        if (searchLower) {
+            const text = normalizeText(`${job.title || ""} ${job.description || ""} ${job.category || ""} ${job.address || ""}`)
+            if (!text.includes(searchLower)) return false
+        }
+
+        if (selectedDate) {
+            if (job.startDate !== selectedDate) return false
+        }
+
+        return true
     })
 
     // 2) Profissional: rank + corte + ordenação

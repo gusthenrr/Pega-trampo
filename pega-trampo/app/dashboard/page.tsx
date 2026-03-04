@@ -8,7 +8,7 @@ import {
     Zap, Hammer, Scissors, Car, Baby, Utensils, Paintbrush, Wrench, GraduationCap, Camera,
     Music, Shirt, TreePine, Laptop, Phone, Shield, Truck, Sparkles, Flower2, Palette, Edit,
     FileText, LogOut, MapPinIcon, Mail, Building2, UserCheck, Briefcase as
-        BriefcaseIcon, Navigation, Route, ExternalLink, Upload, X, Trash2
+        BriefcaseIcon, Navigation, Route, ExternalLink, Upload, X, Trash2, Wallet
 } from 'lucide-react'
 
 import type {
@@ -22,6 +22,8 @@ import type {
 } from '../types/pegatrampo'
 
 import * as logic from './pegaTrampo.logic'
+import AgendaFilterPopover, { AgendaFilterValue } from '../components/AgendaFilterPopover'
+import { useRef } from 'react'
 
 const categoryData = [
     {
@@ -218,6 +220,9 @@ export default function PegaTrampoApp() {
 
     // States
     const [searchTerm, setSearchTerm] = useState('')
+    const [selectedDate, setSelectedDate] = useState('')
+    const [openAgenda, setOpenAgenda] = useState(false)
+    const btnAgendaRef = useRef<HTMLElement>(null)
     const [selectedCategory, setSelectedCategory] = useState('Todas')
     const [showPostModal, setShowPostModal] = useState(false)
     const [activeTab, setActiveTab] = useState('jobs')
@@ -229,6 +234,54 @@ export default function PegaTrampoApp() {
     const [cnpjLoading, setCnpjLoading] = useState(false)
     const [showProfile, setShowProfile] = useState(false)
     const [showSupport, setShowSupport] = useState(false)
+    const [showHeader, setShowHeader] = useState(true)
+
+    // Lógica para esconder/mostrar header no scroll
+    useEffect(() => {
+        let lastScrollY = window.scrollY
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY
+            // Se rolar mais de 10px pra baixo, esconde. Se rolar pra cima, mostra.
+            if (currentScrollY > lastScrollY && currentScrollY > 60) {
+                setShowHeader(false)
+            } else {
+                setShowHeader(true)
+            }
+            lastScrollY = currentScrollY
+        }
+
+        window.addEventListener('scroll', handleScroll, { passive: true })
+        return () => window.removeEventListener('scroll', handleScroll)
+    }, [])
+
+    // Restaura o estado da UI ao recarregar a página
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedTab = sessionStorage.getItem('pt_activeTab')
+            if (savedTab) setActiveTab(savedTab)
+
+            const savedProfile = sessionStorage.getItem('pt_showProfile')
+            if (savedProfile === 'true') setShowProfile(true)
+
+            const savedSupport = sessionStorage.getItem('pt_showSupport')
+            if (savedSupport === 'true') setShowSupport(true)
+
+            const savedPostForm = sessionStorage.getItem('pt_showJobPostForm')
+            if (savedPostForm === 'true') setShowJobPostForm(true)
+
+            const savedResumeForm = sessionStorage.getItem('pt_showResumeForm')
+            if (savedResumeForm === 'true') setShowResumeForm(true)
+        }
+    }, [])
+
+    // Salva o estado da UI quando ele muda
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('pt_activeTab', activeTab)
+            sessionStorage.setItem('pt_showProfile', showProfile.toString())
+            sessionStorage.setItem('pt_showSupport', showSupport.toString())
+        }
+    }, [activeTab, showProfile, showSupport])
     const [showChat, setShowChat] = useState(false)
     const [selectedJobForChat, setSelectedJobForChat] = useState<Job | null>(null)
     const [newMessage, setNewMessage] = useState('')
@@ -240,6 +293,13 @@ export default function PegaTrampoApp() {
     const [selectedJob, setSelectedJob] = useState<Job | null>(null)
     const [showRouteModal, setShowRouteModal] = useState(false)
     const [showResumeForm, setShowResumeForm] = useState(false)
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem('pt_showJobPostForm', showJobPostForm.toString())
+            sessionStorage.setItem('pt_showResumeForm', showResumeForm.toString())
+        }
+    }, [showJobPostForm, showResumeForm])
     const [resumeStep, setResumeStep] = useState(1)
     const [resumeSearchTerm, setResumeSearchTerm] = useState('')
     const [resumes, setResumes] = useState<Resume[]>([])
@@ -436,10 +496,28 @@ export default function PegaTrampoApp() {
         })
     }, [])
 
+    useEffect(() => {
+        // Carrega notificações independente das outras infos se já logado
+        const fetchNotifications = async () => {
+            try {
+                const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications`)
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.notifications) {
+                        setNotifications(data.notifications)
+                    }
+                }
+            } catch (err) {
+                console.error("Erro ao buscar notificações", err)
+            }
+        }
+        fetchNotifications()
+    }, [userProfile.userType])
+
 
 
     // filtros
-    const filteredJobs = logic.filterJobs({ jobs, searchTerm, selectedCategory, userProfile })
+    const filteredJobs = logic.filterJobs({ jobs, searchTerm, selectedCategory, userProfile, selectedDate })
     const filteredResumes = logic.filterResumes({ resumes, resumeSearchTerm, userProfile })
 
     type DurationUnit = "dia" | "semana" | "mes"
@@ -552,6 +630,29 @@ export default function PegaTrampoApp() {
     const handleViewResumeDetails = (resume: Resume) =>
         logic.handleViewResumeDetails({ resume, setSelectedResume, setShowResumeDetails })
 
+    const handleNotificationClick = async (notif: Notification) => {
+        if (!notif.read) {
+            try {
+                const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications/${notif.id}/read`, { method: 'PUT' })
+                if (res.ok) {
+                    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n))
+                }
+            } catch (e) {
+                console.error("Erro ao marcar como lida:", e)
+            }
+        }
+
+        if (notif.type === 'application' && notif.reference_id) {
+            const foundResume = resumes.find(r => r.id === notif.reference_id);
+            if (foundResume) {
+                handleViewResumeDetails(foundResume);
+                setShowNotifications(false);
+            } else {
+                console.warn("Currículo não encontrado localmente. Pode não ter sido carregado ainda.");
+            }
+        }
+    }
+
     const handleEditResume = (resume: Resume) =>
         logic.handleEditResume({ resume, setUserResume, setShowResumeForm, setResumeStep })
 
@@ -656,10 +757,9 @@ export default function PegaTrampoApp() {
     // Modal de Detalhes do Currículo Completo - MELHORADO COM BOTÃO DE CHAMAR 
     if (showResumeDetails && selectedResume) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex 
-flex-col">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col pt-[60px]">
                 {/* Header com gradiente */}
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg">
+                <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-gradient-to-r from-blue-600 to-purple-600 shadow-lg`}>
                     <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
                         <button onClick={() => setShowResumeDetails(false)} className="p-2 
 hover:bg-white/20 rounded-full transition-all">
@@ -770,7 +870,7 @@ text-gray-900">{selectedResume.professionalInfo.workSchedule}</p>
                     </div>
 
                     {/* Experiência Profissional */}
-                    {selectedResume.workExperience.length > 0 && (
+                    {selectedResume.workExperience && selectedResume.workExperience.length > 0 && (
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                             <div className="flex items-center space-x-2 mb-4">
                                 <div className="w-10 h-10 bg-green-100 rounded-full flex items-center 
@@ -795,7 +895,7 @@ justify-center">
                     )}
 
                     {/* Escolaridade */}
-                    {selectedResume.education.length > 0 && (
+                    {selectedResume.education && selectedResume.education.length > 0 && (
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                             <div className="flex items-center space-x-2 mb-4">
                                 <div className="w-10 h-10 bg-yellow-100 rounded-full flex items-center 
@@ -820,7 +920,7 @@ justify-center">
                     )}
 
                     {/* Habilidades */}
-                    {selectedResume.skills.length > 0 && (
+                    {selectedResume.skills && selectedResume.skills.length > 0 && (
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                             <div className="flex items-center space-x-2 mb-4">
                                 <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center 
@@ -862,9 +962,9 @@ shadow-lg flex items-center justify-center space-x-3"
         const waNumber = getCompanyWhatsappNumber(selectedJob)
 
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col">
+            <div className="min-h-screen bg-gray-50 flex flex-col pt-[60px]">
                 {/* Header */}
-                <div className="bg-white shadow-sm border-b">
+                <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-white shadow-sm border-b`}>
                     <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
                         <button
                             onClick={() => setShowJobDetails(false)}
@@ -1148,8 +1248,8 @@ shadow-lg flex items-center justify-center space-x-3"
     // Formulário de Cadastro de Currículo - Passo 1: Informações Pessoais MELHORADO 
     if (showResumeForm && resumeStep === 1) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col">
-                <div className="bg-blue-500 shadow-sm border-b">
+            <div className="min-h-screen bg-gray-50 flex flex-col pt-[70px]">
+                <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-blue-500 shadow-sm border-b`}>
                     <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
                         <button onClick={() => setShowResumeForm(false)} className="p-2 
 hover:bg-blue-600 rounded-full">
@@ -1330,8 +1430,8 @@ hover:bg-blue-600 transition-colors"
     // Formulário de Cadastro de Currículo - Passo 2: Experiência Profissional NOVO 
     if (showResumeForm && resumeStep === 2) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col">
-                <div className="bg-blue-500 shadow-sm border-b">
+            <div className="min-h-screen bg-gray-50 flex flex-col pt-[70px]">
+                <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-blue-500 shadow-sm border-b`}>
                     <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
                         <button onClick={() => setResumeStep(1)} className="p-2 hover:bg-blue-600 
 rounded-full">
@@ -1876,8 +1976,8 @@ hover:bg-blue-600 transition-colors"
     // Tela de Perfil Completo com Sistema de Avaliação - REMOVIDO PEGACOINS 
     if (showProfile) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col">
-                <div className="bg-white shadow-sm border-b">
+            <div className="min-h-screen bg-gray-50 flex flex-col pt-[60px]">
+                <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-white shadow-sm border-b`}>
                     <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
                         <button onClick={() => setShowProfile(false)} className="p-2 hover:bg-gray-100 
 rounded-full">
@@ -2170,8 +2270,8 @@ rounded-full">
     // Tela de Suporte com Chat Funcional 
     if (showSupport) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col">
-                <div className="bg-white shadow-sm border-b">
+            <div className="min-h-screen bg-gray-50 flex flex-col pt-[60px]">
+                <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-white shadow-sm border-b`}>
                     <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
                         <button onClick={() => setShowSupport(false)} className="p-2 hover:bg-gray-100 
 rounded-full">
@@ -2240,12 +2340,20 @@ justify-center">
 
     // App Principal - PegaTrampo Style 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="bg-blue-600 shadow-sm border-b px-4 py-3">
+        <div className="min-h-screen bg-gray-50 pt-[60px]">
+            <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-blue-600 shadow-sm border-b px-4 py-3`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                         <Briefcase className="h-6 w-6 text-white" />
-                        <h1 className="text-xl font-bold text-white">PegaTrampo</h1>
+                        <div className="flex flex-col md:flex-row md:items-center md:gap-2">
+                            <h1 className="text-xl font-bold text-white leading-tight">PegaTrampo</h1>
+                            <p className="text-blue-100 text-sm md:text-base font-medium leading-tight">
+                                <span className="hidden md:inline">• </span>
+                                Olá, {userProfile.userType === 'company'
+                                    ? (userProfile.companyInfo?.companyName || 'Empresa')
+                                    : (userProfile.name || 'Usuário')}
+                            </p>
+                        </div>
                     </div>
                     <div className="flex items-center space-x-3">
                         <button
@@ -2269,6 +2377,8 @@ justify-center">
                 </div>
             </div>
 
+
+
             {/* Painel de Notificações */}
             {showNotifications && (
                 <div className="bg-white border-b shadow-lg">
@@ -2284,22 +2394,28 @@ justify-center">
                                 </button>
                             </div>
                         </div>
-                        <div className="max-h-64 overflow-y-auto">
+                        <div className="max-h-[220px] overflow-y-auto">
                             {notifications.length === 0 ? (
                                 <div className="p-4 text-center text-gray-500">
                                     Nenhuma notificação ainda
                                 </div>
                             ) : (
                                 notifications.map((notification) => (
-                                    <div key={notification.id} className={`p-4 border-b hover:bg-gray-50 ${!notification.read ? 'bg-blue-50' : ''}`}>
+                                    <div
+                                        key={notification.id}
+                                        onClick={() => handleNotificationClick(notification)}
+                                        className={`p-4 border-b cursor-pointer transition-colors hover:bg-gray-50 ${!notification.read ? 'bg-blue-50/60 font-semibold' : ''}`}
+                                    >
                                         <div className="flex items-start space-x-3">
-                                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                                <Bell className="h-4 w-4 text-blue-600" />
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!notification.read ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                                <Bell className="h-4 w-4" />
                                             </div>
                                             <div className="flex-1">
-                                                <h3 className="font-medium text-gray-900 text-sm">{notification.title}</h3>
-                                                <p className="text-gray-600 text-xs">{notification.message}</p>
-                                                <p className="text-gray-400 text-xs mt-1">{notification.timestamp}</p>
+                                                {notification.title && <h3 className="text-gray-900 text-sm mb-0.5">{notification.title}</h3>}
+                                                <p className={`text-xs ${!notification.read ? 'text-gray-800' : 'text-gray-600'}`}>{notification.message}</p>
+                                                <p className="text-gray-400 text-xs mt-1">
+                                                    {new Date(notification.timestamp).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -2314,29 +2430,58 @@ justify-center">
             {userProfile.userType === 'professional' && activeTab === 'jobs' && (
                 <div className="bg-white border-b p-4 space-y-3">
                     <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 
-text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <input
                             type="text"
                             placeholder="Buscar por: cozinheiro, padeiro, diarista..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 
-focus:ring-blue-500 focus:border-transparent"
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 focus:ring-blue-500 focus:border-transparent"
                         />
                     </div>
 
-                    <div className="flex space-x-2 overflow-x-auto">
-                        <select
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 text-black
-focus:ring-blue-500 min-w-0 flex-shrink-0"
-                        >
-                            {categories.map(category => (
-                                <option key={category} value={category}>{category}</option>
-                            ))}
-                        </select>
+                    <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+                        <div className="flex items-center space-x-2 flex-shrink-0">
+                            {/* Bolinha da Agenda */}
+                            <button
+                                ref={btnAgendaRef as React.RefObject<HTMLButtonElement>}
+                                onClick={() => setOpenAgenda(true)}
+                                className={`h-9 w-9 rounded-full flex items-center justify-center border transition-all shadow-sm ${selectedDate ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+                            >
+                                <Calendar className="h-4 w-4" />
+                            </button>
+
+                            {/* Filtro de Categoria Modernizado */}
+                            <div className="flex items-center border border-gray-300/80 rounded-full bg-gray-50/50 hover:bg-gray-100/50 transition-colors px-1 h-9">
+                                <div className="pl-3 pr-1 flex items-center h-full">
+                                    <Filter className="h-3.5 w-3.5 text-gray-500" />
+                                </div>
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    className="pr-2 py-1.5 text-xs font-medium text-gray-700 focus:ring-0 min-w-[100px] border-none outline-none bg-transparent appearance-none cursor-pointer"
+                                    style={{ WebkitAppearance: 'none' }}
+                                >
+                                    {categories.map(category => (
+                                        <option key={category} value={category}>{category}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Botão Limpar Filtros */}
+                        {(searchTerm || selectedDate || selectedCategory !== 'Todas') && (
+                            <button
+                                onClick={() => {
+                                    setSearchTerm('')
+                                    setSelectedDate('')
+                                    setSelectedCategory('Todas')
+                                }}
+                                className="text-xs font-bold text-blue-600 hover:text-blue-800 whitespace-nowrap bg-blue-50 px-3 py-1.5 rounded-full"
+                            >
+                                Limpar
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
@@ -2344,112 +2489,88 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
             <div className="p-4">
                 {activeTab === 'jobs' && (
                     <div className="space-y-4">
+                        <h2 className="text-gray-900 font-bold text-xl mb-4">
+                            {userProfile.userType === 'company'
+                                ? 'Minhas propostas de trabalho'
+                                : 'Propostas de trabalho'}
+                        </h2>
                         {userProfile.userType === 'professional' && (
                             <>
                                 {/* Seção de Propostas das Empresas - Filtradas por categoria do funcionário */}
                                 {filteredJobs.map((job) => (
                                     <div
                                         key={job.id}
-                                        className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                                        className="bg-white rounded-2xl shadow-sm border border-gray-300 overflow-hidden"
                                     >
-                                        <div className="p-4">
-                                            {/* Cabeçalho (estilo do vídeo) */}
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="flex items-start gap-3 min-w-0">
-                                                    <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
-                                                        <Building2 className="h-5 w-5 text-blue-600" />
-                                                    </div>
-
-                                                    <div className="min-w-0">
-                                                        <h4 className="font-bold text-gray-900 text-lg leading-snug truncate">
-                                                            {job.title.toUpperCase()}
-                                                        </h4>
-
-                                                        <p className="text-sm text-gray-600 truncate">
-                                                            {job.category || userProfile.workerCategory || 'Vaga'}
-                                                        </p>
-                                                    </div>
+                                        <div className="p-4 pb-1">
+                                            {/* Cabeçalho: logo + nome do estabelecimento + cargo */}
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                                                    <Building2 className="h-5 w-5 text-gray-700" />
                                                 </div>
 
-                                                <span className="text-xs text-gray-500 flex-shrink-0">
-                                                    {formatRelativeDate(job.postedAt)}
-                                                </span>
+                                                <div className="min-w-0">
+                                                    <h4 className="text-base font-bold text-gray-900 leading-snug truncate">
+                                                        {job.companyInfo?.name || job.postedBy || "Estabelecimento"}
+                                                    </h4>
+
+                                                    <p className="text-xs text-gray-600 truncate">
+                                                        {job.title || "Cargo"}
+                                                    </p>
+                                                </div>
                                             </div>
 
-                                            {/* Local */}
-                                            <div className="mt-4 flex items-center gap-2 text-sm text-gray-700">
-                                                <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                                                <span className="truncate">{job.address || 'Local a combinar'}</span>
-                                            </div>
+                                            {/* Linha divisória */}
+                                            <div className="my-3 border-t border-gray-300" />
 
-                                            {/* Linhas fixas (scan rápido igual vídeo) */}
-                                            <div className="mt-3 space-y-2 text-sm">
+                                            {/* Linhas: Valor / Data / Horário */}
+                                            <div className="space-y-2">
                                                 <div className="flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-2 text-gray-700">
-                                                        <DollarSign className="h-4 w-4 text-gray-400" />
-                                                        <span>Valor</span>
+                                                    <div className="flex items-center gap-2 text-gray-900">
+                                                        <Wallet className="h-4 w-4 text-gray-700" />
+                                                        <span className="text-sm">Valor</span>
                                                     </div>
-                                                    <span className="font-semibold text-green-600">
+
+                                                    <span className="text-sm font-bold text-green-600">
                                                         R$ {job.rate}
-                                                        {job.paymentType === 'hourly'
-                                                            ? '/hora'
-                                                            : job.paymentType === 'daily'
-                                                                ? '/dia'
-                                                                : job.paymentType === 'monthly'
-                                                                    ? '/mês'
-                                                                    : ' (projeto)'}
                                                     </span>
                                                 </div>
 
                                                 <div className="flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-2 text-gray-700">
-                                                        <Calendar className="h-4 w-4 text-gray-400" />
-                                                        <span>Início</span>
+                                                    <div className="flex items-center gap-2 text-gray-900">
+                                                        <Calendar className="h-4 w-4 text-gray-700" />
+                                                        <span className="text-sm">Data</span>
                                                     </div>
-                                                    <span className="font-medium text-gray-900">
+
+                                                    <span className="text-sm text-gray-900">
                                                         {job.startDate
-                                                            ? new Date(job.startDate + 'T00:00:00').toLocaleDateString('pt-BR')
-                                                            : 'A combinar'}
+                                                            ? new Date(job.startDate + "T00:00:00").toLocaleDateString("pt-BR")
+                                                            : "A combinar"}
                                                     </span>
                                                 </div>
 
                                                 <div className="flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-2 text-gray-700">
-                                                        <Clock className="h-4 w-4 text-gray-400" />
-                                                        <span>Horário</span>
+                                                    <div className="flex items-center gap-2 text-gray-900">
+                                                        <Clock className="h-4 w-4 text-gray-700" />
+                                                        <span className="text-sm">Horário</span>
                                                     </div>
-                                                    <span className="font-medium text-gray-900">
-                                                        {job.startTime || 'A combinar'}
+
+                                                    <span className="text-sm font-medium text-gray-900">
+                                                        {job.startTime || "A combinar"}
                                                     </span>
                                                 </div>
-
-                                                {job.includesFood && (
-                                                    <div className="flex items-center gap-2 text-green-700">
-                                                        <Utensils className="h-4 w-4" />
-                                                        <span className="font-medium">Inclui alimentação</span>
-                                                    </div>
-                                                )}
                                             </div>
 
-                                            {/* Empresa (linha discreta) */}
-                                            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3 text-sm text-gray-500">
-                                                <div className="flex items-center gap-2 min-w-0">
-                                                    <Building2 className="h-4 w-4 flex-shrink-0" />
-                                                    <span className="truncate">{job.companyInfo?.name || job.postedBy}</span>
-                                                    {job.companyInfo?.verified && (
-                                                        <UserCheck className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                                    )}
-                                                </div>
-                                            </div>
+                                            {/* Linha divisória (menos espaço antes do botão) */}
+                                            <div className="mt-2 border-t border-gray-300" />
                                         </div>
 
-                                        {/* Botão "Mais detalhes" (igual vídeo) */}
+                                        {/* “Detalhes” com menos altura e mais perto */}
                                         <button
                                             onClick={() => handleViewJobDetails(job)}
-                                            className="w-full border-t border-gray-100 py-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                                            className="w-full py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50/50 transition"
                                         >
-                                            <Eye className="h-4 w-4" />
-                                            <span>Ver detalhes</span>
+                                            Detalhes
                                         </button>
                                     </div>
                                 ))}
@@ -2464,7 +2585,7 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
                                         <p className="text-gray-500">
                                             {searchTerm
                                                 ? `Nenhuma proposta encontrada para "${searchTerm}". Tente outras palavras-chave como "cozinheiro", "padeiro" ou "diarista".`
-                                                : `Aguarde novas propostas serem publicadas na sua área de atuação: ${userProfile.workerCategory}.`
+                                                : 'Aguarde novas propostas serem publicadas nessa area de atuação.'
                                             }
                                         </p>
                                     </div>
@@ -2492,9 +2613,9 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
 
                                 {filteredJobs.map((job) => (
                                     <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <h3 className="font-bold text-gray-900 text-lg">{job.title.toUpperCase()}</h3>
-                                            <div className="flex items-center space-x-2">
+                                        <div className="flex flex-wrap items-start justify-between mb-3 gap-2">
+                                            <h3 className="font-bold text-gray-900 text-lg break-words flex-1 min-w-[150px]">{job.title.toUpperCase()}</h3>
+                                            <div className="flex flex-wrap items-center gap-2 shrink-0">
                                                 {job.isUrgent && (
                                                     <div className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
                                                         URGENTE
@@ -2954,6 +3075,16 @@ focus:ring-blue-500 min-w-0 flex-shrink-0"
                     </div>
                 </div>
             )}
+            <AgendaFilterPopover
+                open={openAgenda}
+                anchorRef={btnAgendaRef as any}
+                onClose={() => setOpenAgenda(false)}
+                initialValue={{ startDate: selectedDate }}
+                onApply={(val) => {
+                    setSelectedDate(val.startDate || '')
+                }}
+            />
+
         </div >
     )
 }

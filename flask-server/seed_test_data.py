@@ -259,7 +259,7 @@ def insert_profile_company(conn, user_id: int, p: dict):
 
             # extra
             "birth_date": enc(p["birthDate"]),
-            "worker_category": [],
+            #"worker_category": [],
 
             "lat": float(p["lat"]),
             "lng": float(p["lng"]),
@@ -298,7 +298,7 @@ def insert_profile_professional(conn, user_id: int, p: dict):
             "cep": enc(p["cep"]),
 
             "birth_date": enc(p["birthDate"]),
-            "worker_category": [p["workerCategory"]],
+            #"worker_category": [p["workerCategory"]],
 
             "lat": float(p["lat"]),
             "lng": float(p["lng"]),
@@ -439,7 +439,7 @@ def print_nearest_jobs(conn, username: str, limit: int = 10):
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT u.id, up.lat, up.lng, up.cep, up.worker_category
+            SELECT u.id, up.lat, up.lng, up.cep, 
             FROM usuarios u
             JOIN user_profiles up ON up.user_id = u.id
             WHERE u.username = %s

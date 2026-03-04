@@ -129,6 +129,7 @@ export default function CompanySignupPage() {
     const [companyName, setCompanyName] = useState("")
     const [businessType, setBusinessType] = useState<BusinessTypeValue | "">("")
     const [description, setDescription] = useState("")
+    const [phone, setPhone] = useState("")
     const [username, setUsername] = useState("")
     const [imagemProfile, setImagemProfile] = useState("")
 
@@ -175,9 +176,10 @@ export default function CompanySignupPage() {
             !!companyName.trim() &&
             !!String(businessType).trim() &&
             !!description.trim() &&
+            !!phone.trim() &&
             usernameOk
         )
-    }, [cnpjIsComplete, cnpj, companyName, businessType, description, usernameOk])
+    }, [cnpjIsComplete, cnpj, companyName, businessType, description, phone, usernameOk])
 
     const handleCNPJChange = async (value: string) => {
         const formatted = formatCNPJ(value)
@@ -232,7 +234,7 @@ export default function CompanySignupPage() {
             // FUNCIONÁRIO (vazio)
             full_name: null,
             cpf: null,
-            phone: null,
+            phone: toNull(phone),
 
             // ENDEREÇO (vazio)
             address: null,
@@ -503,6 +505,17 @@ export default function CompanySignupPage() {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Descreva sua empresa, área de atuação e experiência..."
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Telefone *</label>
+                            <input
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                placeholder="(11) 99999-9999"
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
                             />
                         </div>
