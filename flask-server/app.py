@@ -31,6 +31,7 @@ DEV_USER_ID = int(os.getenv("DEV_USER_ID", "1"))
 COOKIE_NAME = (os.getenv("JWT_COOKIE_NAME") or "__Host-token").strip()
 COOKIE_SECURE = env_bool("JWT_COOKIE_SECURE", True)
 COOKIE_SAMESITE = (os.getenv("JWT_COOKIE_SAMESITE") or "None").strip()
+COOKIE_DOMAIN = (os.getenv("JWT_COOKIE_DOMAIN") or "").strip() or None
 
 # Se tentar usar __Host- sem Secure, o browser pode ignorar.
 # Então: em dev, use cookie_name=token e secure=0
@@ -101,6 +102,7 @@ def check_jwt_globally():
 @app.route("/api/logout", methods=["POST"])
 def logout():
     resp = jsonify({"success": True, "message": "Logout realizado com sucesso"})
+    cookie_domain = None if COOKIE_NAME.startswith("__Host-") else COOKIE_DOMAIN
     resp.set_cookie(
         key=COOKIE_NAME,
         value="",
@@ -109,6 +111,7 @@ def logout():
         secure=COOKIE_SECURE,
         samesite=COOKIE_SAMESITE,
         path="/",
+        domain=cookie_domain,
     )
     return resp, 200
 
@@ -123,6 +126,7 @@ def current_user_id():
     return int(get_jwt_identity())
 
 def set_auth_cookie(resp, jwt_value: str):
+    cookie_domain = None if COOKIE_NAME.startswith("__Host-") else COOKIE_DOMAIN
     resp.set_cookie(
         key=COOKIE_NAME,
         value=jwt_value,
@@ -131,6 +135,7 @@ def set_auth_cookie(resp, jwt_value: str):
         samesite=COOKIE_SAMESITE,
         path="/",
         max_age=60*60*24,
+        domain=cookie_domain,
     )
     return resp 
 
