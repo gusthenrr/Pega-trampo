@@ -120,10 +120,25 @@ def gerar_token(user_id):
     token = create_access_token(identity=str(user_id), expires_delta=timedelta(hours=2))
     return token
 
-def current_user_id():
+def current_user_id_safe():
     if not JWT_ENABLED:
         return DEV_USER_ID
-    return int(get_jwt_identity())
+
+    # garante que o JWT foi verificado (cookie/header conforme config)
+    try:
+        verify_jwt_in_request(optional=True)
+    except Exception:
+        return None
+
+    identity = get_jwt_identity()
+    if identity is None:
+        return None
+
+    # aceita identity como int ou string numérica
+    try:
+        return int(identity)
+    except (TypeError, ValueError):
+        return None
 
 def set_auth_cookie(resp, jwt_value: str):
     cookie_domain = None if COOKIE_NAME.startswith("__Host-") else COOKIE_DOMAIN
@@ -891,9 +906,15 @@ def delete_resume(resume_id):
 
 @app.route("/api/auth/me", methods=["GET"])
 def auth_me():
-    """Returns basic session info for session validation."""
-    user_id = current_user_id()
-    return api_ok(user_id=user_id)
+    """
+    Returns basic session info for session validation.
+    - 200 if authenticated
+    - 401 if not authenticated
+    """
+    uid = current_user_id_safe()
+    if uid is None:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    return api_ok(user_id=uid)
 
 
 @app.route("/api/resumes", methods=["GET"])
