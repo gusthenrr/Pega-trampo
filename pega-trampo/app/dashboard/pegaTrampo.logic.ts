@@ -25,7 +25,6 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     }
     const res = await fetch(url, newOptions)
     if (res.status === 401) {
-        localStorage.removeItem('pegaTrampo.user')
         window.location.href = '/'
     }
     return res
@@ -255,13 +254,7 @@ export const formatRelativeDate = (dateString: string): string => {
 // Storage helpers
 // =====================
 export const getStoredUser = (): any | null => {
-    try {
-        const stored = localStorage.getItem('pegaTrampo.user')
-        if (!stored) return null
-        return JSON.parse(stored)
-    } catch {
-        return null
-    }
+    return null
 }
 
 // =====================
@@ -291,33 +284,73 @@ export const bootstrapInitialData = async (params: {
     let currentUserId = ''
     let currentUserType: 'professional' | 'company' = 'professional'
 
-    const storedUser = localStorage.getItem('pegaTrampo.user')
-    if (storedUser) {
-        try {
-            const userData = JSON.parse(storedUser)
-            currentUserId = userData.id
-            currentUserType = (userData.userType || 'professional') as any
+    try {
+        const dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
+        if (!dadosRes.ok) {
+            window.location.href = '/'
+            return
+        }
+
+        const data = await dadosRes.json()
+        if (data.success && data.profile) {
+            currentUserType = data.profile.userType || 'professional'
+            currentUserId = data.user_id || ''
 
             setUserProfile(prev => ({
                 ...prev,
-                userType: userData.userType || 'professional',
-                email: userData.email || prev.email,
-                username: userData.username || prev.username,
-                name: userData.fullName || prev.name,
-                cpf: userData.cpf || prev.cpf,
-                companyInfo:
-                    userData.userType === 'company'
-                        ? {
-                            ...prev.companyInfo!,
-                            companyName: userData.companyName || prev.companyInfo?.companyName || '',
-                            email: userData.email || prev.companyInfo?.email || '',
-                            cnpj: userData.cnpj || prev.companyInfo?.cnpj || '',
-                        }
-                        : prev.companyInfo,
+                id: currentUserId,
+                userType: currentUserType,
+                name: data.profile.full_name || prev.name,
+                cpf: data.profile.cpf || prev.cpf,
+                phone: data.profile.phone || prev.phone,
+                email: data.profile.email || prev.email,
+                username: data.profile.username,
+                address: data.profile.address || prev.address,
+                addressNumber: data.profile.number ? String(data.profile.number) : prev.addressNumber,
+                complement: data.profile.complement || prev.complement,
+                neighborhood: data.profile.neighborhood || prev.neighborhood,
+                city: data.profile.city || prev.city,
+                state: data.profile.state || prev.state,
+                workerCategory: data.profile.worker_category || prev.workerCategory,
+                birthDate: data.profile.birth_date || prev.birthDate,
+                lat: data.profile.lat,
+                lng: data.profile.lng,
+                imagem_profile: data.profile.imagem_profile || prev.imagem_profile,
+                companyInfo: currentUserType === 'company' ? {
+                    ...prev.companyInfo!,
+                    companyName: data.profile.company_name || prev.companyInfo?.companyName || '',
+                    cnpj: data.profile.cnpj || prev.companyInfo?.cnpj || '',
+                    businessType: data.profile.business_type || prev.companyInfo?.businessType || '',
+                    description: data.profile.company_description || prev.companyInfo?.description || '',
+                    email: data.profile.company_email || prev.companyInfo?.email || '',
+                } : prev.companyInfo
             }))
-        } catch (e) {
-            console.error('Erro ao carregar usuário', e)
+
+            if (data.resume) {
+                setUserResume(data.resume)
+                setResumes([data.resume])
+            } else if (data.profile) {
+                setUserResume((prev: any) => ({
+                    ...prev,
+                    personalInfo: {
+                        ...prev.personalInfo,
+                        name: data.profile.full_name || prev.personalInfo.name,
+                        phone: data.profile.phone || prev.personalInfo.phone,
+                        email: data.profile.email || prev.personalInfo.email,
+                        address: data.profile.address || prev.personalInfo.address,
+                    },
+                    professionalInfo: {
+                        ...prev.professionalInfo,
+                        category:
+                            (Array.isArray(data.profile.worker_category) ? data.profile.worker_category[0] : '') ||
+                            data.profile.business_type ||
+                            prev.professionalInfo.category,
+                    },
+                }))
+            }
         }
+    } catch (e) {
+        console.error('Erro ao buscar dados do usuário:', e)
     }
 
     try {
@@ -389,70 +422,6 @@ export const bootstrapInitialData = async (params: {
             }
         }
 
-        if (currentUserId) {
-            try {
-                const dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
-                if (dadosRes.ok) {
-                    const data = await dadosRes.json()
-                    if (data.success) {
-                        if (data.profile) {
-                            setUserProfile(prev => ({
-                                ...prev,
-                                name: data.profile.full_name || prev.name,
-                                cpf: data.profile.cpf || prev.cpf,
-                                phone: data.profile.phone || prev.phone,
-                                email: data.profile.email || prev.email,
-                                username: data.profile.username,
-                                address: data.profile.address || prev.address,
-                                addressNumber: data.profile.number ? String(data.profile.number) : prev.addressNumber,
-                                complement: data.profile.complement || prev.complement,
-                                neighborhood: data.profile.neighborhood || prev.neighborhood,
-                                city: data.profile.city || prev.city,
-                                state: data.profile.state || prev.state,
-                                workerCategory: data.profile.worker_category || prev.workerCategory,
-                                birthDate: data.profile.birth_date || prev.birthDate,
-                                lat: data.profile.lat,
-                                lng: data.profile.lng,
-                                imagem_profile: data.profile.imagem_profile || prev.imagem_profile,
-                                companyInfo: currentUserType === 'company' ? {
-                                    ...prev.companyInfo!,
-                                    companyName: data.profile.company_name || prev.companyInfo?.companyName || '',
-                                    cnpj: data.profile.cnpj || prev.companyInfo?.cnpj || '',
-                                    businessType: data.profile.business_type || prev.companyInfo?.businessType || '',
-                                    description: data.profile.company_description || prev.companyInfo?.description || '',
-                                    email: data.profile.company_email || prev.companyInfo?.email || '',
-                                } : prev.companyInfo
-                            }))
-                        }
-
-                        if (data.resume) {
-                            setUserResume(data.resume)
-                            setResumes([data.resume])
-                        } else if (data.profile) {
-                            setUserResume((prev: any) => ({
-                                ...prev,
-                                personalInfo: {
-                                    ...prev.personalInfo,
-                                    name: data.profile.full_name || prev.personalInfo.name,
-                                    phone: data.profile.phone || prev.personalInfo.phone,
-                                    email: data.profile.email || prev.personalInfo.email,
-                                    address: data.profile.address || prev.personalInfo.address,
-                                },
-                                professionalInfo: {
-                                    ...prev.professionalInfo,
-                                    category:
-                                        (Array.isArray(data.profile.worker_category) ? data.profile.worker_category[0] : '') ||
-                                        data.profile.business_type ||
-                                        prev.professionalInfo.category,
-                                },
-                            }))
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error('Erro ao buscar dados do usuário:', e)
-            }
-        }
     } catch (err) {
         console.error('API error full details:', err)
         setApiError('Erro ao carregar dados')
@@ -804,8 +773,7 @@ export const filterResumes = (params: {
     userProfile: UserProfile
 }) => {
     const { resumes, resumeSearchTerm, userProfile } = params
-    const stored = getStoredUser()
-    const currentUserId = stored?.id || ''
+    const currentUserId = userProfile.id || ''
 
     return resumes.filter(resume => {
         const searchLower = (resumeSearchTerm || '').toLowerCase()
@@ -964,14 +932,7 @@ export const handleApplyToJob = async (params: {
 }) => {
     const { job, setJobs, setActiveTab, setNotifications, setMyApplications } = params
 
-    const storedUser = localStorage.getItem('pegaTrampo.user')
-    if (!storedUser) {
-        alert('Você precisa estar logado para se candidatar.')
-        return
-    }
 
-    const userData = JSON.parse(storedUser)
-    const userId = userData.id
 
     try {
         const res = await fetchWithAuth(`${API_BASE}/api/jobs/${job.id}/apply`, {
@@ -1025,12 +986,7 @@ export const handlePublishJob = async (params: {
         return
     }
 
-    const storedUser = localStorage.getItem('pegaTrampo.user')
-    if (!storedUser) {
-        alert('Erro de autenticação. Faça login novamente.')
-        return
-    }
-    const userData = JSON.parse(storedUser)
+
 
     // Tenta geocoding se não tiver coordenadas mas tiver endereço
     let finalCoordinates = newJobPost.coordinates
@@ -1127,12 +1083,7 @@ export const handleUpdateJob = async (params: {
         return
     }
 
-    const storedUser = localStorage.getItem('pegaTrampo.user')
-    if (!storedUser) {
-        alert('Erro de autenticação. Faça login novamente.')
-        return
-    }
-    const userData = JSON.parse(storedUser)
+
 
     // Tenta geocoding se não tiver coordenadas mas tiver endereço
     let finalCoordinates = updatedJobPost.coordinates
@@ -1189,12 +1140,7 @@ export const handleDeleteJob = async (params: {
         return
     }
 
-    const storedUser = localStorage.getItem('pegaTrampo.user')
-    if (!storedUser) {
-        alert('Erro de autenticação.')
-        return
-    }
-    const userData = JSON.parse(storedUser)
+
 
     try {
         const res = await fetchWithAuth(`${API_BASE}/api/jobs/${jobId}`, {
@@ -1260,8 +1206,7 @@ export const handleSaveResume = async (params: {
         return
     }
 
-    const storedUser = getStoredUser()
-    const realUserId = storedUser?.id
+    const realUserId = userProfile?.id
 
     if (!realUserId) {
         alert("Erro: Usuário não autenticado.")
@@ -1425,17 +1370,15 @@ export const handleSaveProfile = async (params: {
             }
         }
 
-        // Get user_id from localStorage - this is critical to avoid the backend
-        // trying to create a new user (which requires password)
-        const storedUser = getStoredUser()
-        if (!storedUser?.id) {
+        const realUserId = userProfile?.id
+        if (!realUserId) {
             throw new Error('Usuário não autenticado. Faça login novamente.')
         }
 
         // Map frontend UserProfile fields to the backend's expected field names
         const payload: Record<string, any> = {
-            username: userProfile.username || storedUser.username,
-            email: userProfile.email || storedUser.email,
+            username: userProfile.username,
+            email: userProfile.email,
 
             // Profile fields
             full_name: userProfile.name,

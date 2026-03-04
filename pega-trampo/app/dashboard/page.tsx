@@ -282,6 +282,26 @@ export default function PegaTrampoApp() {
             sessionStorage.setItem('pt_showSupport', showSupport.toString())
         }
     }, [activeTab, showProfile, showSupport])
+
+    // Listener de Storage para Prevenir Bugs de Sessão Simultânea (Cross-Tab Session)
+    useEffect(() => {
+        const handleStorageChange = (event: StorageEvent) => {
+            if (event.key === 'pegaTrampo.user') {
+                console.warn('Mudança de sessão detectada em outra aba. Atualizando estado atual...');
+                window.location.reload();
+            }
+        };
+
+        if (typeof window !== 'undefined') {
+            window.addEventListener('storage', handleStorageChange);
+        }
+
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('storage', handleStorageChange);
+            }
+        };
+    }, []);
     const [showChat, setShowChat] = useState(false)
     const [selectedJobForChat, setSelectedJobForChat] = useState<Job | null>(null)
     const [newMessage, setNewMessage] = useState('')
@@ -341,7 +361,6 @@ export default function PegaTrampoApp() {
             console.error('Erro ao fazer logout no servidor:', e)
         }
 
-        localStorage.removeItem('pegaTrampo.user')
         window.location.href = '/'
     }
 

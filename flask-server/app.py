@@ -1511,7 +1511,7 @@ def apply_to_job(job_id):
     except Exception as e:
         print(f"Erro ao candidatar: {e}")
         return api_error("Erro ao processar candidatura", 500)
-#mudança
+
 @app.route("/api/notifications", methods=["GET"])
 def get_notifications():
     user_id = current_user_id()
@@ -1779,7 +1779,7 @@ def get_dados():
             resume_data = r
         print("resume_data")
         print(resume_data)
-        return jsonify({"success": True, "profile": profile_data, "resume": resume_data})
+        return jsonify({"success": True, "user_id": user_id, "profile": profile_data, "resume": resume_data})
 
     except Exception as e:
         print(f"Erro em get_dados: {e}")

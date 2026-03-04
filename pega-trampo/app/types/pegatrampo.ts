@@ -134,6 +134,7 @@ export interface UserProfile {
     lat?: number
     lng?: number
     imagem_profile?: string
+    id?: string
 }
 
 export interface Notification {

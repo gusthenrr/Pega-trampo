@@ -48,9 +48,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             const data = await res.json()
 
             if (res.ok && data.success) {
-                // Salvar dados do usuário
-                localStorage.setItem("pegaTrampo.user", JSON.stringify(data.user))
-
                 // Redirecionar para dashboard
                 router.push("/dashboard")
                 onClose()
