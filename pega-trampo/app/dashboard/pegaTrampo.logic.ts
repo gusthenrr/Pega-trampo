@@ -716,7 +716,7 @@ export const filterJobs = (params: {
     const { jobs, searchTerm, selectedCategory, userProfile, selectedDate } = params
 
     const searchLower = normalizeText(searchTerm || "")
-    const selectedSlug = selectedCategory === "Todas" ? "todas" : slugRole(selectedCategory)
+    const selectedSlug = selectedCategory === "Todas" ? "todas" : (selectedCategory === "Recomendado" ? "recomendado" : slugRole(selectedCategory))
 
     // 1) Filtro básico por busca e por data (se houver)
     const baseFiltered = jobs.filter(job => {
@@ -740,17 +740,31 @@ export const filterJobs = (params: {
                 return { ...job, _score: score }
             })
             .filter(job => {
-                // Se usuário escolheu uma categoria específica, respeita forte
-                if (selectedSlug !== "todas") return slugRole(job.category) === selectedSlug
-                // Caso “Todas”, deixa o ranking decidir, mas aplica um corte mínimo
-                return job._score >= 18
+                // "Todas" mostra tudo, inclusive já candidatadas
+                if (selectedSlug === "todas") return true
+                // Para "recomendado" e categorias específicas, esconde as já candidatadas
+                if (job.alreadyApplied) return false
+                if (selectedSlug === "recomendado") return job._score >= 18
+                return slugRole(job.category) === selectedSlug
             })
             .sort((a, b) => {
+                const getTimeSafe = (d: any) => {
+                    if (!d) return 0;
+                    const parsed = new Date(String(d).replace(' ', 'T')).getTime();
+                    return isNaN(parsed) ? 0 : parsed;
+                };
+
+                if (selectedSlug === "todas") {
+                    const da = getTimeSafe(a.created_at || a.postedAt);
+                    const db = getTimeSafe(b.created_at || b.postedAt);
+                    return db - da;
+                }
+
                 // score desc primeiro
                 if (b._score !== a._score) return b._score - a._score
                 // fallback por created_at/posted_at se existir
-                const da = new Date(a.created_at || a.postedAt || 0).getTime()
-                const db = new Date(b.created_at || b.postedAt || 0).getTime()
+                const da = getTimeSafe(a.created_at || a.postedAt);
+                const db = getTimeSafe(b.created_at || b.postedAt);
                 return db - da
             })
 
@@ -759,7 +773,7 @@ export const filterJobs = (params: {
 
     // 3) Empresa (mantém comportamento simples)
     const finalFiltered = baseFiltered.filter(job => {
-        if (selectedSlug === "todas") return true
+        if (selectedSlug === "todas" || selectedSlug === "recomendado") return true
         return slugRole(job.category) === selectedSlug
     })
 

@@ -303,13 +303,13 @@ def get_jobs():
 
         elif candidate_id:
             rows = db.execute("""
-                SELECT j.*, up.phone as up_phone
+                SELECT j.*, up.phone as up_phone,
+                       CASE WHEN ja.id IS NOT NULL THEN 1 ELSE 0 END AS already_applied
                 FROM jobs j
                 LEFT JOIN job_applications ja
                     ON ja.job_id = j.id
                    AND ja.candidate_id = ?
                 LEFT JOIN user_profiles up ON j.posted_by_user_id = up.user_id
-                WHERE ja.id IS NULL
                 ORDER BY j.created_at DESC
             """, candidate_id)
 
@@ -363,6 +363,7 @@ def get_jobs():
 
             item["startDate"] = item.pop("start_date", None)
             item["startTime"] = item.pop("start_time", None)
+            item["alreadyApplied"] = bool(item.pop("already_applied", 0))
 
             item.pop("company_info_json", None)
             results.append(item)

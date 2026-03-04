@@ -116,7 +116,7 @@ const categoryData = [
 ] as const
 
 
-const categories = ['Todas', ...categoryData.map(cat => cat.name)]
+const categories = ['Recomendado', ...categoryData.map(cat => cat.name), 'Todas']
 
 const professions = [
     'Confeiteiro/Doceira',
@@ -223,7 +223,7 @@ export default function PegaTrampoApp() {
     const [selectedDate, setSelectedDate] = useState('')
     const [openAgenda, setOpenAgenda] = useState(false)
     const btnAgendaRef = useRef<HTMLElement>(null)
-    const [selectedCategory, setSelectedCategory] = useState('Todas')
+    const [selectedCategory, setSelectedCategory] = useState('Recomendado')
     const [showPostModal, setShowPostModal] = useState(false)
     const [activeTab, setActiveTab] = useState('jobs')
     const [notifications, setNotifications] = useState<Notification[]>([])
@@ -2489,12 +2489,12 @@ justify-center">
                         </div>
 
                         {/* Botão Limpar Filtros */}
-                        {(searchTerm || selectedDate || selectedCategory !== 'Todas') && (
+                        {(searchTerm || selectedDate || selectedCategory !== 'Recomendado') && (
                             <button
                                 onClick={() => {
                                     setSearchTerm('')
                                     setSelectedDate('')
-                                    setSelectedCategory('Todas')
+                                    setSelectedCategory('Recomendado')
                                 }}
                                 className="text-xs font-bold text-blue-600 hover:text-blue-800 whitespace-nowrap bg-blue-50 px-3 py-1.5 rounded-full"
                             >
