@@ -120,7 +120,7 @@ def gerar_token(user_id):
     token = create_access_token(identity=str(user_id), expires_delta=timedelta(hours=2))
     return token
 
-def current_user_id_safe():
+def current_user_id():
     if not JWT_ENABLED:
         return DEV_USER_ID
 
@@ -911,7 +911,7 @@ def auth_me():
     - 200 if authenticated
     - 401 if not authenticated
     """
-    uid = current_user_id_safe()
+    uid = current_user_id()
     if uid is None:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
     return api_ok(user_id=uid)
