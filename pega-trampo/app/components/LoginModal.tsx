@@ -62,7 +62,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         setError("")
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
             const res = await fetch(`${apiUrl}/api/login`, {
                 method: "POST",
                 credentials: "include",

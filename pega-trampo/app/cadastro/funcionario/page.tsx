@@ -4,7 +4,7 @@ import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, HelpCircle, User, Utensils, Sparkles, Lock, Check, Eye, EyeOff } from "lucide-react"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
+const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
 const REGISTER_ENDPOINT = "/api/register"
 
 const workerCategories = [

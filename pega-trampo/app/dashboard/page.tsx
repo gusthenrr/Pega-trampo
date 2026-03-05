@@ -338,7 +338,7 @@ export default function PegaTrampoApp() {
         broadcastSessionChanged('LOGOUT')
 
         try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || ''
             await fetch(`${apiUrl}/api/logout`, {
                 method: 'POST',
                 credentials: 'include',
@@ -507,7 +507,7 @@ export default function PegaTrampoApp() {
         // Carrega notificações independente das outras infos se já logado
         const fetchNotifications = async () => {
             try {
-                const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications`)
+                const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/notifications`)
                 if (res.ok) {
                     const data = await res.json()
                     if (data.notifications) {
@@ -640,7 +640,7 @@ export default function PegaTrampoApp() {
     const handleNotificationClick = async (notif: Notification) => {
         if (!notif.read) {
             try {
-                const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications/${notif.id}/read`, { method: 'PUT' })
+                const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/notifications/${notif.id}/read`, { method: 'PUT' })
                 if (res.ok) {
                     setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n))
                 }
