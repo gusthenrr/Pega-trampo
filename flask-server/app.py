@@ -136,6 +136,11 @@ def check_jwt_globally():
         if not is_public:
             try:
                 verify_jwt_in_request()
+                client_user_id = request.headers.get("X-Client-User-Id")
+                if client_user_id:
+                    jwt_user_id = current_user_id()
+                    if str(jwt_user_id) != str(client_user_id):
+                        return jsonify({"success": False, "error": "Sessão cruzada divergente. Faça login novamente.", "session_mismatch": True}), 401
             except Exception as e:
                 return jsonify({"success": False, "error": "Token expirado ou inválido", "msg": str(e)}), 401
 

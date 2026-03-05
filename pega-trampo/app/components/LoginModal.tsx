@@ -80,6 +80,11 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     setError("Sessão não foi validada. Tente novamente.")
                     return
                 }
+
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('known_user_id', String(data.user.id))
+                }
+
                 // Notify other tabs that session changed
                 broadcastSessionChanged('LOGIN')
                 // Redirecionar para dashboard

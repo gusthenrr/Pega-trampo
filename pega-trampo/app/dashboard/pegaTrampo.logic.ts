@@ -19,12 +19,33 @@ export type SetState<T> = Dispatch<SetStateAction<T>>
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
 
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+    let expectedUserId: string | null = null
+    if (typeof window !== 'undefined') {
+        expectedUserId = sessionStorage.getItem('known_user_id')
+    }
+
+    const newHeaders = new Headers(options.headers || {})
+    if (expectedUserId) {
+        newHeaders.set('X-Client-User-Id', expectedUserId)
+    }
+
     const newOptions: RequestInit = {
         ...options,
+        headers: newHeaders,
         credentials: 'include',
         cache: 'no-store',
     }
-    return fetch(url, newOptions)
+    const res = await fetch(url, newOptions)
+
+    if (res.status === 401) {
+        // Mismatch na sessão cruzada: Forçar o relog
+        if (typeof window !== 'undefined') {
+            sessionStorage.clear()
+            window.location.href = '/?reason=session_changed'
+        }
+    }
+
+    return res
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null
@@ -296,6 +317,10 @@ export const bootstrapInitialData = async (params: {
         if (data.success && data.profile) {
             currentUserType = data.profile.userType || 'professional'
             currentUserId = data.user_id || ''
+
+            if (typeof window !== 'undefined' && currentUserId) {
+                sessionStorage.setItem('known_user_id', String(currentUserId))
+            }
 
             setUserProfile(prev => ({
                 ...prev,
