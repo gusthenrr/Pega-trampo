@@ -972,6 +972,12 @@ def delete_resume(resume_id):
 
 @app.route("/api/auth/me", methods=["GET"])
 def auth_me():
+    print("[ME] cookie keys:", list(request.cookies.keys()))
+    try:
+        verify_jwt_in_request(optional=True)
+    except Exception as e:
+        print("[ME] verify error:", repr(e))
+    print("[ME] identity:", get_jwt_identity())
     """
     Returns basic session info for session validation.
     - 200 if authenticated
