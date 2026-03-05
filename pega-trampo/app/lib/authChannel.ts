@@ -7,6 +7,15 @@
 const CHANNEL_NAME = 'pegaTrampo_auth'
 const STORAGE_KEY = 'auth:event'
 
+type SessionEventType = 'LOGIN' | 'LOGOUT'
+
+type SessionEventPayload = {
+    type: SessionEventType
+    tabId: string
+    nonce: string
+    ts: number
+}
+
 // Generate a random ID for THIS specific browser tab
 const TAB_ID = typeof crypto !== 'undefined' && crypto.randomUUID
     ? crypto.randomUUID()
@@ -14,19 +23,46 @@ const TAB_ID = typeof crypto !== 'undefined' && crypto.randomUUID
 
 let _channel: BroadcastChannel | null = null
 let _storageHandler: ((e: StorageEvent) => void) | null = null
+const _seenEvents = new Set<string>()
+
+const nextNonce = () => `${Date.now()}_${Math.random().toString(36).slice(2)}`
+
+const parsePayload = (raw: unknown): SessionEventPayload | null => {
+    try {
+        const data = typeof raw === 'string' ? JSON.parse(raw) : raw
+        if (!data || typeof data !== 'object') return null
+        const typed = data as Partial<SessionEventPayload>
+        if (!typed.tabId || !typed.type || !typed.nonce) return null
+        if (typed.type !== 'LOGIN' && typed.type !== 'LOGOUT') return null
+        return {
+            type: typed.type,
+            tabId: typed.tabId,
+            nonce: typed.nonce,
+            ts: typed.ts ?? Date.now(),
+        }
+    } catch {
+        return null
+    }
+}
 
 /**
  * Broadcast that the session changed (login or logout).
  * Call this BEFORE redirecting so other tabs receive the message.
  */
-export function broadcastSessionChanged(): void {
-    const payload = JSON.stringify({ tabId: TAB_ID, ts: Date.now() })
+export function broadcastSessionChanged(type: SessionEventType): void {
+    const payload: SessionEventPayload = {
+        type,
+        tabId: TAB_ID,
+        nonce: nextNonce(),
+        ts: Date.now(),
+    }
+    const serialized = JSON.stringify(payload)
 
     // Primary: BroadcastChannel
     try {
         const ch = new BroadcastChannel(CHANNEL_NAME)
         // Send as string to avoid cloning issues across different browsers
-        ch.postMessage(payload)
+        ch.postMessage(serialized)
         // Close after a small delay to ensure delivery
         setTimeout(() => ch.close(), 300)
     } catch {
@@ -35,7 +71,7 @@ export function broadcastSessionChanged(): void {
 
     // Fallback: localStorage event (fires in OTHER tabs only)
     try {
-        localStorage.setItem(STORAGE_KEY, payload)
+        localStorage.setItem(STORAGE_KEY, serialized)
     } catch {
         // Private/incognito mode may block localStorage
     }
@@ -45,21 +81,17 @@ export function broadcastSessionChanged(): void {
  * Install a watcher that calls `onInvalidate` when another tab changes session.
  * Should be called once (e.g. in a top-level useEffect).
  */
-export function installSessionWatcher(onInvalidate: () => void): void {
+export function installSessionWatcher(onSessionEvent: (type: SessionEventType) => void): void {
     // Primary: BroadcastChannel
     try {
         _channel = new BroadcastChannel(CHANNEL_NAME)
         _channel.onmessage = (event) => {
-            try {
-                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-                // Ignore messages originating from THIS tab
-                if (data?.tabId === TAB_ID) return
-                if (data?.tabId) { // Check that it's actually our payload
-                    onInvalidate()
-                }
-            } catch {
-                // Ignore malformed messages
-            }
+            const data = parsePayload(event.data)
+            if (!data) return
+            if (data.tabId === TAB_ID) return
+            if (_seenEvents.has(data.nonce)) return
+            _seenEvents.add(data.nonce)
+            onSessionEvent(data.type)
         }
     } catch {
         // Not supported
@@ -68,16 +100,12 @@ export function installSessionWatcher(onInvalidate: () => void): void {
     // Fallback: storage event
     _storageHandler = (event: StorageEvent) => {
         if (event.key === STORAGE_KEY && event.newValue) {
-            try {
-                const data = JSON.parse(event.newValue)
-                // Ignore messages originating from THIS tab
-                if (data?.tabId === TAB_ID) return
-                if (data?.tabId) {
-                    onInvalidate()
-                }
-            } catch {
-                // Ignore malformed messages
-            }
+            const data = parsePayload(event.newValue)
+            if (!data) return
+            if (data.tabId === TAB_ID) return
+            if (_seenEvents.has(data.nonce)) return
+            _seenEvents.add(data.nonce)
+            onSessionEvent(data.type)
         }
     }
 

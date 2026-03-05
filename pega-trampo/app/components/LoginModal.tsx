@@ -81,7 +81,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                     return
                 }
                 // Notify other tabs that session changed
-                broadcastSessionChanged()
+                broadcastSessionChanged('LOGIN')
                 // Redirecionar para dashboard
                 router.push("/dashboard")
                 onClose()

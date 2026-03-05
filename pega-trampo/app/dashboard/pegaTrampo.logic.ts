@@ -24,11 +24,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
         credentials: 'include',
         cache: 'no-store',
     }
-    const res = await fetch(url, newOptions)
-    if (res.status === 401) {
-        window.location.href = '/'
-    }
-    return res
+    return fetch(url, newOptions)
 }
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null
@@ -286,7 +282,11 @@ export const bootstrapInitialData = async (params: {
     let currentUserType: 'professional' | 'company' = 'professional'
 
     try {
-        const dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
+        let dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
+        if (dadosRes.status === 401) {
+            await new Promise((resolve) => setTimeout(resolve, 250))
+            dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
+        }
         if (!dadosRes.ok) {
             window.location.href = '/'
             return

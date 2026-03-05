@@ -335,7 +335,7 @@ export default function PegaTrampoApp() {
         if (!confirm('Tem certeza que deseja sair da sua conta?')) return
 
         // Notify other tabs BEFORE clearing the cookie
-        broadcastSessionChanged()
+        broadcastSessionChanged('LOGOUT')
 
         try {
             const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
