@@ -1629,7 +1629,7 @@ def apply_to_job(job_id):
 
     try:
         # Inserir candidatura
-        db.execute(
+        db_write(
             "INSERT INTO job_applications (id, job_id, candidate_id, status, resume_id) VALUES (?, ?, ?, 'pending', ?)",
             application_id, job_id, user_id, resume_id
         )
@@ -1637,7 +1637,7 @@ def apply_to_job(job_id):
         # Inserir notificação se tiver empresa
         if company_id:
             message = f"{candidate_name} se candidatou a vaga de {job_title}."
-            db.execute(
+            db_write(
                 "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (?, 'application', ?, ?)",
                 company_id, message, resume_id
             )
