@@ -12,6 +12,7 @@ import hmac, hashlib, os, re, secrets
 from datetime import datetime, timedelta, timezone
 from flask import request, jsonify
 import requests
+from urllib.parse import urlparse
 
 
 app = Flask(__name__)
@@ -32,6 +33,45 @@ COOKIE_NAME = (os.getenv("JWT_COOKIE_NAME") or "__Host-token").strip()
 COOKIE_SECURE = env_bool("JWT_COOKIE_SECURE", True)
 COOKIE_SAMESITE = (os.getenv("JWT_COOKIE_SAMESITE") or "None").strip()
 COOKIE_DOMAIN = (os.getenv("JWT_COOKIE_DOMAIN") or "").strip() or None
+APP_ENV = (os.getenv("APP_ENV") or os.getenv("FLASK_ENV") or "development").strip().lower()
+FRONTEND_PUBLIC_API_URL = (os.getenv("NEXT_PUBLIC_API_URL") or "").strip()
+FRONTEND_SITE_URL = (os.getenv("FRONTEND_SITE_URL") or os.getenv("SITE_URL") or "").strip()
+
+
+def origin_host(url: str):
+    if not url:
+        return None
+    if url.startswith("/"):
+        return "same-site"
+    parsed = urlparse(url)
+    return parsed.netloc or None
+
+
+def validate_cookie_architecture():
+    is_prod = APP_ENV == "production"
+    api_host = origin_host(FRONTEND_PUBLIC_API_URL)
+    site_host = origin_host(FRONTEND_SITE_URL)
+
+    if is_prod and COOKIE_SECURE is not True:
+        raise RuntimeError("Produção requer JWT_COOKIE_SECURE=1 para cookie HttpOnly com HTTPS.")
+
+    if is_prod and COOKIE_SAMESITE.lower() != "none":
+        raise RuntimeError("Produção requer JWT_COOKIE_SAMESITE=None para fluxo cross-site.")
+
+    if COOKIE_NAME.startswith("__Host-"):
+        if COOKIE_DOMAIN is not None:
+            raise RuntimeError("Cookie com prefixo __Host- não pode definir Domain.")
+
+    if is_prod and api_host and site_host and api_host != "same-site" and api_host != site_host:
+        app.logger.warning(
+            "NEXT_PUBLIC_API_URL (%s) e FRONTEND_SITE_URL (%s) estão em domínios diferentes. "
+            "Priorize reverse proxy/subpath (ex: NEXT_PUBLIC_API_URL=/api) para first-party cookie.",
+            FRONTEND_PUBLIC_API_URL,
+            FRONTEND_SITE_URL,
+        )
+
+
+validate_cookie_architecture()
 
 # Se tentar usar __Host- sem Secure, o browser pode ignorar.
 # Então: em dev, use cookie_name=token e secure=0
@@ -161,6 +201,32 @@ def clear_legacy_cookies(resp):
     for d in [".nossopoint-backend-flask-server.com", "app.nossopoint-backend-flask-server.com"]:
         resp.set_cookie("token", "", max_age=0, path="/", domain=d, secure=True, samesite="None")
     return resp
+
+
+@app.route("/api/auth/cookie-architecture", methods=["GET"])
+def cookie_architecture_check():
+    api_host = origin_host(FRONTEND_PUBLIC_API_URL)
+    site_host = origin_host(FRONTEND_SITE_URL)
+    same_site_api = api_host in (None, "same-site") or api_host == site_host
+
+    return jsonify(
+        {
+            "success": True,
+            "environment": APP_ENV,
+            "next_public_api_url": FRONTEND_PUBLIC_API_URL or None,
+            "frontend_site_url": FRONTEND_SITE_URL or None,
+            "api_host": api_host,
+            "site_host": site_host,
+            "is_first_party_cookie_architecture": same_site_api,
+            "jwt_cookie_name": COOKIE_NAME,
+            "jwt_cookie_secure": COOKIE_SECURE,
+            "jwt_cookie_samesite": COOKIE_SAMESITE,
+            "jwt_cookie_domain": COOKIE_DOMAIN,
+            "https_required": True,
+            "proxy_set_cookie_rewrite_check": "validar no ingress/cdn: Set-Cookie não deve ser reescrito",
+            "safari_fallback": "considerar OAuth/PKCE + token de sessão first-party, sem depender de third-party cookie",
+        }
+    )
 
 def db_write(query, *args):
     """
@@ -1853,6 +1919,4 @@ def get_dados():
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-
 
