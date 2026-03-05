@@ -20,7 +20,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
     if (!isOpen) return null
 
     const waitForServerSession = async (apiUrl: string) => {
-        const maxAttempts = 4
+        const maxAttempts = 8
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             const authRes = await fetch(`${apiUrl}/api/auth/me`, {
@@ -29,11 +29,16 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 cache: "no-store",
             })
 
+            console.log("waitForServerSession", {
+                attempt,
+                status: authRes.status,
+            })
+
             if (authRes.ok) return true
 
             // Safari can occasionally lag in attaching a just-set cookie.
             if (attempt < maxAttempts) {
-                await new Promise((resolve) => setTimeout(resolve, 180 * attempt))
+                await new Promise((resolve) => setTimeout(resolve, 120 * attempt))
             }
         }
 
@@ -207,4 +212,3 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         </div>
     )
 }
-
