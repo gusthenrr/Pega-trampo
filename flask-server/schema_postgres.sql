@@ -22,7 +22,13 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email_verification_code_hash TEXT,
   email_verification_expires_at TEXT,
   email_verification_sent_at TEXT,
-  email_verification_attempts INTEGER DEFAULT 0
+  email_verification_attempts INTEGER DEFAULT 0,
+
+  password_reset_token_hash TEXT,
+  password_reset_expires_at TIMESTAMPTZ,
+  password_reset_requested_at TIMESTAMPTZ,
+  password_reset_used_at TIMESTAMPTZ,
+  password_changed_at TIMESTAMPTZ
 );
 
 -- 3) jobs

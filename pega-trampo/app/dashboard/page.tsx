@@ -2138,12 +2138,21 @@ rounded-full">
                                 )}
                             </div>
                             <h2 className="text-xl font-bold text-gray-900 mb-1">{userProfile.name || userProfile.username || 'Nome do Usuário'}</h2>
-                            <p className="text-gray-800 font-medium">
-                                {userProfile.userType === 'company'
-                                    ? userProfile.companyInfo?.companyName || 'Empresa'
-                                    : userProfile.workerCategory || userProfile.profession || 'Profissão'
-                                }
-                            </p>
+                            <div className="mt-2 text-center flex flex-col items-center gap-2">
+                                {userProfile.userType === 'company' ? (
+                                    <span className="inline-block bg-black/10 text-gray-800 font-bold px-4 py-1.5 rounded-full text-sm shadow-sm backdrop-blur-sm">
+                                        {userProfile.companyInfo?.companyName || 'Empresa'}
+                                    </span>
+                                ) : (
+                                    (logic.getWorkerCategoryList({ workerCategory: userProfile.workerCategory || userProfile.profession }).length > 0
+                                        ? logic.getWorkerCategoryList({ workerCategory: userProfile.workerCategory || userProfile.profession })
+                                        : ['Profissão']).map((cat, idx) => (
+                                            <span key={idx} className="inline-block bg-black/10 text-gray-800 font-bold px-4 py-1.5 rounded-full text-sm shadow-sm backdrop-blur-sm">
+                                                {cat}
+                                            </span>
+                                        ))
+                                )}
+                            </div>
                             <p className="text-gray-700 text-sm mt-1">
                                 {userProfile.city && userProfile.state ? `${userProfile.city} - ${userProfile.state}` : 'Localização não definida'}
                             </p>
@@ -2202,10 +2211,12 @@ rounded-full">
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Ramo de Atividade</p>
-                                            <div className="flex items-center space-x-2 text-gray-700 bg-blue-50 p-2 rounded-lg">
-                                                <Briefcase className="h-4 w-4 text-blue-500" />
-                                                <span className="font-medium capitalization">
+                                            <p className="text-xs text-gray-500 uppercase font-bold mb-2">Ramo de Atividade</p>
+                                            <div className="bg-gradient-to-r from-teal-500 to-emerald-600 p-4 rounded-xl shadow-sm text-white flex items-center space-x-3 transform transition-transform hover:-translate-y-0.5 hover:shadow-md">
+                                                <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                                                    <Briefcase className="h-6 w-6 text-white" />
+                                                </div>
+                                                <span className="font-bold text-lg capitalize tracking-wide drop-shadow-sm">
                                                     {userProfile.companyInfo?.businessType || 'Não informado'}
                                                 </span>
                                             </div>
@@ -2232,12 +2243,20 @@ rounded-full">
                             ) : (
                                 <>
                                     <div>
-                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Profissão / Categoria</p>
-                                        <div className="flex items-center space-x-2 text-gray-700 bg-blue-50 p-3 rounded-lg">
-                                            <User className="h-5 w-5 text-blue-500" />
-                                            <span className="font-medium text-lg capitalize">
-                                                {userResume.professionalInfo?.category || userProfile.workerCategory || userProfile.profession || 'Não informado'}
-                                            </span>
+                                        <p className="text-xs text-gray-500 uppercase font-bold mb-2">Profissão / Categoria</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            {(logic.getWorkerCategoryList({ workerCategory: userResume.professionalInfo?.category || userProfile.workerCategory || userProfile.profession }).length > 0
+                                                ? logic.getWorkerCategoryList({ workerCategory: userResume.professionalInfo?.category || userProfile.workerCategory || userProfile.profession })
+                                                : ['Não informado']).map((cat, idx) => (
+                                                    <div key={idx} className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 rounded-xl shadow-sm text-white flex items-center space-x-3 transform transition-transform hover:-translate-y-0.5 hover:shadow-md">
+                                                        <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
+                                                            <User className="h-6 w-6 text-white" />
+                                                        </div>
+                                                        <span className="font-bold text-lg capitalize tracking-wide drop-shadow-sm">
+                                                            {cat}
+                                                        </span>
+                                                    </div>
+                                                ))}
                                         </div>
                                     </div>
 
@@ -2763,9 +2782,6 @@ justify-center">
                                                 </span>
                                             </div>
                                         </div>
-                                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                                            {app.status}
-                                        </span>
                                     </div>
 
                                     <div className="mt-2 text-xs text-gray-500">

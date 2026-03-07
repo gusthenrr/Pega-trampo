@@ -14,13 +14,23 @@ export interface Coordinates {
 }
 
 export interface JobCompanyInfo {
-    name: string
+    name?: string
+    companyName?: string
     logo?: string
-    verified: boolean
-    description: string
-    totalJobs: number
+    imagem_profile?: string
+    profile_image_url?: string
+    profilePhoto?: string
+    verified?: boolean
+    description?: string
+    totalJobs?: number
+    publishedJobs?: number
     rating?: number
     reviews?: number
+    businessType?: string
+    email?: string
+    phone?: string
+    whatsapp?: string
+    cnpj?: string
 }
 
 export interface Job {
@@ -81,6 +91,8 @@ export interface UserProfileCompanyInfo {
     rating?: number
     reviews?: number
     email?: string
+    phone?: string
+    imagem_profile?: string
 }
 
 export interface UserProfileEvaluationData {

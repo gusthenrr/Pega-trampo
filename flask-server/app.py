@@ -11,13 +11,14 @@ import re
 import hmac, hashlib, os, re, secrets
 from datetime import datetime, timedelta, timezone
 from flask import request, jsonify
+from itsdangerous import URLSafeTimedSerializer
 import requests
 from urllib.parse import urlparse
 
 
 app = Flask(__name__)
 #Config do jwt
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
 load_dotenv()
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -136,13 +137,34 @@ def check_jwt_globally():
         if not is_public:
             try:
                 verify_jwt_in_request()
+
+                # --- Invalidar sessões após troca de senha ---
+                jwt_user_id = current_user_id()
+                if jwt_user_id:
+                    pwd_rows = db.execute(
+                        "SELECT password_changed_at FROM usuarios WHERE id = ?",
+                        jwt_user_id,
+                    )
+                    if pwd_rows:
+                        pwd_changed = pwd_rows[0].get("password_changed_at")
+                        if pwd_changed:
+                            jwt_data = get_jwt()
+                            iat = jwt_data.get("iat")  # epoch int
+                            if iat:
+                                changed_dt = datetime.fromisoformat(str(pwd_changed)).replace(tzinfo=None)
+                                iat_dt = datetime.utcfromtimestamp(iat)
+                                if changed_dt > iat_dt:
+                                    return jsonify({"success": False, "error": "Senha alterada. Faça login novamente.", "session_mismatch": True}), 401
+
                 client_user_id = request.headers.get("X-Client-User-Id")
                 if client_user_id:
-                    jwt_user_id = current_user_id()
+                    if not jwt_user_id:
+                        jwt_user_id = current_user_id()
                     if str(jwt_user_id) != str(client_user_id):
                         return jsonify({"success": False, "error": "Sessão cruzada divergente. Faça login novamente.", "session_mismatch": True}), 401
             except Exception as e:
-                return jsonify({"success": False, "error": "Token expirado ou inválido", "msg": str(e)}), 401
+                app.logger.warning(f"Erro na verificação do JWT: {str(e)}")
+                return jsonify({"success": False, "error": "Token expirado ou inválido"}), 401
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
@@ -661,7 +683,12 @@ def lookup_cnpj(cnpj):
     if len(cnpj) != 14:
         return jsonify({"success": False, "error": "CNPJ inválido"}), 400
 
-    r = requests.get(f"https://brasilapi.com.br/api/cnpj/v1/{cnpj}", timeout=10)
+    try:
+        r = requests.get(f"https://brasilapi.com.br/api/cnpj/v1/{cnpj}", timeout=10)
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Erro de rede ao consultar BrasilAPI ({cnpj}): {e}")
+        return jsonify({"success": False, "error": "Serviço de validação de CNPJ indisponível. Tente novamente mais tarde."}), 503
+
     if r.status_code != 200:
         return jsonify({"success": False, "error": "Não foi possível consultar o CNPJ"}), 400
 
@@ -700,12 +727,32 @@ def gen_code():
     # 6 dígitos com zero à esquerda, seguro (secrets)
     return f"{secrets.randbelow(1_000_000):06d}"
 
+def get_verification_serializer():
+    secret = app.config.get("JWT_SECRET_KEY") or "dev-secret"
+    return URLSafeTimedSerializer(secret)
+
+def sign_user_id(user_id):
+    return get_verification_serializer().dumps(user_id)
+
+def decode_user_id(token):
+    try:
+        return get_verification_serializer().loads(token, max_age=86400) # 24 horas
+    except:
+        return None
+
 @app.post("/api/auth/request-email-verification")
+@jwt_required(optional=True)
 def request_email_verification():
     data = request.json or {}
-    user_id = data.get("user_id")
+    user_id_raw = data.get("user_id")
+    
+    # 1. Se logado tira do JWT, senao valida token
+    user_id = current_user_id()
+    if not user_id and user_id_raw:
+        user_id = decode_user_id(user_id_raw)
+        
     if not user_id:
-        return jsonify({"success": False, "error": "user_id obrigatório"}), 400
+        return jsonify({"success": False, "error": "Não autorizado ou token expirado"}), 401
 
     try:
         row = db.execute("SELECT id, email, email_verified, email_verification_sent_at FROM usuarios WHERE id = ?", user_id)
@@ -754,13 +801,18 @@ def request_email_verification():
 
 import re, hmac
 @app.post("/api/auth/verify-email")
+@jwt_required(optional=True)
 def verify_email():
     data = request.json or {}
-    user_id = data.get("user_id")
+    user_id_raw = data.get("user_id")
     code = re.sub(r"\D", "", (data.get("code") or ""))
-
+    
+    user_id = current_user_id()
+    if not user_id and user_id_raw:
+        user_id = decode_user_id(user_id_raw)
+        
     if not user_id or len(code) != 6:
-        return jsonify({"success": False, "error": "Dados inválidos"}), 400
+        return jsonify({"success": False, "error": "Sessão inválida ou dados incorretos"}), 400
 
     row = db.execute("""
         SELECT email_verified, email_verification_code_hash, email_verification_expires_at,
@@ -850,6 +902,180 @@ def send_verification_email_brevo(to_email: str, code: str, ttl_min: int):
     if r.status_code >= 300:
         raise RuntimeError(f"Brevo falhou ({r.status_code}): {r.text}")
 
+
+# ──────────────────────────────────────────────
+# PASSWORD RESET (Esqueci minha senha)
+# ──────────────────────────────────────────────
+
+PASSWORD_RESET_TTL_MIN = 30
+PASSWORD_RESET_COOLDOWN_SEC = 60
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+@app.post("/api/auth/forgot-password")
+def forgot_password():
+    """
+    Sempre retorna 200 — nunca revela se o e-mail existe ou se há cooldown.
+    """
+    GENERIC_OK = jsonify({"success": True})
+
+    data = request.json or {}
+    email = norm_email(data.get("email"))
+    if not email:
+        return GENERIC_OK  # Sem e-mail → 200 silencioso
+
+    try:
+        rows = db.execute(
+            "SELECT id, email, password_reset_requested_at FROM usuarios WHERE email = ?",
+            email,
+        )
+        if not rows:
+            return GENERIC_OK  # E-mail não cadastrado → 200 silencioso
+
+        user = rows[0]
+        user_id = user["id"]
+
+        # Cooldown silencioso
+        requested_at = user.get("password_reset_requested_at")
+        if requested_at:
+            last = datetime.fromisoformat(str(requested_at))
+            now_utc = datetime.now(timezone.utc)
+            if last.tzinfo is None:
+                last = last.replace(tzinfo=timezone.utc)
+            if (now_utc - last).total_seconds() < PASSWORD_RESET_COOLDOWN_SEC:
+                return GENERIC_OK  # Dentro do cooldown → 200 silencioso
+
+        # Gerar token
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = _hash_reset_token(raw_token)
+        now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+        expires = (now_naive + timedelta(minutes=PASSWORD_RESET_TTL_MIN)).isoformat(timespec="seconds")
+
+        db_write("""
+            UPDATE usuarios
+               SET password_reset_token_hash = ?,
+                   password_reset_expires_at = ?,
+                   password_reset_requested_at = ?,
+                   password_reset_used_at = NULL
+             WHERE id = ?
+        """, token_hash, expires, now_naive.isoformat(timespec="seconds"), user_id)
+
+        # Montar link
+        base_url = FRONTEND_SITE_URL or ALLOWED_ORIGIN or "http://localhost:3000"
+        reset_link = f"{base_url}/redefinir-senha?token={raw_token}"
+
+        try:
+            send_password_reset_email_brevo(user["email"], reset_link)
+        except Exception:
+            app.logger.exception("Falha ao enviar e-mail de reset")
+            # Continua retornando 200
+
+    except Exception:
+        app.logger.exception("Erro em forgot_password")
+
+    return GENERIC_OK
+
+
+@app.post("/api/auth/reset-password")
+def reset_password():
+    data = request.json or {}
+    raw_token = (data.get("token") or "").strip()
+    new_password = data.get("password") or ""
+
+    if not raw_token:
+        return api_error("Token é obrigatório", 400)
+
+    if len(new_password) < 8:
+        return api_error("A senha deve ter no mínimo 8 caracteres", 400)
+
+    token_hash = _hash_reset_token(raw_token)
+
+    rows = db.execute("""
+        SELECT id, password_reset_expires_at, password_reset_used_at
+          FROM usuarios
+         WHERE password_reset_token_hash = ?
+    """, token_hash)
+
+    if not rows:
+        return api_error("Token inválido ou expirado", 400)
+
+    user = rows[0]
+
+    # Já usado?
+    if user.get("password_reset_used_at"):
+        return api_error("Token inválido ou expirado", 400)
+
+    # Expirado?
+    expires_at = user.get("password_reset_expires_at")
+    if not expires_at:
+        return api_error("Token inválido ou expirado", 400)
+
+    expires_dt = datetime.fromisoformat(str(expires_at)).replace(tzinfo=None)
+    now = datetime.utcnow()
+    if expires_dt < now:
+        return api_error("Token inválido ou expirado", 400)
+
+    # Trocar senha + invalidar sessões
+    new_hash = generate_password_hash(new_password)
+    now_iso = now.isoformat(timespec="seconds")
+
+    db_write("""
+        UPDATE usuarios
+           SET senha_hash = ?,
+               password_changed_at = ?,
+               password_reset_used_at = ?,
+               password_reset_token_hash = NULL,
+               password_reset_expires_at = NULL
+         WHERE id = ?
+    """, new_hash, now_iso, now_iso, user["id"])
+
+    return api_ok(message="Senha redefinida com sucesso")
+
+
+def send_password_reset_email_brevo(to_email: str, reset_link: str):
+    if not BREVO_API_KEY:
+        print(f"\n=========================================\n"
+              f"[MOCK EMAIL] Para: {to_email}\n"
+              f"[MOCK EMAIL] Link de redefinição: {reset_link}\n"
+              f"=========================================\n")
+        return
+
+    payload = {
+        "sender": {"name": EMAIL_FROM_NAME, "email": EMAIL_FROM},
+        "to": [{"email": to_email}],
+        "subject": "Redefinição de senha — Pega Trampo",
+        "htmlContent": f"""
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">
+            <h2 style="color:#333">Redefinição de senha</h2>
+            <p>Você solicitou a redefinição da sua senha no Pega Trampo.</p>
+            <p>Clique no botão abaixo para criar uma nova senha:</p>
+            <div style="text-align:center;margin:24px 0">
+              <a href="{reset_link}"
+                 style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;text-decoration:none;border-radius:12px;font-weight:bold;font-size:16px">
+                Redefinir senha
+              </a>
+            </div>
+            <p style="color:#666;font-size:13px">Este link expira em {PASSWORD_RESET_TTL_MIN} minutos.</p>
+            <p style="color:#666;font-size:13px">Se você não solicitou, ignore este e-mail.</p>
+          </div>
+        """,
+    }
+
+    if BREVO_SANDBOX:
+        payload["headers"] = {"X-Sib-Sandbox": "drop"}
+
+    r = requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        headers={"api-key": BREVO_API_KEY, "Content-Type": "application/json"},
+        json=payload,
+        timeout=15,
+    )
+    if r.status_code >= 300:
+        raise RuntimeError(f"Brevo falhou ({r.status_code}): {r.text}")
+
 @app.route("/api/resumes", methods=["POST"])
 def save_resume():
     data = request.json or {}
@@ -869,7 +1095,7 @@ def save_resume():
             if age < 18:
                 return api_error("Você precisa ter pelo menos 18 anos de idade.", 400)
         except ValueError:
-            pass
+            return api_error("Formato de data de nascimento inválido. Use AAAA-MM-DD.", 400)
 
     # Serialize JSON fields
     personal_info = json.dumps(data.get("personalInfo") or {}, ensure_ascii=False)
@@ -950,7 +1176,50 @@ def save_resume():
         except Exception as sync_err:
             print(f"Aviso: falha ao sincronizar phone no perfil: {sync_err}")
 
-        return api_ok(resume_id=resume_id)
+        saved_resume_rows = db.execute("""
+            SELECT r.*, up.phone as up_phone
+            FROM resumes r
+            LEFT JOIN user_profiles up ON r.user_id = up.user_id
+            WHERE r.id = ?
+            LIMIT 1
+        """, resume_id)
+
+        saved_resume = None
+        if saved_resume_rows:
+            item = dict(saved_resume_rows[0])
+            up_phone = item.pop("up_phone", None)
+            real_phone = ""
+            if up_phone:
+                try:
+                    real_phone = fernet.decrypt(up_phone.encode()).decode()
+                except:
+                    real_phone = up_phone
+
+            for field, target in [
+                ("personal_info_json", "personalInfo"),
+                ("professional_info_json", "professionalInfo"),
+                ("work_experience_json", "workExperience"),
+                ("education_json", "education"),
+                ("skills_json", "skills"),
+                ("availability_json", "availability")
+            ]:
+                val = item.pop(field, "[]")
+                try:
+                    item[target] = json.loads(val) if val else None
+                except:
+                    item[target] = None
+
+            item["userId"] = item.pop("user_id", None)
+            item["createdAt"] = item.pop("created_at", None)
+            item["updatedAt"] = item.pop("updated_at", None)
+            item["isVisible"] = bool(item.pop("is_visible", 0))
+
+            if not item.get("personalInfo"):
+                item["personalInfo"] = {}
+            item["personalInfo"]["phone"] = real_phone
+            saved_resume = item
+
+        return api_ok(resume_id=resume_id, resume=saved_resume)
 
     except Exception as e:
         print(f"Erro ao salvar currículo: {e}")
@@ -1002,15 +1271,26 @@ def get_resumes():
     # Verifica o tipo do usuário para decidir o que retornar
     user_rows = db.execute("SELECT type FROM usuarios WHERE id = ?", user_id)
     user_type = user_rows[0]["type"] if user_rows else "professional"
+    requested_ids = [part.strip() for part in (request.args.get("user_ids") or "").split(",") if part.strip()]
     
     if user_type in ("empresa", "company"):
         # Empresa vê TODOS os currículos visíveis dos profissionais
-        rows = db.execute("""
-            SELECT r.*, up.phone as up_phone 
-            FROM resumes r 
-            LEFT JOIN user_profiles up ON r.user_id = up.user_id
-            WHERE r.is_visible = true
-        """)
+        if requested_ids:
+            placeholders = ", ".join(["?"] * len(requested_ids))
+            rows = db.execute(f"""
+                SELECT r.*, up.phone as up_phone
+                FROM resumes r
+                LEFT JOIN user_profiles up ON r.user_id = up.user_id
+                WHERE r.is_visible = true
+                  AND CAST(r.user_id AS TEXT) IN ({placeholders})
+            """, *requested_ids)
+        else:
+            rows = db.execute("""
+                SELECT r.*, up.phone as up_phone 
+                FROM resumes r 
+                LEFT JOIN user_profiles up ON r.user_id = up.user_id
+                WHERE r.is_visible = true
+            """)
     else:
         # Profissional vê apenas o próprio currículo
         rows = db.execute("""
@@ -1103,12 +1383,22 @@ def save_user_profile():
                 return api_error("email é obrigatório", 400)
 
             # checagem simples de duplicidade (ideal: UNIQUE no banco)
-            exists = db.execute(
-                "SELECT id FROM usuarios WHERE username = ? OR email = ? LIMIT 1",
+            existing_users = db.execute(
+                "SELECT id, email_verified FROM usuarios WHERE username = ? OR email = ?",
                 username, user_email
             )
-            if exists:
-                return api_error("username ou email já cadastrado", 409)
+            if existing_users:
+                # Se há algum já verificado, bloqueia
+                verified = [u for u in existing_users if u.get("email_verified")]
+                if verified:
+                    return api_error("username ou email já cadastrado", 409)
+                else:
+                    # Todos são não-verificados (abandonados). Limpa para recadastro:
+                    for u in existing_users:
+                        uid = u["id"]
+                        db_write("DELETE FROM user_profiles WHERE user_id = ?", uid)
+                        db_write("DELETE FROM resumes WHERE user_id = ?", uid)
+                        db_write("DELETE FROM usuarios WHERE id = ?", uid)
 
             senha_hash = generate_password_hash(password)
             db.execute("BEGIN")
@@ -1137,9 +1427,9 @@ def save_user_profile():
                 today_date = datetime.now()
                 age = today_date.year - bdate.year - ((today_date.month, today_date.day) < (bdate.month, bdate.day))
                 if age < 18:
-                    raise ApiTxError("Voce precisa ter pelo menos 18 anos de idade.", 400)
+                    raise ApiTxError("Você precisa ter pelo menos 18 anos de idade.", 400)
             except ValueError:
-                pass
+                raise ApiTxError("Formato de data de nascimento inválido. Use AAAA-MM-DD.", 400)
 
         # ====== PERFIL (seu código, padronizado) ======
         payload = {
@@ -1238,12 +1528,26 @@ def save_user_profile():
 
         db.execute("COMMIT")
         tx_started = False
-        return api_ok(user_id=user_id)
+        return api_ok(user_id=sign_user_id(user_id))
 
 
-    except Exception:
+    except ApiTxError as e:
+        if tx_started:
+            try:
+                db.execute("ROLLBACK")
+            except Exception:
+                pass
+        return api_error(e.message, e.status)
+
+    except Exception as e:
+        if tx_started:
+            try:
+                db.execute("ROLLBACK")
+            except Exception:
+                pass
         # loga no servidor, mas não vaza detalhes pro cliente
         # (se quiser, aqui você faz print/ logger.exception)
+        print(f"Erro interno no save_user_profile: {e}")
         return api_error("Erro interno ao salvar cadastro", 500)
 
 
@@ -1357,12 +1661,20 @@ def register_user():
             return api_error("Selecione no máximo 3 categorias", 400)
 
         # ====== DUPLICIDADE ======
-        exists = db.execute(
-            "SELECT id FROM usuarios WHERE username = ? OR email = ? LIMIT 1",
+        existing_users = db.execute(
+            "SELECT id, email_verified FROM usuarios WHERE username = ? OR email = ?",
             username, user_email
         )
-        if exists:
-            return api_error("username ou email já cadastrado", 409)
+        if existing_users:
+            verified = [u for u in existing_users if u.get("email_verified")]
+            if verified:
+                return api_error("username ou email já cadastrado", 409)
+            else:
+                for u in existing_users:
+                    uid = u["id"]
+                    db_write("DELETE FROM user_profiles WHERE user_id = ?", uid)
+                    db_write("DELETE FROM resumes WHERE user_id = ?", uid)
+                    db_write("DELETE FROM usuarios WHERE id = ?", uid)
 
         # ====== CRIA USUÁRIO ======
         senha_hash = generate_password_hash(password)
@@ -1480,7 +1792,12 @@ def register_user():
 
         db.execute("COMMIT")
         tx_started = False
-        return api_ok(user_id=user_id, message="Cadastro realizado com sucesso!")
+        # Faz auto-login na API após registro para suportar current_user_id direto
+        jwt_token = gerar_token(user_id)
+        resp = jsonify({"success": True, "token": sign_user_id(user_id), "user_id": sign_user_id(user_id), "message": "Cadastro realizado com sucesso!"})
+        if JWT_ENABLED:
+            set_auth_cookie(resp, jwt_token)
+        return resp, 200
 
     except Exception as e:
         if tx_started:
@@ -1585,7 +1902,31 @@ def login():
 def apply_to_job(job_id):
     data = request.json or {}
     user_id = current_user_id()
+    
+    if not user_id:
+        return api_error("Não autorizado", 401)
+        
+    # Validar se o usuário é empresa. Empresa não pode se candidatar.
+    user_data = db.execute("SELECT type FROM usuarios WHERE id = ?", user_id)
+    if not user_data or user_data[0]["type"] in ["empresa", "company"]:
+        return api_error("Apenas contas de profissional podem se candidatar às vagas", 403)
+        
     print(f"user_id: {user_id}")
+
+    # Buscar dados para a notificação (Empresa e vaga) E validar se vaga existe primeiro
+    company_id = None
+    job_title = "vaga"
+    job_info = db.execute("SELECT posted_by_user_id, title FROM jobs WHERE id = ?", job_id)
+    
+    if not job_info:
+        return api_error("Vaga não encontrada", 404)
+        
+    company_id = job_info[0]["posted_by_user_id"]
+    job_title = job_info[0]["title"]
+    
+    # Validar se não está se candidatando à própria vaga
+    if company_id == user_id:
+        return api_error("Você não pode se candidatar à própria vaga", 409)
 
     # --- 1. BUSCA DE DADOS (LEITURA) ---
     # Verifica se já existe candidatura
@@ -1601,14 +1942,6 @@ def apply_to_job(job_id):
     resume_rows = db.execute("SELECT id FROM resumes WHERE user_id = ? LIMIT 1", user_id)
     if resume_rows:
         resume_id = resume_rows[0]["id"]
-
-    # Buscar dados para a notificação (Empresa e vaga)
-    company_id = None
-    job_title = "vaga"
-    job_info = db.execute("SELECT posted_by_user_id, title FROM jobs WHERE id = ?", job_id)
-    if job_info:
-        company_id = job_info[0]["posted_by_user_id"]
-        job_title = job_info[0]["title"]
 
     # Buscar nome do candidato
     candidate_name = "Um profissional"

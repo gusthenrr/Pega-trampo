@@ -9,6 +9,7 @@ import {
     CompanyJobPost,
     Resume,
     CompanyJobApplications,
+    JobCompanyInfo,
 } from '../../app/types/pegatrampo'
 
 // =====================
@@ -18,7 +19,48 @@ export type SetState<T> = Dispatch<SetStateAction<T>>
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
 
-export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
+type FetchWithAuthConfig = {
+    handle401?: 'redirect' | 'passthrough'
+}
+
+let latestCnpjRequestToken = 0
+
+const buildJobCompanyInfo = (userProfile: UserProfile): JobCompanyInfo | undefined => {
+    const companyInfo = userProfile.companyInfo
+    if (!companyInfo) return undefined
+
+    return {
+        name: companyInfo.companyName || userProfile.name || undefined,
+        companyName: companyInfo.companyName || undefined,
+        description: companyInfo.description || undefined,
+        totalJobs: companyInfo.publishedJobs,
+        publishedJobs: companyInfo.publishedJobs,
+        rating: companyInfo.rating,
+        reviews: companyInfo.reviews,
+        businessType: companyInfo.businessType || undefined,
+        email: companyInfo.email || userProfile.email || undefined,
+        phone: companyInfo.phone || userProfile.phone || undefined,
+        cnpj: companyInfo.cnpj || undefined,
+        imagem_profile: companyInfo.imagem_profile || userProfile.imagem_profile || undefined,
+    }
+}
+
+const fetchCanonicalResume = async (resumeId: string): Promise<Resume | null> => {
+    const resumesRes = await fetchWithAuth(`${API_BASE}/api/resumes`)
+    if (!resumesRes.ok) return null
+
+    const resumesData = await resumesRes.json()
+    if (!Array.isArray(resumesData)) return null
+
+    return resumesData.find((resume: Resume) => String(resume.id) === String(resumeId)) || null
+}
+
+export const fetchWithAuth = async (
+    url: string,
+    options: RequestInit = {},
+    config: FetchWithAuthConfig = {},
+) => {
+    const { handle401 = 'passthrough' } = config
     let expectedUserId: string | null = null
     if (typeof window !== 'undefined') {
         expectedUserId = sessionStorage.getItem('known_user_id')
@@ -37,7 +79,7 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     }
     const res = await fetch(url, newOptions)
 
-    if (res.status === 401) {
+    if (res.status === 401 && handle401 === 'redirect') {
         // Mismatch na sessão cruzada: Forçar o relog
         if (typeof window !== 'undefined') {
             sessionStorage.clear()
@@ -261,18 +303,12 @@ export const formatRelativeDate = (dateString: string): string => {
     const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
     const diffDays = Math.round((todayStart.getTime() - dateStart.getTime()) / (1000 * 60 * 60 * 24))
 
-    if (diffDays <= 0) return 'Hoje'
+    if (diffDays < 0) return 'Em breve'
+    if (diffDays === 0) return 'Hoje'
     if (diffDays === 1) return 'Ontem'
     if (diffDays < 7) return `${diffDays}d atrás`
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem atrás`
     return `${Math.floor(diffDays / 30)} mês(es) atrás`
-}
-
-// =====================
-// Storage helpers
-// =====================
-export const getStoredUser = (): any | null => {
-    return null
 }
 
 // =====================
@@ -303,10 +339,10 @@ export const bootstrapInitialData = async (params: {
     let currentUserType: 'professional' | 'company' = 'professional'
 
     try {
-        let dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
+        let dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`, {}, { handle401: 'redirect' })
         if (dadosRes.status === 401) {
             await new Promise((resolve) => setTimeout(resolve, 250))
-            dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
+            dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`, {}, { handle401: 'redirect' })
         }
         if (!dadosRes.ok) {
             window.location.href = '/'
@@ -419,7 +455,8 @@ export const bootstrapInitialData = async (params: {
                 if (companyCandidateIds.size === 0) {
                     setResumes([])
                 } else {
-                    const resumesRes = await fetchWithAuth(`${API_BASE}/api/resumes`)
+                    const query = encodeURIComponent(Array.from(companyCandidateIds).join(','))
+                    const resumesRes = await fetchWithAuth(`${API_BASE}/api/resumes?user_ids=${query}`)
                     if (resumesRes.ok) {
                         const resumesData = await resumesRes.json()
                         const filteredResumes = (resumesData || []).filter((resume: Resume) =>
@@ -467,7 +504,7 @@ export const bootstrapInitialData = async (params: {
 // -------------------------
 // helpers (add)
 // -------------------------
-const getWorkerCategoryList = (userProfile: any): string[] => {
+export const getWorkerCategoryList = (userProfile: any): string[] => {
     // aceita vários formatos sem quebrar:
     // - array direto: ["Padeiro", "Cozinheiro"]
     // - string JSON: '["Padeiro","Cozinheiro"]'
@@ -922,6 +959,7 @@ export const handleCNPJChange = async (params: {
     const { value, setUserProfile, setCnpjLoading, setCnpjError } = params
 
     const formattedCNPJ = formatCNPJ(value)
+    const requestToken = ++latestCnpjRequestToken
 
     setUserProfile(prev => ({
         ...prev,
@@ -939,6 +977,7 @@ export const handleCNPJChange = async (params: {
 
         try {
             const cnpjData = await fetchCNPJData(formattedCNPJ)
+            if (requestToken !== latestCnpjRequestToken) return
 
             setUserProfile(prev => ({
                 ...prev,
@@ -954,9 +993,13 @@ export const handleCNPJChange = async (params: {
 
             setCnpjLoading(false)
         } catch (error) {
-            setCnpjError('Erro ao buscar dados do CNPJ. Tente novamente.')
-            setCnpjLoading(false)
+            if (requestToken === latestCnpjRequestToken) {
+                setCnpjError('Erro ao buscar dados do CNPJ. Tente novamente.')
+                setCnpjLoading(false)
+            }
         }
+    } else if (requestToken === latestCnpjRequestToken) {
+        setCnpjLoading(false)
     }
 }
 
@@ -988,12 +1031,18 @@ export const handleApplyToJob = async (params: {
             return
         }
 
-        setJobs(prev => prev.filter(j => j.id !== job.id))
-
         const appsRes = await fetchWithAuth(`${API_BASE}/api/my/applications`)
         if (appsRes.ok) {
             const appsData = await appsRes.json()
             if (appsData.success) setMyApplications(appsData.applications || [])
+        }
+
+        const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
+        if (jobsRes.ok) {
+            const jobsData = await jobsRes.json()
+            setJobs(jobsData)
+        } else {
+            setJobs(prev => prev.filter(j => j.id !== job.id))
         }
 
         setActiveTab('applications')
@@ -1036,9 +1085,10 @@ export const handlePublishJob = async (params: {
     }
 
     // Payload final
+    const companyInfo = buildJobCompanyInfo(userProfile)
     const jobPayload = {
         ...newJobPost,
-        companyInfo: userProfile.companyInfo,
+        companyInfo,
         coordinates: finalCoordinates
     }
 
@@ -1081,7 +1131,7 @@ export const handlePublishJob = async (params: {
             views: 0,
             companyOnly: false,
             includesFood: !!newJobPost.includesFood,
-            companyInfo: (userProfile.companyInfo as any) || undefined,
+            companyInfo,
             coordinates: finalCoordinates,
             startDate: newJobPost.startDate,
             startTime: newJobPost.startTime,
@@ -1133,9 +1183,10 @@ export const handleUpdateJob = async (params: {
     }
 
     // Payload final
+    const companyInfo = buildJobCompanyInfo(userProfile)
     const jobPayload = {
         ...updatedJobPost,
-        companyInfo: userProfile.companyInfo,
+        companyInfo,
         coordinates: finalCoordinates
     }
 
@@ -1275,11 +1326,16 @@ export const handleSaveResume = async (params: {
             return
         }
 
-        setUserResume(newResume)
+        const canonicalResume =
+            (data.resume as Resume | undefined) ||
+            await fetchCanonicalResume(data.resume_id || newResume.id) ||
+            newResume
+
+        setUserResume(canonicalResume)
         setResumes(prev => {
-            const exists = prev.find(r => r.id === newResume.id)
-            if (exists) return prev.map(r => r.id === newResume.id ? newResume : r)
-            return [newResume, ...prev]
+            const exists = prev.find(r => r.id === canonicalResume.id)
+            if (exists) return prev.map(r => r.id === canonicalResume.id ? canonicalResume : r)
+            return [canonicalResume, ...prev]
         })
 
         setShowResumeForm(false)
