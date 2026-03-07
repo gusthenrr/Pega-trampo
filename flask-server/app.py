@@ -18,7 +18,7 @@ from urllib.parse import urlparse
 
 app = Flask(__name__)
 #Config do jwt
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity, get_jwt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 load_dotenv()
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -137,34 +137,15 @@ def check_jwt_globally():
         if not is_public:
             try:
                 verify_jwt_in_request()
-
-                # --- Invalidar sessões após troca de senha ---
-                jwt_user_id = current_user_id()
-                if jwt_user_id:
-                    pwd_rows = db.execute(
-                        "SELECT password_changed_at FROM usuarios WHERE id = ?",
-                        jwt_user_id,
-                    )
-                    if pwd_rows:
-                        pwd_changed = pwd_rows[0].get("password_changed_at")
-                        if pwd_changed:
-                            jwt_data = get_jwt()
-                            iat = jwt_data.get("iat")  # epoch int
-                            if iat:
-                                changed_dt = datetime.fromisoformat(str(pwd_changed)).replace(tzinfo=None)
-                                iat_dt = datetime.utcfromtimestamp(iat)
-                                if changed_dt > iat_dt:
-                                    return jsonify({"success": False, "error": "Senha alterada. Faça login novamente.", "session_mismatch": True}), 401
-
                 client_user_id = request.headers.get("X-Client-User-Id")
                 if client_user_id:
+                    jwt_user_id = current_user_id()
                     if not jwt_user_id:
                         jwt_user_id = current_user_id()
                     if str(jwt_user_id) != str(client_user_id):
                         return jsonify({"success": False, "error": "Sessão cruzada divergente. Faça login novamente.", "session_mismatch": True}), 401
             except Exception as e:
-                app.logger.warning(f"Erro na verificação do JWT: {str(e)}")
-                return jsonify({"success": False, "error": "Token expirado ou inválido"}), 401
+                return jsonify({"success": False, "error": "Token expirado ou inválido", "msg": str(e)}), 401
 
 @app.route("/api/logout", methods=["POST"])
 def logout():

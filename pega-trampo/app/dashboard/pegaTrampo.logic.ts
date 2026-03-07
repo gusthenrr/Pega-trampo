@@ -19,10 +19,6 @@ export type SetState<T> = Dispatch<SetStateAction<T>>
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
 
-type FetchWithAuthConfig = {
-    handle401?: 'redirect' | 'passthrough'
-}
-
 let latestCnpjRequestToken = 0
 
 const buildJobCompanyInfo = (userProfile: UserProfile): JobCompanyInfo | undefined => {
@@ -58,9 +54,7 @@ const fetchCanonicalResume = async (resumeId: string): Promise<Resume | null> =>
 export const fetchWithAuth = async (
     url: string,
     options: RequestInit = {},
-    config: FetchWithAuthConfig = {},
 ) => {
-    const { handle401 = 'passthrough' } = config
     let expectedUserId: string | null = null
     if (typeof window !== 'undefined') {
         expectedUserId = sessionStorage.getItem('known_user_id')
@@ -79,7 +73,7 @@ export const fetchWithAuth = async (
     }
     const res = await fetch(url, newOptions)
 
-    if (res.status === 401 && handle401 === 'redirect') {
+    if (res.status === 401) {
         // Mismatch na sessão cruzada: Forçar o relog
         if (typeof window !== 'undefined') {
             sessionStorage.clear()
@@ -339,10 +333,10 @@ export const bootstrapInitialData = async (params: {
     let currentUserType: 'professional' | 'company' = 'professional'
 
     try {
-        let dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`, {}, { handle401: 'redirect' })
+        let dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
         if (dadosRes.status === 401) {
             await new Promise((resolve) => setTimeout(resolve, 250))
-            dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`, {}, { handle401: 'redirect' })
+            dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
         }
         if (!dadosRes.ok) {
             window.location.href = '/'
