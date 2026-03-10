@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from 'react'
 import {
@@ -8,7 +8,7 @@ import {
     Zap, Hammer, Scissors, Car, Baby, Utensils, Paintbrush, Wrench, GraduationCap, Camera,
     Music, Shirt, TreePine, Laptop, Phone, Shield, Truck, Sparkles, Flower2, Palette, Edit,
     FileText, LogOut, MapPinIcon, Mail, Building2, UserCheck, Briefcase as
-        BriefcaseIcon, Navigation, Route, ExternalLink, Upload, X, Trash2, Wallet
+        BriefcaseIcon, Navigation, Route, ExternalLink, Upload, X, Trash2, Wallet, ChevronUp, ChevronDown
 } from 'lucide-react'
 
 import type {
@@ -19,6 +19,7 @@ import type {
     Resume,
     CompanyJobApplications,
     MyApplication,
+    Candidate,
 } from '../types/pegatrampo'
 
 import * as logic from './pegaTrampo.logic'
@@ -210,6 +211,62 @@ const availableBenefits = [
     'Estacionamento gratuito'
 ]
 
+// Helpers para normalizar imagens de perfil vindas da API
+const getFirstValidImageUrl = (sources: Array<string | null | undefined>) => {
+    for (const src of sources) {
+        if (typeof src === 'string' && src.trim().length > 0) {
+            return src
+        }
+    }
+    return null
+}
+
+const getUserProfileImageUrl = (profile?: UserProfile | null) => {
+    if (!profile) return null
+    return getFirstValidImageUrl([
+        profile.imagem_profile,
+        profile.profilePhoto,
+    ])
+}
+
+const getResumeProfileImageUrl = (resume?: Resume | null, ownerProfile?: UserProfile | null) => {
+    if (!resume) return ownerProfile ? getUserProfileImageUrl(ownerProfile) : null
+    const isOwner = ownerProfile && (
+        (resume.userId && ownerProfile.id && String(resume.userId) === String(ownerProfile.id)) ||
+        ownerProfile.userType === 'professional'
+    )
+    const ownerPhoto = isOwner
+        ? getUserProfileImageUrl(ownerProfile)
+        : null
+    const resumeAny = resume as unknown as Record<string, any>
+    return getFirstValidImageUrl([
+        resume.profilePhoto,
+        resume.personalInfo?.profilePhoto,
+        resume.personalInfo?.photo,
+        resume.personalInfo?.image,
+        resumeAny?.personalInfo?.avatar,
+        ownerPhoto,
+    ])
+}
+
+const getCandidateProfileImageUrl = (candidate?: Candidate | null) => {
+    if (!candidate) return null
+    const candidateAny = candidate as unknown as Record<string, any>
+    const resumeAny = candidate.resume as unknown as Record<string, any> | undefined
+    return getFirstValidImageUrl([
+        candidate.profilePhoto,
+        candidateAny?.profile_photo,
+        candidateAny?.photoUrl,
+        candidateAny?.photo_url,
+        candidateAny?.avatar,
+        candidateAny?.imagem_profile,
+        candidateAny?.profile_image_url,
+        resumeAny?.profilePhoto,
+        resumeAny?.personalInfo?.profilePhoto,
+        resumeAny?.personalInfo?.photo,
+        resumeAny?.personalInfo?.image,
+    ])
+}
 // Função para formatar data relativa 
 
 export default function PegaTrampoApp() {
@@ -305,6 +362,9 @@ export default function PegaTrampoApp() {
     }, [showJobPostForm, showResumeForm])
     const [resumeStep, setResumeStep] = useState(1)
     const [resumeSearchTerm, setResumeSearchTerm] = useState('')
+    const [candidatesModalJob, setCandidatesModalJob] = useState<CompanyJobApplications | null>(null)
+    const [candidateSearchTerm, setCandidateSearchTerm] = useState('')
+    const [expandedJobId, setExpandedJobId] = useState<number | string | null>(null)
     const [resumes, setResumes] = useState<Resume[]>([])
     const [showResumeDetails, setShowResumeDetails] = useState(false)
     const [selectedResume, setSelectedResume] = useState<Resume | null>(null)
@@ -364,7 +424,7 @@ export default function PegaTrampoApp() {
                 location: `${addressData.city}, ${addressData.state}`
             }));
 
-            // Já tenta pegar coordenadas
+            // J� tenta pegar coordenadas
             const coords = await logic.fetchCoordinates(addressData.fullAddress);
             if (coords) {
                 setNewJobPost(prev => ({ ...prev, coordinates: coords }));
@@ -487,7 +547,7 @@ export default function PegaTrampoApp() {
     // Data Fetching Effect REMOVED (Redundant with logic.bootstrapInitialData)
 
 
-    // ========= WRAPPERS (mesmos nomes, zero lógica aqui) =========
+    // ========= WRAPPERS (mesmos nomes, zero l�gica aqui) =========
 
     // useEffect 1 (bootstrap)
     useEffect(() => {
@@ -504,7 +564,7 @@ export default function PegaTrampoApp() {
     }, [])
 
     useEffect(() => {
-        // Carrega notificações independente das outras infos se já logado
+        // Carrega notifica��es independente das outras infos se j� logado
         const fetchNotifications = async () => {
             try {
                 const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/notifications`)
@@ -534,10 +594,10 @@ export default function PegaTrampoApp() {
 
         if (unit === "dia") return `${n} ${n === 1 ? "dia" : "dias"}`
         if (unit === "semana") return `${n} ${n === 1 ? "semana" : "semanas"}`
-        return `${n} ${n === 1 ? "mês" : "meses"}`
+        return `${n} ${n === 1 ? "mes" : "meses"}`
     }
 
-    // estados só pra controlar o input/select (UI)
+    // estados s� pra controlar o input/select (UI)
     const [durationQty, setDurationQty] = useState<number>(1)
     const [durationUnit, setDurationUnit] = useState<DurationUnit>("dia")
 
@@ -552,7 +612,7 @@ export default function PegaTrampoApp() {
         }))
     }
 
-    // handlers (mantém o MESMO nome)
+    // handlers (mant�m o MESMO nome)
     const handleNextStep = () => logic.handleNextStep({ currentStep, setCurrentStep, userProfile })
     const handlePrevStep = () => logic.handlePrevStep({ currentStep, setCurrentStep })
 
@@ -649,15 +709,20 @@ export default function PegaTrampoApp() {
             }
         }
 
-        if (notif.type === 'application' && notif.reference_id) {
+        // Navigate to the applications tab to see the accepted proposal
+        // The API sends "Voc� foi chamado para a proposta X", meaning it's an application status update.
+        if (notif.type === 'application' || notif.message.toLowerCase().includes('chamado para')) {
+            setActiveTab('applications');
+        } else if (notif.type === 'application' && notif.reference_id) {
             const foundResume = resumes.find(r => r.id === notif.reference_id);
             if (foundResume) {
                 handleViewResumeDetails(foundResume);
-                setShowNotifications(false);
             } else {
                 console.warn("Currículo não encontrado localmente. Pode não ter sido carregado ainda.");
             }
         }
+
+        setShowNotifications(false);
     }
 
     const handleEditResume = (resume: Resume) =>
@@ -759,9 +824,9 @@ export default function PegaTrampoApp() {
 
     const unreadNotifications = notifications.filter(n => !n.read).length
 
-    // Função para visualizar currículo completo
+    // Funcao para visualizar curriculo completo
 
-    // Modal de Detalhes do Currículo Completo - MELHORADO COM BOTÃO DE CHAMAR 
+    // Modal de Detalhes do Curriculo Completo - MELHORADO COM BOTO DE CHAMAR 
     if (showResumeDetails && selectedResume) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex flex-col pt-[60px]">
@@ -782,8 +847,15 @@ hover:bg-white/20 rounded-full transition-all">
                     <div className="bg-white rounded-2xl shadow-xl border-2 border-purple-200 p-6 
 text-center">
                         <div className="w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 
-rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <User className="h-12 w-12 text-white" />
+rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg overflow-hidden border-2 border-white">
+                            {(() => {
+                                const photoUrl = getResumeProfileImageUrl(selectedResume, userProfile);
+                                return photoUrl ? (
+                                    <img src={photoUrl} alt="Foto de Perfil" className="w-full h-full object-cover" />
+                                ) : (
+                                    <User className="h-12 w-12 text-white" />
+                                );
+                            })()}
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 
 mb-1">{selectedResume.personalInfo.name}</h2>
@@ -795,7 +867,7 @@ mb-3">{selectedResume.professionalInfo.category}</p>
                                 experiência</span>
                         </div>
 
-                        {/* Botão de Chamar em DESTAQUE */}
+                        {/* Bot�o de Chamar em DESTAQUE */}
                         <button
                             onClick={() => handleCallPerson(selectedResume)}
                             className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 
@@ -809,7 +881,7 @@ shadow-lg flex items-center justify-center space-x-3 transform hover:scale-105"
                 </div>
 
                 <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-4 mt-4">
-                    {/* Informações de Contato */}
+                    {/* Informa��es de Contato */}
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                         <div className="flex items-center space-x-2 mb-4">
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center 
@@ -846,7 +918,7 @@ text-gray-900">{selectedResume.personalInfo.address}</p>
                         </div>
                     </div>
 
-                    {/* Informações Profissionais */}
+                    {/* Informa��es Profissionais */}
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                         <div className="flex items-center space-x-2 mb-4">
                             <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center 
@@ -876,7 +948,7 @@ text-gray-900">{selectedResume.professionalInfo.workSchedule}</p>
                         </div>
                     </div>
 
-                    {/* Experiência Profissional */}
+                    {/* Experi�ncia Profissional */}
                     {selectedResume.workExperience && selectedResume.workExperience.length > 0 && (
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                             <div className="flex items-center space-x-2 mb-4">
@@ -947,7 +1019,7 @@ text-purple-800 px-4 py-2 rounded-full text-sm font-medium shadow-sm">
                         </div>
                     )}
 
-                    {/* Botão fixo no final */}
+                    {/* Bot�o fixo no final */}
                     <div className="sticky bottom-0 bg-white border-t p-4 -mx-4">
                         <button
                             onClick={() => handleCallPerson(selectedResume)}
@@ -995,7 +1067,7 @@ shadow-lg flex items-center justify-center space-x-3"
                 </div>
 
                 <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-4">
-                    {/* Título + chips */}
+                    {/* T�tulo + chips */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-4">
                         <div className="flex items-start justify-between gap-3">
                             <h2 className="text-xl font-bold text-gray-900 leading-snug">
@@ -1092,13 +1164,13 @@ shadow-lg flex items-center justify-center space-x-3"
                                 </div>
                                 <span className="font-medium text-gray-900 text-right">
                                     {selectedJob.workHours ? selectedJob.workHours : 'A combinar'}
-                                    {selectedJob.period ? ` • ${selectedJob.period}` : ''}
+                                    {selectedJob.period ? `  ${selectedJob.period}` : ''}
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Descrição completa */}
+                    {/* Descrio completa */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-4">
                         <h3 className="font-bold text-gray-900 mb-2">Descrição</h3>
                         <p className="text-gray-700 text-sm leading-relaxed">
@@ -1128,7 +1200,7 @@ shadow-lg flex items-center justify-center space-x-3"
                     </div>
                 </div>
 
-                {/* CTA fixo (as 2 ações principais) */}
+                {/* CTA fixo (as 2 a��es principais) */}
                 <div className="sticky bottom-0 bg-white border-t p-4">
                     <div className="max-w-md mx-auto flex gap-3">
                         {!myApplications.some(app => app.job.id === selectedJob.id) ? (
@@ -1252,7 +1324,7 @@ shadow-lg flex items-center justify-center space-x-3"
 
 
 
-    // Formulário de Cadastro de Currículo - Passo 1: Informações Pessoais MELHORADO 
+    // Formul�rio de Cadastro de Curr�culo - Passo 1: Informa��es Pessoais MELHORADO 
     if (showResumeForm && resumeStep === 1) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col pt-[70px]">
@@ -1434,7 +1506,7 @@ hover:bg-blue-600 transition-colors"
         )
     }
 
-    // Formulário de Cadastro de Currículo - Passo 2: Experiência Profissional NOVO 
+    // Formul�rio de Cadastro de Curr�culo - Passo 2: Experi�ncia Profissional NOVO 
     if (showResumeForm && resumeStep === 2) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col pt-[70px]">
@@ -1456,7 +1528,7 @@ mx-auto mb-1">
                 </div>
 
                 <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-6">
-                    {/* Experiência Profissional */}
+                    {/* Experi�ncia Profissional */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                         <h2 className="text-xl font-bold text-blue-600 mb-4">Experiência Profissional</h2>
 
@@ -1695,7 +1767,7 @@ hover:bg-blue-600 transition-colors"
     }
 
 
-    // Formulário de Publicação de Trabalho (Empresas) - MELHORADO COM HORAS DIRETAS 
+    // Formul�rio de Publica��o de Trabalho (Empresas) - MELHORADO COM HORAS DIRETAS 
     if (showJobPostForm && userProfile.userType === 'company') {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1832,7 +1904,7 @@ hover:bg-gray-100 rounded-full">
                             />
                         </div>
 
-                        {/* MELHORADA: Seção de Horas com entrada direta */}
+                        {/* MELHORADA: Seo de Horas com entrada direta */}
                         <div className="bg-blue-50 p-4 rounded-lg">
                             <h3 className="font-medium text-blue-900 mb-3">Informações de Horário e
                                 Duração</h3>
@@ -1980,7 +2052,7 @@ hover:bg-blue-600 transition-colors"
         )
     }
 
-    // Tela de Perfil Completo com Sistema de Avaliação - REMOVIDO PEGACOINS 
+    // Tela de Perfil Completo com Sistema de Avalia��o - REMOVIDO PEGACOINS 
     if (showProfile) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col pt-[60px]">
@@ -2001,7 +2073,7 @@ rounded-full">
                 </div>
 
                 <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-6">
-                    {/* Perfil do Usuário - Edição ou Visualização */}
+                    {/* Perfil do Usu�rio - Edi��o ou Visualiza��o */}
                     {isEditingProfile ? (
                         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
                             <h2 className="text-xl font-bold text-gray-900 mb-4">Editar Perfil</h2>
@@ -2161,7 +2233,7 @@ rounded-full">
                             {userProfile.userType === 'professional' && !userResume.id && (
                                 <div className="mt-4">
                                     <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium text-gray-800">Complete seu currículo</span>
+                                        <span className="text-sm font-medium text-gray-800">Complete seu curriculo</span>
                                         <span className="text-sm font-bold text-gray-900">90%</span>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-2">
@@ -2175,7 +2247,7 @@ rounded-full">
                         </div>
                     )}
 
-                    {/* Botão para criar currículo se não existir */}
+                    {/* Bot�o para criar curr�culo se n�o existir */}
                     {userProfile.userType === 'professional' && !userResume.id && (
                         <div className="mt-4">
                             <button
@@ -2188,12 +2260,12 @@ rounded-full">
                                 className="w-full bg-blue-500 text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-600 transition-all shadow-md flex items-center justify-center space-x-2"
                             >
                                 <FileText className="h-5 w-5" />
-                                <span>Adicionar Currículo</span>
+                                <span>Adicionar Curriculo</span>
                             </button>
                         </div>
                     )}
 
-                    {/* Detalhes do Perfil - Informações Relevantes */}
+                    {/* Detalhes do Perfil - Informaes Relevantes */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4 overflow-hidden">
                         <div className="p-4 bg-gray-50 border-b border-gray-100">
                             <h3 className="font-bold text-gray-900">Informações Detalhadas</h3>
@@ -2322,7 +2394,7 @@ justify-center mx-auto mb-4">
                         </div>
                     </div>
 
-                    {/* Opções de Contato */}
+                    {/* Op��es de Contato */}
                     <div className="space-y-3">
                         <button className="w-full bg-white rounded-xl shadow-sm border border-gray-100 
 p-4 flex items-center space-x-4 hover:shadow-md transition-all">
@@ -2353,7 +2425,7 @@ justify-center">
                                 <h4 className="font-medium text-gray-900 mb-1">Posso alterar meu
                                     perfil?</h4>
                                 <p className="text-gray-600 text-sm">Sim! Acesse "Meu Perfil" no menu inferior
-                                    e clique no ícone de edição para atualizar suas informações.</p>
+                                    e clique no icone de edição para atualizar suas informações.</p>
                             </div>
                         </div>
                     </div>
@@ -2374,7 +2446,7 @@ justify-center">
                         <div className="flex flex-col md:flex-row md:items-center md:gap-2">
                             <h1 className="text-xl font-bold text-white leading-tight">PegaTrampo</h1>
                             <p className="text-blue-100 text-sm md:text-base font-medium leading-tight">
-                                <span className="hidden md:inline">• </span>
+                                <span className="hidden md:inline">Olá </span>
                                 Olá, {userProfile.userType === 'company'
                                     ? (userProfile.companyInfo?.companyName || 'Empresa')
                                     : (userProfile.name || 'Usuário')}
@@ -2405,7 +2477,7 @@ justify-center">
 
 
 
-            {/* Painel de Notificações */}
+            {/* Painel de Notifica��es */}
             {showNotifications && (
                 <div className="bg-white border-b shadow-lg">
                     <div className="max-w-md mx-auto">
@@ -2416,7 +2488,7 @@ justify-center">
                                     onClick={() => setShowNotifications(false)}
                                     className="text-gray-500 hover:text-gray-700"
                                 >
-                                    ✕
+                                    ?
                                 </button>
                             </div>
                         </div>
@@ -2495,7 +2567,7 @@ justify-center">
                             </div>
                         </div>
 
-                        {/* Botão Limpar Filtros */}
+                        {/* Bot�o Limpar Filtros */}
                         {(searchTerm || selectedDate || selectedCategory !== 'Recomendado') && (
                             <button
                                 onClick={() => {
@@ -2522,14 +2594,14 @@ justify-center">
                         </h2>
                         {userProfile.userType === 'professional' && (
                             <>
-                                {/* Seção de Propostas das Empresas - Filtradas por categoria do funcionário */}
+                                {/* Se��o de Propostas das Empresas - Filtradas por categoria do funcion�rio */}
                                 {filteredJobs.map((job) => (
                                     <div
                                         key={job.id}
                                         className="bg-white rounded-2xl shadow-sm border border-gray-300 overflow-hidden"
                                     >
                                         <div className="p-4 pb-1">
-                                            {/* Cabeçalho: logo + nome do estabelecimento + cargo */}
+                                            {/* Cabe�alho: logo + nome do estabelecimento + cargo */}
                                             <div className="flex items-start gap-3">
                                                 <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
                                                     {(job.companyInfo as any)?.imagem_profile || (job.companyInfo as any)?.profile_image_url || (job.companyInfo as any)?.logo || (job.companyInfo as any)?.profilePhoto ? (
@@ -2550,10 +2622,10 @@ justify-center">
                                                 </div>
                                             </div>
 
-                                            {/* Linha divisória */}
+                                            {/* Linha divis�ria */}
                                             <div className="my-3 border-t border-gray-300" />
 
-                                            {/* Linhas: Valor / Data / Horário */}
+                                            {/* Linhas: Valor / Data / Hor�rio */}
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between gap-3">
                                                     <div className="flex items-center gap-2 text-gray-900">
@@ -2591,11 +2663,11 @@ justify-center">
                                                 </div>
                                             </div>
 
-                                            {/* Linha divisória (menos espaço antes do botão) */}
+                                            {/* Linha divis�ria (menos espa�o antes do bot�o) */}
                                             <div className="mt-2 border-t border-gray-300" />
                                         </div>
 
-                                        {/* “Detalhes” com menos altura e mais perto */}
+                                        {/* �Detalhes� com menos altura e mais perto */}
                                         <button
                                             onClick={() => handleViewJobDetails(job)}
                                             className="w-full py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50/50 transition"
@@ -2625,7 +2697,7 @@ justify-center">
 
                         {userProfile.userType === 'company' && (
                             <div className="space-y-4">
-                                {/* Botão de Adicionar Trabalho (Visível apenas para empresas) */}
+                                {/* Bot�o de Adicionar Trabalho (Vis�vel apenas para empresas) */}
                                 <div className="flex justify-end">
                                     <button
                                         onClick={() => {
@@ -2721,6 +2793,7 @@ justify-center">
                                                 </div>
                                             </div>
                                         </div>
+
                                     </div>
                                 ))}
 
@@ -2769,7 +2842,16 @@ justify-center">
                                 <div key={app.applicationId} className="bg-white p-4 rounded-xl border">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <p className="font-bold text-gray-900">{app.job.title.toUpperCase()}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-gray-900">{app.job.title.toUpperCase()}</p>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${['aprovado', 'accepted'].includes(app.status?.toLowerCase()) ? 'bg-green-100 text-green-800' :
+                                                    ['finalizado', 'finished'].includes(app.status?.toLowerCase()) ? 'bg-gray-200 text-gray-800' :
+                                                        'bg-yellow-100 text-yellow-800'
+                                                    }`}>
+                                                    {['aprovado', 'accepted'].includes(app.status?.toLowerCase()) ? 'APROVADO' :
+                                                        (['finalizado', 'finished'].includes(app.status?.toLowerCase()) ? 'FINALIZADO' : 'PENDENTE')}
+                                                </span>
+                                            </div>
                                             <p className="text-sm text-gray-600">{app.job.address}</p>
                                             <div className="flex gap-4 mt-2 text-xs text-gray-600">
                                                 <span className="flex items-center gap-1">
@@ -2805,7 +2887,7 @@ justify-center">
 
                 {activeTab === 'resumes' && (
                     <div className="space-y-4">
-                        {/* Header da seção — para empresa: busca + título; para profissional: título + botão só se não tem currículo */}
+                        {/* Header da seo  para empresa: busca + ttulo; para profissional: ttulo + boto s se no tem currculo */}
                         {userProfile.userType === 'company' ? (
                             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
                                 <h2 className="text-lg font-bold text-gray-900">Currículos</h2>
@@ -2854,64 +2936,99 @@ justify-center">
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {filteredResumes.map((resume) => {
-                                    const formattedDate = formatRelativeDate(resume.createdAt)
+                                {userProfile.userType === 'company' ? (
+                                    companyJobsWithCandidates.length === 0 ? (
+                                        <div className="text-center py-8">
+                                            <p className="text-gray-500">Nenhuma vaga postada ainda.</p>
+                                        </div>
+                                    ) : (
+                                        companyJobsWithCandidates.map((job) => {
+                                            const hasCandidates = job.candidates && job.candidates.length > 0;
 
-                                    // Card compacto para profissional
-                                    if (userProfile.userType === 'professional') {
-                                        return (
-                                            <div key={resume.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                                {/* Header colorido compacto */}
-                                                <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-4 py-3 flex items-center gap-3">
-                                                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-                                                        <User className="h-6 w-6 text-white" />
-                                                    </div>
-                                                    <div className="flex-1 min-w-0">
-                                                        <h3 className="text-white font-bold text-base truncate">{resume.personalInfo.name}</h3>
-                                                        <p className="text-white/80 text-sm truncate">{resume.professionalInfo.category}</p>
-                                                    </div>
-                                                    <span className="text-white/60 text-xs flex-shrink-0">{formattedDate}</span>
-                                                </div>
-
-                                                {/* Corpo compacto */}
-                                                <div className="px-4 py-3 space-y-2">
-                                                    <div className="flex items-center gap-4 text-sm text-gray-600">
-                                                        <div className="flex items-center gap-1.5">
-                                                            <Clock className="h-3.5 w-3.5" />
-                                                            <span>{resume.professionalInfo.experience} exp.</span>
+                                            return (
+                                                <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                                    <div
+                                                        className="p-4 cursor-pointer hover:bg-gray-50 transition-colors flex justify-between items-center"
+                                                        onClick={() => {
+                                                            if (hasCandidates) {
+                                                                setCandidatesModalJob(job);
+                                                                setCandidateSearchTerm('');
+                                                            }
+                                                        }}
+                                                    >
+                                                        <div>
+                                                            <h3 className="font-bold text-gray-900 text-lg">{job.title}</h3>
+                                                            <p className="text-sm text-gray-500">{hasCandidates ? `${job.candidates.length} interessado(s)` : 'Sem interessados ainda'}</p>
                                                         </div>
-                                                        {resume.personalInfo.address && (
-                                                            <div className="flex items-center gap-1.5 truncate">
-                                                                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                                                                <span className="truncate">{resume.personalInfo.address}</span>
+                                                        {hasCandidates && (
+                                                            <div className="text-blue-500">
+                                                                <ChevronRight className="h-5 w-5" />
                                                             </div>
                                                         )}
                                                     </div>
+                                                </div>
+                                            )
+                                        })
+                                    )
+                                ) : (
+                                    filteredResumes.map((resume) => {
+                                        const resumePhoto = getResumeProfileImageUrl(resume, userProfile)
+                                        const visibleSkills = (resume.skills || []).slice(0, 5)
 
-                                                    {/* Última experiência */}
-                                                    {resume.workExperience.length > 0 && (
-                                                        <div className="bg-gray-50 px-3 py-2 rounded-lg">
-                                                            <p className="text-gray-800 text-sm font-medium">{resume.workExperience[0].position}</p>
-                                                            <p className="text-gray-500 text-xs">{resume.workExperience[0].company} • {resume.workExperience[0].startDate} - {resume.workExperience[0].isCurrentJob ? 'Atual' : resume.workExperience[0].endDate}</p>
-                                                        </div>
-                                                    )}
-
-                                                    {/* Skills */}
-                                                    {resume.skills && resume.skills.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1.5">
-                                                            {resume.skills.slice(0, 5).map((skill, idx) => (
-                                                                <span key={idx} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                                                                    {skill}
-                                                                </span>
-                                                            ))}
-                                                            {resume.skills.length > 5 && (
-                                                                <span className="text-gray-400 text-xs flex items-center">+{resume.skills.length - 5}</span>
+                                        return (
+                                            <div key={resume.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleViewResumeDetails(resume)}
+                                                    className="w-full p-4 text-left hover:bg-gray-50 transition-colors"
+                                                >
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
+                                                            {resumePhoto ? (
+                                                                <img src={resumePhoto} alt={`Foto de ${resume.personalInfo.name}`} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <User className="h-7 w-7" />
                                                             )}
                                                         </div>
-                                                    )}
-                                                </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div>
+                                                                    <h3 className="font-bold text-gray-900 text-lg">{resume.personalInfo.name}</h3>
+                                                                    <p className="text-sm text-gray-600">{resume.professionalInfo.category || 'Categoria nï¿½o informada'}</p>
+                                                                </div>
+                                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${resume.isVisible ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+                                                                    {resume.isVisible ? 'Visï¿½vel' : 'Oculto'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Briefcase className="h-4 w-4 text-gray-400" />
+                                                                    <span>{resume.professionalInfo.experience || 'Experiï¿½ncia nï¿½o informada'}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Mail className="h-4 w-4 text-gray-400" />
+                                                                    <span className="truncate">{resume.personalInfo.email || 'E-mail nï¿½o informado'}</span>
+                                                                </div>
+                                                            </div>
+                                                            {resume.bio && (
+                                                                <p className="mt-3 text-sm text-gray-600 line-clamp-3">{resume.bio}</p>
+                                                            )}
+                                                            {visibleSkills.length > 0 && (
+                                                                <div className="mt-3 flex flex-wrap gap-2">
+                                                                    {visibleSkills.map((skill, index) => (
+                                                                        <span key={`${resume.id}-${skill}-${index}`} className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-medium">
+                                                                            {skill}
+                                                                        </span>
+                                                                    ))}
+                                                                    {(resume.skills || []).length > 5 && (
+                                                                        <span className="text-gray-400 text-xs flex items-center">+{(resume.skills || []).length - 5}</span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </button>
 
-                                                {/* Botões */}
                                                 <div className="px-4 pb-3 flex gap-2">
                                                     <button
                                                         onClick={() => handleEditResume(resume)}
@@ -2929,69 +3046,8 @@ justify-center">
                                                 </div>
                                             </div>
                                         )
-                                    }
-
-                                    // Card original para empresa
-                                    return (
-                                        <div key={resume.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div className="flex-1">
-                                                    <h3 className="text-blue-600 font-bold text-lg">{resume.professionalInfo.category}</h3>
-                                                    <p className="text-gray-900 font-bold text-xl">{resume.personalInfo.name}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-gray-500 text-sm">{formattedDate}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-2 mb-3">
-                                                <div className="flex items-center text-sm text-gray-600">
-                                                    <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
-                                                    <span>{resume.professionalInfo.experience} de experiência</span>
-                                                </div>
-                                                {resume.professionalInfo.workSchedule && (
-                                                    <div className="flex items-center text-sm text-gray-600">
-                                                        <Briefcase className="h-4 w-4 mr-2 flex-shrink-0" />
-                                                        <span>{resume.professionalInfo.workSchedule}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {resume.workExperience.length > 0 && (
-                                                <div className="bg-gray-50 p-3 rounded-lg mb-3">
-                                                    <p className="text-gray-700 text-sm font-medium">{resume.workExperience[0].position}</p>
-                                                    <p className="text-gray-600 text-sm">{resume.workExperience[0].company}</p>
-                                                    <p className="text-gray-500 text-xs">
-                                                        {resume.workExperience[0].startDate} -
-                                                        {resume.workExperience[0].isCurrentJob ? 'Atual' : resume.workExperience[0].endDate}
-                                                    </p>
-                                                </div>
-                                            )}
-
-                                            {resume.skills && resume.skills.length > 0 && (
-                                                <div className="flex flex-wrap gap-1.5 mb-3">
-                                                    {resume.skills.slice(0, 4).map((skill, idx) => (
-                                                        <span key={idx} className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full text-xs font-medium">
-                                                            {skill}
-                                                        </span>
-                                                    ))}
-                                                    {resume.skills.length > 4 && (
-                                                        <span className="text-gray-400 text-xs flex items-center px-1">
-                                                            +{resume.skills.length - 4}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            <button
-                                                onClick={() => handleViewResumeDetails(resume)}
-                                                className="w-full bg-pink-500 text-white py-3 rounded-lg font-semibold hover:bg-pink-600 transition-colors"
-                                            >
-                                                Ver Currículo Completo
-                                            </button>
-                                        </div>
-                                    )
-                                })}
+                                    })
+                                )}
                             </div>
                         )}
                     </div>
@@ -3047,70 +3103,72 @@ justify-center">
             </div>
             <div className="h-24"></div>
             {/* Modal do Menu Principal */}
-            {showMenu && (
-                <div className="fixed inset-0 z-50 flex animate-in fade-in duration-300">
-                    <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={() => setShowMenu(false)}></div>
-                    <div className="bg-white w-72 h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-                        <div className="bg-blue-600 p-6 flex justify-between items-center text-white">
-                            <div className="flex items-center space-x-3">
-                                <div className="bg-white w-10 h-10 rounded-full flex items-center justify-center overflow-hidden shrink-0">
-                                    {userProfile.imagem_profile ? (
-                                        <img src={userProfile.imagem_profile} alt="Perfil" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <User className="h-6 w-6 text-blue-600" />
-                                    )}
+            {
+                showMenu && (
+                    <div className="fixed inset-0 z-50 flex animate-in fade-in duration-300">
+                        <div className="flex-1 bg-black/40 backdrop-blur-sm" onClick={() => setShowMenu(false)}></div>
+                        <div className="bg-white w-72 h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+                            <div className="bg-blue-600 p-6 flex justify-between items-center text-white">
+                                <div className="flex items-center space-x-3">
+                                    <div className="bg-white w-10 h-10 rounded-full flex items-center justify-center overflow-hidden shrink-0">
+                                        {userProfile.imagem_profile ? (
+                                            <img src={userProfile.imagem_profile} alt="Perfil" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <User className="h-6 w-6 text-blue-600" />
+                                        )}
+                                    </div>
+                                    <div className="max-w-[180px]">
+                                        <p className="font-bold text-lg truncate" title={userProfile.userType === 'company' ? (userProfile.companyInfo?.companyName || userProfile.name || 'Sua Empresa') : (userProfile.name || 'Seu Nome')}>
+                                            {userProfile.userType === 'company'
+                                                ? userProfile.companyInfo?.companyName || userProfile.name || 'Sua Empresa'
+                                                : userProfile.name || 'Seu Nome'}
+                                        </p>
+                                        <p className="text-blue-100 text-xs">PegaTrampo</p>
+                                    </div>
                                 </div>
-                                <div className="max-w-[180px]">
-                                    <p className="font-bold text-lg truncate" title={userProfile.userType === 'company' ? (userProfile.companyInfo?.companyName || userProfile.name || 'Sua Empresa') : (userProfile.name || 'Seu Nome')}>
-                                        {userProfile.userType === 'company'
-                                            ? userProfile.companyInfo?.companyName || userProfile.name || 'Sua Empresa'
-                                            : userProfile.name || 'Seu Nome'}
-                                    </p>
-                                    <p className="text-blue-100 text-xs">PegaTrampo</p>
-                                </div>
+                                <button onClick={() => setShowMenu(false)} className="hover:bg-blue-700 p-1 rounded-full text-white">
+                                    <X className="h-6 w-6" />
+                                </button>
                             </div>
-                            <button onClick={() => setShowMenu(false)} className="hover:bg-blue-700 p-1 rounded-full text-white">
-                                <X className="h-6 w-6" />
-                            </button>
-                        </div>
 
-                        <div className="p-4 space-y-2 flex-1 overflow-y-auto">
-                            <button
-                                onClick={() => { setShowMenu(false); setShowProfile(true); }}
-                                className="w-full flex items-center space-x-3 p-4 hover:bg-blue-50 rounded-xl text-gray-700 font-medium transition-colors border border-transparent hover:border-blue-100"
-                            >
-                                <div className="bg-blue-100 p-2 rounded-lg">
-                                    <User className="h-5 w-5 text-blue-600" />
-                                </div>
-                                <span className="text-lg">Meu Perfil</span>
-                            </button>
+                            <div className="p-4 space-y-2 flex-1 overflow-y-auto">
+                                <button
+                                    onClick={() => { setShowMenu(false); setShowProfile(true); }}
+                                    className="w-full flex items-center space-x-3 p-4 hover:bg-blue-50 rounded-xl text-gray-700 font-medium transition-colors border border-transparent hover:border-blue-100"
+                                >
+                                    <div className="bg-blue-100 p-2 rounded-lg">
+                                        <User className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <span className="text-lg">Meu Perfil</span>
+                                </button>
 
-                            <button
-                                onClick={() => { setShowMenu(false); setShowSupport(true); }}
-                                className="w-full flex items-center space-x-3 p-4 hover:bg-blue-50 rounded-xl text-gray-700 font-medium transition-colors border border-transparent hover:border-blue-100"
-                            >
-                                <div className="bg-blue-100 p-2 rounded-lg">
-                                    <HelpCircle className="h-5 w-5 text-blue-600" />
-                                </div>
-                                <span className="text-lg">Suporte</span>
-                            </button>
-                        </div>
+                                <button
+                                    onClick={() => { setShowMenu(false); setShowSupport(true); }}
+                                    className="w-full flex items-center space-x-3 p-4 hover:bg-blue-50 rounded-xl text-gray-700 font-medium transition-colors border border-transparent hover:border-blue-100"
+                                >
+                                    <div className="bg-blue-100 p-2 rounded-lg">
+                                        <HelpCircle className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <span className="text-lg">Suporte</span>
+                                </button>
+                            </div>
 
-                        <div className="p-4 border-t border-gray-100">
-                            <button
-                                onClick={handleLogout}
-                                className="w-full flex items-center space-x-3 p-4 hover:bg-red-50 rounded-xl text-red-600 font-bold transition-colors border border-transparent hover:border-red-100"
-                            >
-                                <div className="bg-red-100 p-2 rounded-lg">
-                                    <LogOut className="h-5 w-5 text-red-600" />
-                                </div>
-                                <span className="text-lg">Sair</span>
-                            </button>
-                            <p className="text-center text-gray-400 text-xs mt-4">Versão 1.0.0</p>
+                            <div className="p-4 border-t border-gray-100">
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full flex items-center space-x-3 p-4 hover:bg-red-50 rounded-xl text-red-600 font-bold transition-colors border border-transparent hover:border-red-100"
+                                >
+                                    <div className="bg-red-100 p-2 rounded-lg">
+                                        <LogOut className="h-5 w-5 text-red-600" />
+                                    </div>
+                                    <span className="text-lg">Sair</span>
+                                </button>
+                                <p className="text-center text-gray-400 text-xs mt-4">Versão 1.0.0</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
             <AgendaFilterPopover
                 open={openAgenda}
                 anchorRef={btnAgendaRef as any}
@@ -3121,6 +3179,152 @@ justify-center">
                 }}
             />
 
+            {/* Modal de Candidatos */}
+            {candidatesModalJob && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] max-h-[95vh] overflow-hidden flex flex-col">
+                        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+                            <div>
+                                <h3 className="font-bold text-gray-900 text-lg">Candidatos interessados</h3>
+                                <p className="text-sm text-gray-500 truncate max-w-[250px]">{candidatesModalJob.title}</p>
+                            </div>
+                            <button
+                                onClick={() => setCandidatesModalJob(null)}
+                                className="p-2 bg-white border border-gray-200 rounded-full hover:bg-gray-100 transition-colors"
+                            >
+                                <X className="h-5 w-5 text-gray-500" />
+                            </button>
+                        </div>
+                        <div className="p-4 border-b border-gray-100 bg-white shadow-sm z-10">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar candidato por nome..."
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    value={candidateSearchTerm}
+                                    onChange={(e) => setCandidateSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                        <div className="overflow-y-auto p-4 space-y-3 bg-gray-50 flex-1">
+                            {(() => {
+                                const filtered = (candidatesModalJob.candidates || []).filter(c =>
+                                    c.name.toLowerCase().includes(candidateSearchTerm.toLowerCase())
+                                );
+                                if (filtered.length === 0) {
+                                    return (
+                                        <div className="text-center py-8">
+                                            <User className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                                            <p className="text-gray-500">Nenhum candidato encontrado com "{candidateSearchTerm}".</p>
+                                        </div>
+                                    );
+                                }
+                                return filtered.map(candidate => {
+                                    const candidatePhoto = getCandidateProfileImageUrl(candidate)
+                                    return (
+                                        <div key={candidate.applicationId} className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 hover:shadow transition">
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center text-gray-400 border border-gray-200 shrink-0">
+                                                    {candidatePhoto ? (
+                                                        <img src={candidatePhoto} alt={`Foto de ${candidate.name}`} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <User className="h-6 w-6" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="pr-2">
+                                                            <p className="font-bold text-gray-900 truncate">{candidate.name}</p>
+                                                            <p className="text-sm text-gray-600 truncate">{candidate.category}</p>
+                                                        </div>
+                                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) ? 'bg-green-100 text-green-800' :
+                                                            ['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'bg-gray-200 text-gray-800' :
+                                                                'bg-yellow-100 text-yellow-800'
+                                                            }`}>
+                                                            {['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) ? 'APROVADO' : (['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'FINALIZADO' : 'PENDENTE')}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 mt-2 space-y-1">
+                                                        {candidate.email && <div className="flex items-center gap-1 truncate"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{candidate.email}</span></div>}
+                                                        {candidate.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3" /> {candidate.phone}</div>}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 mt-2 border-t border-gray-100 pt-3">
+                                                {candidate.resume && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const fullResumeMock = {
+                                                                ...candidate.resume,
+                                                                profilePhoto: getCandidateProfileImageUrl(candidate) || undefined,
+                                                                personalInfo: {
+                                                                    name: candidate.name,
+                                                                    email: candidate.email || '',
+                                                                    phone: candidate.phone || '',
+                                                                    gender: '',
+                                                                    cep: '',
+                                                                    address: '',
+                                                                    addressNumber: '',
+                                                                    complement: '',
+                                                                    neighborhood: '',
+                                                                    city: '',
+                                                                    state: '',
+                                                                    profilePhoto: getCandidateProfileImageUrl(candidate) || undefined
+                                                                },
+                                                                education: [],
+                                                                skills: [],
+                                                                bio: '',
+                                                                availability: [],
+                                                                createdAt: candidate.appliedAt || '',
+                                                                updatedAt: '',
+                                                                isVisible: true
+                                                            } as unknown as Resume;
+                                                            // Optional: we can hide candidatesModalJob when opening resume
+                                                            handleViewResumeDetails(fullResumeMock);
+                                                        }}
+                                                        className="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100 transition"
+                                                    >
+                                                        Resumo Currículo
+                                                    </button>
+                                                )}
+                                                {(!candidate.status || candidate.status === 'pendente' || candidate.status === 'pending') && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            logic.handleAcceptApplication({
+                                                                applicationId: candidate.applicationId,
+                                                                setCompanyJobsWithCandidates,
+                                                                setNotifications
+                                                            })
+                                                        }}
+                                                        className="flex-1 bg-green-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition flex items-center justify-center gap-1"
+                                                    >
+                                                        <Check className="h-4 w-4" />
+                                                        Aceitar
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div >
     )
 }
+
+
+
+
+
+
+
+
+
+

@@ -1259,7 +1259,7 @@ def get_resumes():
         if requested_ids:
             placeholders = ", ".join(["?"] * len(requested_ids))
             rows = db.execute(f"""
-                SELECT r.*, up.phone as up_phone
+                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile
                 FROM resumes r
                 LEFT JOIN user_profiles up ON r.user_id = up.user_id
                 WHERE r.is_visible = true
@@ -1267,7 +1267,7 @@ def get_resumes():
             """, *requested_ids)
         else:
             rows = db.execute("""
-                SELECT r.*, up.phone as up_phone 
+                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile
                 FROM resumes r 
                 LEFT JOIN user_profiles up ON r.user_id = up.user_id
                 WHERE r.is_visible = true
@@ -1275,7 +1275,7 @@ def get_resumes():
     else:
         # Profissional vê apenas o próprio currículo
         rows = db.execute("""
-            SELECT r.*, up.phone as up_phone 
+            SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile
             FROM resumes r 
             LEFT JOIN user_profiles up ON r.user_id = up.user_id
             WHERE r.user_id = ?
@@ -1287,10 +1287,14 @@ def get_resumes():
         item = dict(r)
         
         up_phone = item.pop("up_phone", None)
+        up_imagem_profile = item.pop("up_imagem_profile", None)
         real_phone = ""
         if up_phone:
             try: real_phone = fernet.decrypt(up_phone.encode()).decode()
             except: real_phone = up_phone
+
+        if up_imagem_profile:
+            item["profilePhoto"] = up_imagem_profile
 
         # Parse JSONs
         for field, target in [
@@ -1944,7 +1948,7 @@ def apply_to_job(job_id):
     try:
         # Inserir candidatura
         db_write(
-            "INSERT INTO job_applications (id, job_id, candidate_id, status, resume_id) VALUES (?, ?, ?, 'pending', ?)",
+            "INSERT INTO job_applications (id, job_id, candidate_id, status, resume_id) VALUES (?, ?, ?, 'pendente', ?)",
             application_id, job_id, user_id, resume_id
         )
 
@@ -2026,6 +2030,7 @@ def get_company_applications():
                     up.full_name,
                     up.phone,
                     up.worker_category as category,
+                    up.imagem_profile as profile_photo,
                     r.id as resume_id,
                     r.professional_info_json,
                     r.work_experience_json
@@ -2087,6 +2092,7 @@ def get_company_applications():
                     "category": c_category,
                     "appliedAt": app["app_date"],
                     "status": app["status"],
+                    "profile_image_url": app.get("profile_photo"),
                     "resume": {
                         "id": app["resume_id"],
                         "professionalInfo": resume_info,
@@ -2107,6 +2113,44 @@ def get_company_applications():
     except Exception as e:
         print(f"Erro ao buscar applications: {e}")
         return api_error("Erro ao buscar candidaturas da empresa", 500)
+
+@app.route("/api/applications/<app_id>/accept", methods=["PUT"])
+def accept_application(app_id):
+    company_user_id = current_user_id()
+    if not company_user_id:
+        return api_error("Não autorizado", 401)
+        
+    try:
+        # 1. Verificar se a aplicação existe e buscar job_id, candidate_id
+        app_rows = db.execute("SELECT job_id, candidate_id FROM job_applications WHERE id = ?", app_id)
+        if not app_rows:
+            return api_error("Candidatura não encontrada", 404)
+            
+        job_id = app_rows[0]["job_id"]
+        candidate_id = app_rows[0]["candidate_id"]
+        
+        # 2. Verificar se o job pertence à empresa atual
+        job_rows = db.execute("SELECT title, posted_by_user_id FROM jobs WHERE id = ?", job_id)
+        if not job_rows or str(job_rows[0]["posted_by_user_id"]) != str(company_user_id):
+            return api_error("Permissão negada ou vaga não encontrada", 403)
+            
+        job_title = job_rows[0]["title"]
+        
+        # 3. Atualizar status para 'aprovado'
+        db_write("UPDATE job_applications SET status = 'aprovado' WHERE id = ?", app_id)
+        
+        # 4. Criar notificação para o candidato
+        message = f"Você foi chamado para a proposta {job_title}"
+        db_write(
+            "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (?, 'application_status', ?, ?)",
+            candidate_id, message, job_id
+        )
+        
+        return api_ok(message="Candidato aprovado com sucesso")
+        
+    except Exception as e:
+        print(f"Erro ao aceitar candidatura: {e}")
+        return api_error("Erro ao aceitar candidatura", 500)
 
 
 @app.route("/api/get_dados", methods=["GET"])

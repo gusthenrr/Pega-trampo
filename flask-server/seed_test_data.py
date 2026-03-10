@@ -873,8 +873,8 @@ def seed(conn):
     })
 
     # Applications
-    insert_job_application(conn, job_piz_pizzaiolo, pro_id, resume_id, status="pending")
-    insert_job_application(conn, job_piz_aux, pro_id, resume_id, status="accepted")
+    insert_job_application(conn, job_piz_pizzaiolo, pro_id, resume_id, status="pendente")
+    insert_job_application(conn, job_piz_aux, pro_id, resume_id, status="aprovado")
 
     print("✅ RESET + SEED (businessTypes + workerCategories) concluído.\n")
     print("Logins (senha 123456):")

@@ -1404,6 +1404,55 @@ export const handleDeleteResume = async (params: {
     }
 }
 
+export const handleAcceptApplication = async (params: {
+    applicationId: string
+    setCompanyJobsWithCandidates: SetState<CompanyJobApplications[]>
+    setNotifications: SetState<Notification[]>
+}) => {
+    const { applicationId, setCompanyJobsWithCandidates, setNotifications } = params
+
+    try {
+        const res = await fetchWithAuth(`${API_BASE}/api/applications/${applicationId}/accept`, {
+            method: 'PUT',
+        })
+
+        const data = await res.json()
+
+        if (!res.ok || data.success === false) {
+            showToastMessage(data.error || 'Erro ao aceitar candidatura')
+            return
+        }
+
+        // Atualiza o estado local para refletir o status 'aprovado'
+        setCompanyJobsWithCandidates(prevJobs =>
+            prevJobs.map(job => ({
+                ...job,
+                candidates: job.candidates.map(candidate =>
+                    candidate.applicationId === applicationId
+                        ? { ...candidate, status: 'aprovado' }
+                        : candidate
+                )
+            }))
+        )
+
+        showToastMessage('Candidato aprovado com sucesso!')
+
+        const successNotification: Notification = {
+            id: Date.now().toString(),
+            title: 'Candidatura Aprovada!',
+            message: 'O candidato foi notificado sobre a aprovação.',
+            type: 'message',
+            timestamp: new Date().toLocaleTimeString(),
+            read: false,
+        }
+        setNotifications(prev => [successNotification, ...prev])
+
+    } catch (e) {
+        console.error("Erro ao aceitar candidatura:", e)
+        showToastMessage('Erro de conexão ao aceitar candidatura.')
+    }
+}
+
 export const normalizeBRPhoneToWa = (raw?: string | null): string | null => {
     if (!raw) return null
     const digits = String(raw).replace(/\D/g, '')
@@ -1518,5 +1567,43 @@ export const handleSaveProfile = async (params: {
         alert(e.message || 'Erro ao salvar perfil.')
     } finally {
         setLoading(false)
+    }
+}
+
+export const handleNotificationClick = async ({
+    notification,
+    setNotifications,
+    setActiveTab,
+    setShowNotifications
+}: {
+    notification: Notification
+    setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>
+    setActiveTab: React.Dispatch<React.SetStateAction<string>>
+    setShowNotifications: React.Dispatch<React.SetStateAction<boolean>>
+}) => {
+    try {
+        if (!notification.read) {
+            // Call API to mark as read
+            const res = await fetchWithAuth(`${API_BASE}/api/notifications/${notification.id}/read`, {
+                method: 'PUT',
+            })
+
+            if (res.ok) {
+                // Update local state
+                setNotifications(prev => prev.map(n =>
+                    n.id === notification.id ? { ...n, read: true } : n
+                ))
+            }
+        }
+
+        // Close notifications panel
+        setShowNotifications(false)
+
+        // Navigate to the applications tab to see the accepted proposal
+        // The API sends "Você foi chamado para a proposta X", meaning it's an application status update.
+        setActiveTab('applications')
+
+    } catch (error) {
+        console.error('Erro ao marcar notificação como lida:', error)
     }
 }

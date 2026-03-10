@@ -192,6 +192,9 @@ export interface ResumePersonalInfo {
     address: string
     birthDate: string
     maritalStatus: string
+    profilePhoto?: string
+    photo?: string
+    image?: string
 }
 
 export interface ResumeProfessionalInfo {
@@ -233,6 +236,7 @@ export interface Resume {
     createdAt: string
     updatedAt: string
     isVisible: boolean
+    profilePhoto?: string
 }
 
 export interface CandidateResumePreview {
@@ -251,6 +255,13 @@ export interface Candidate {
     appliedAt: string
     status: string
     resume: CandidateResumePreview
+    profilePhoto?: string
+    profile_photo?: string
+    photoUrl?: string
+    photo_url?: string
+    avatar?: string
+    imagem_profile?: string
+    profile_image_url?: string
 }
 
 export interface CompanyJobApplications {
