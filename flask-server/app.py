@@ -1417,6 +1417,15 @@ def save_user_profile():
                 raise ApiTxError("Formato de data de nascimento inválido. Use AAAA-MM-DD.", 400)
 
         # ====== PERFIL (seu código, padronizado) ======
+        def to_pg_text_array(items):
+            if not items:
+                return None
+            safe = [str(x).replace("\\", "\\\\").replace('"', '\\"') for x in items]
+            return "{" + ",".join(f'"{x}"' for x in safe) + "}"
+
+        image_job_raw = data.get("image_job")
+        image_job_val = to_pg_text_array(image_job_raw[:6]) if image_job_raw and isinstance(image_job_raw, list) else None
+
         payload = {
             "cnpj": enc(cnpj_digits(data.get("cnpj"))),  # <- salva só dígitos (sem mudar front)
             "company_name": enc(data.get("company_name")),
@@ -1439,6 +1448,7 @@ def save_user_profile():
             "lng": data.get("lng"),
             "birth_date": enc(data.get("birthDate")),
             "imagem_profile": data.get("imagem_profile"),
+            "image_job": image_job_val,
         }
 
         # normaliza number
@@ -1460,12 +1470,12 @@ def save_user_profile():
                 user_id,
                 cnpj, company_name, company_email, business_type, company_description,
                 full_name, cpf, phone,
-                address, number, complement, neighborhood, city, state, cep, lat, lng, birth_date, imagem_profile,
+                address, number, complement, neighborhood, city, state, cep, lat, lng, birth_date, imagem_profile, image_job,
                 updated_at
             ) VALUES (
                 ?, ?, ?, ?, ?, ?,
                 ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::text[],
                 CURRENT_TIMESTAMP
             )
             ON CONFLICT(user_id) DO UPDATE SET
@@ -1488,13 +1498,14 @@ def save_user_profile():
                 lng = excluded.lng,
                 birth_date = excluded.birth_date,
                 imagem_profile = excluded.imagem_profile,
+                image_job = excluded.image_job,
                 updated_at = CURRENT_TIMESTAMP
             RETURNING id;
             """,
             user_id,
             payload["cnpj"], payload["company_name"], payload["company_email"], payload["business_type"], payload["company_description"],
             payload["full_name"], payload["cpf"], payload["phone"],
-            payload["address"], payload["number"], payload["complement"], payload["neighborhood"], payload["city"], payload["state"], payload["cep"], payload["lat"], payload["lng"], payload["birth_date"], payload["imagem_profile"]
+            payload["address"], payload["number"], payload["complement"], payload["neighborhood"], payload["city"], payload["state"], payload["cep"], payload["lat"], payload["lng"], payload["birth_date"], payload["imagem_profile"], payload["image_job"]
         )
 
         # ---- Sync phone: profile → resume ----
@@ -1619,6 +1630,7 @@ def register_user():
         phone_raw = (data.get("phone") or "").strip()
         categories = parse_categories(data)  # <-- LISTA AQUI
         imagem_profile = data.get("imagem_profile")
+        image_job_raw = data.get("image_job")
 
         # ====== VALIDAÇÕES ======
         if not username:
@@ -1706,6 +1718,7 @@ def register_user():
             "worker_category": to_pg_text_array(categories) if user_type == "professional" else None,
 
             "imagem_profile": imagem_profile,
+            "image_job": to_pg_text_array(image_job_raw[:6]) if image_job_raw and isinstance(image_job_raw, list) else None,
         }
 
         # IMPORTANTE: incluir worker_category no INSERT também
@@ -1718,6 +1731,7 @@ def register_user():
                 address, number, complement, neighborhood, city, state, cep, lat, lng, birth_date,
                 worker_category,
                 imagem_profile,
+                image_job,
                 updated_at
             ) VALUES (
                 ?, ?, ?, ?, ?, ?,
@@ -1725,6 +1739,7 @@ def register_user():
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                 ?::text[],
                 ?,
+                ?::text[],
                 CURRENT_TIMESTAMP
             )
             ON CONFLICT(user_id) DO UPDATE SET
@@ -1748,6 +1763,7 @@ def register_user():
                 birth_date = excluded.birth_date,
                 worker_category = excluded.worker_category,
                 imagem_profile = excluded.imagem_profile,
+                image_job = excluded.image_job,
                 updated_at = CURRENT_TIMESTAMP
             """,
             user_id,
@@ -1756,7 +1772,8 @@ def register_user():
             payload["address"], payload["number"], payload["complement"], payload["neighborhood"], payload["city"], payload["state"],
             payload["cep"], payload["lat"], payload["lng"], payload["birth_date"],
             payload["worker_category"],
-            payload["imagem_profile"]
+            payload["imagem_profile"],
+            payload["image_job"]
         )
 
         # ---- Sync phone: profile → resume (igual ao user-profile) ----

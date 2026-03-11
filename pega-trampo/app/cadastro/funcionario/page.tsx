@@ -36,6 +36,7 @@ type RegisterForm = {
     phone: string
     username: string
     imagemProfile: string
+    imageJob: string[]
 }
 
 function onlyDigits(v: string) {
@@ -108,6 +109,7 @@ export default function CadastroPage() {
         phone: "",
         username: "",
         imagemProfile: "",
+        imageJob: [],
     })
 
     const [showPassword, setShowPassword] = useState(false)
@@ -177,6 +179,7 @@ export default function CadastroPage() {
                 username: form.username.trim(),
                 password: form.password,
                 imagem_profile: form.imagemProfile || null,
+                image_job: form.imageJob.length > 0 ? form.imageJob : null,
             }
 
             const data = await postJSON(`${API_URL}${REGISTER_ENDPOINT}`, payload)
@@ -474,6 +477,54 @@ export default function CadastroPage() {
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
                                 />
                                 <p className="text-xs text-gray-500 mt-1">Mínimo 3 caracteres e sem espaços.</p>
+                            </div>
+
+                            <div className="border-t border-gray-100 pt-4 mt-2">
+                                <label className="block text-sm font-medium text-gray-900 mb-1">Fotos do seu trabalho (Opcional)</label>
+                                <p className="text-xs text-gray-500 mb-3">Adicione até 6 fotos para mostrar seu trabalho (portfólio).</p>
+                                
+                                <div className="grid grid-cols-3 gap-3 mb-2">
+                                    {form.imageJob.map((img, idx) => (
+                                        <div key={idx} className="relative aspect-square rounded-lg border overflow-hidden bg-gray-50 group">
+                                            <img src={img} alt={`Trabalho ${idx + 1}`} className="w-full h-full object-cover" />
+                                            <button 
+                                                onClick={() => setForm(p => ({ ...p, imageJob: p.imageJob.filter((_, i) => i !== idx) }))}
+                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                title="Remover foto"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {form.imageJob.length < 6 && (
+                                        <label className="aspect-square rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 flex flex-col items-center justify-center cursor-pointer transition-colors text-gray-400 hover:text-gray-600">
+                                            <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                            <span className="text-[10px] font-medium uppercase">Adicionar</span>
+                                            <input 
+                                                type="file" 
+                                                accept="image/*" 
+                                                className="hidden" 
+                                                multiple
+                                                onChange={(e) => {
+                                                    if (e.target.files) {
+                                                        const validFiles = Array.from(e.target.files).slice(0, 6 - form.imageJob.length);
+                                                        validFiles.forEach(file => {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => {
+                                                                setForm(p => {
+                                                                    if (p.imageJob.length >= 6) return p;
+                                                                    return { ...p, imageJob: [...p.imageJob, reader.result as string] };
+                                                                });
+                                                            };
+                                                            reader.readAsDataURL(file);
+                                                        });
+                                                    }
+                                                }} 
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+                                <p className="text-[10px] text-gray-400 text-right">{form.imageJob.length}/6 adicionadas</p>
                             </div>
 
                             <button

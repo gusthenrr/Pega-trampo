@@ -7,7 +7,7 @@ def migrate():
     # Mas o script seed_test_data.py no topo (não mostrado) define como conectar.
     # Vou usar a lógica de db_write/db do app.py se possível.
     
-    db_path = 'pega_trampo.db' # Nome comum, mas vamos verificar no app.py
+    db_path = 'database.db' # Nome comum, mas vamos verificar no app.py
     
     if not os.path.exists(db_path):
         print(f"Banco {db_path} não encontrado localmente.")

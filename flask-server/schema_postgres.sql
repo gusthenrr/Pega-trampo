@@ -138,7 +138,7 @@ CREATE TABLE IF NOT EXISTS job_applications (
   -- no SQLite estava TEXT mas referenciava usuarios(id) (INTEGER) -> tem que ser INTEGER no Postgres
   candidate_id INTEGER NOT NULL,
 
-  status TEXT DEFAULT 'pending',
+  status TEXT DEFAULT 'pendente',
   created_at TEXT DEFAULT (now()::text),
   resume_id TEXT,
 
