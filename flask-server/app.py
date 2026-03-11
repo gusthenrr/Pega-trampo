@@ -1176,7 +1176,7 @@ def save_resume():
             print(f"Aviso: falha ao sincronizar image_job no perfil: {sync_err}")
 
         saved_resume_rows = db.execute("""
-            SELECT r.*, up.phone as up_phone
+            SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job
             FROM resumes r
             LEFT JOIN user_profiles up ON r.user_id = up.user_id
             WHERE r.id = ?
@@ -1187,12 +1187,31 @@ def save_resume():
         if saved_resume_rows:
             item = dict(saved_resume_rows[0])
             up_phone = item.pop("up_phone", None)
+            up_imagem_profile = item.pop("up_imagem_profile", None)
+            up_image_job = item.pop("up_image_job", None)
+            
             real_phone = ""
             if up_phone:
                 try:
                     real_phone = fernet.decrypt(up_phone.encode()).decode()
                 except:
                     real_phone = up_phone
+
+            if up_imagem_profile:
+                item["profilePhoto"] = up_imagem_profile
+
+            if up_image_job:
+                def parse_pg_array(val):
+                    if not val: return []
+                    if isinstance(val, list): return val
+                    s = str(val).strip()
+                    if s.startswith('{') and s.endswith('}'):
+                        inner = s[1:-1].strip()
+                        if not inner: return []
+                        import csv
+                        return next(csv.reader([inner]))
+                    return [s]
+                item["imageJob"] = parse_pg_array(up_image_job)
 
             for field, target in [
                 ("personal_info_json", "personalInfo"),
@@ -1312,7 +1331,8 @@ def get_resumes():
             inner = s[1:-1].strip()
             if not inner:
                 return []
-            return [x.strip().strip('"') for x in inner.split(',')]
+            import csv
+            return next(csv.reader([inner]))
         return [s]
 
     for r in rows:
