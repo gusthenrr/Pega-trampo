@@ -1157,6 +1157,24 @@ def save_resume():
         except Exception as sync_err:
             print(f"Aviso: falha ao sincronizar phone no perfil: {sync_err}")
 
+        # ---- Sync imageJob: resume → profile ----
+        try:
+            image_job_raw = data.get("imageJob")
+            if image_job_raw is not None and user_id:
+                def to_pg_text_array(items):
+                    if not items:
+                        return None
+                    safe = [str(x).replace("\\", "\\\\").replace('"', '\\"') for x in items]
+                    return "{" + ",".join(f'"{x}"' for x in safe) + "}"
+                
+                image_job_val = to_pg_text_array(image_job_raw[:6]) if isinstance(image_job_raw, list) else None
+                db_write(
+                    "UPDATE user_profiles SET image_job = ?::text[], updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+                    image_job_val, user_id
+                )
+        except Exception as sync_err:
+            print(f"Aviso: falha ao sincronizar image_job no perfil: {sync_err}")
+
         saved_resume_rows = db.execute("""
             SELECT r.*, up.phone as up_phone
             FROM resumes r

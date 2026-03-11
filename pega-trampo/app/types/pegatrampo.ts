@@ -238,6 +238,7 @@ export interface Resume {
     updatedAt: string
     isVisible: boolean
     profilePhoto?: string
+    imageJob?: string[]
 }
 
 export interface CandidateResumePreview {
