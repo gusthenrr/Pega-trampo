@@ -146,6 +146,7 @@ export interface UserProfile {
     lat?: number
     lng?: number
     imagem_profile?: string
+    imageJob?: string[]
     id?: string
 }
 

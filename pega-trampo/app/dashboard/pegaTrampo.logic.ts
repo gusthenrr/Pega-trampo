@@ -372,6 +372,7 @@ export const bootstrapInitialData = async (params: {
                 lat: data.profile.lat,
                 lng: data.profile.lng,
                 imagem_profile: data.profile.imagem_profile || prev.imagem_profile,
+                imageJob: data.profile.image_job || prev.imageJob,
                 companyInfo: currentUserType === 'company' ? {
                     ...prev.companyInfo!,
                     companyName: data.profile.company_name || prev.companyInfo?.companyName || '',
@@ -1536,6 +1537,7 @@ export const handleSaveProfile = async (params: {
             lat: userProfile.lat,
             lng: userProfile.lng,
             imagem_profile: userProfile.imagem_profile,
+            image_job: userProfile.imageJob,
         }
 
         // Company-specific fields

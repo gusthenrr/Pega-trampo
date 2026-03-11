@@ -1019,6 +1019,20 @@ text-purple-800 px-4 py-2 rounded-full text-sm font-medium shadow-sm">
                         </div>
                     )}
 
+                    {/* Portfólio (Fotos do Trabalho) */}
+                    {(selectedResume as any).imageJob && ((selectedResume as any).imageJob as string[]).length > 0 && (
+                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4">Fotos dos trabalhos de {selectedResume.personalInfo.name.split(' ')[0]}</h3>
+                            <div className="grid grid-cols-3 gap-1">
+                                {((selectedResume as any).imageJob as string[]).map((imgUrl, index) => (
+                                    <div key={index} className="aspect-square bg-gray-100 overflow-hidden">
+                                        <img src={imgUrl} alt={`Trabalho ${index + 1}`} className="w-full h-full object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Bot�o fixo no final */}
                     <div className="sticky bottom-0 bg-white border-t p-4 -mx-4">
                         <button
@@ -1406,9 +1420,9 @@ mx-auto mb-1">
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de Nascimento</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="min-w-0 w-full truncate">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1 truncate">Data de Nascimento</label>
                                     <input
                                         type="date"
                                         max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
@@ -1417,19 +1431,19 @@ mx-auto mb-1">
                                             ...prev,
                                             personalInfo: { ...prev.personalInfo, birthDate: e.target.value }
                                         }))}
-                                        className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-3 py-4 text-sm bg-white appearance-none border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent min-w-0"
                                     />
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado Civil</label>
+                                <div className="min-w-0 w-full truncate">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1 truncate">Estado Civil</label>
                                     <select
                                         value={userResume.personalInfo.maritalStatus}
                                         onChange={(e) => setUserResume(prev => ({
                                             ...prev,
                                             personalInfo: { ...prev.personalInfo, maritalStatus: e.target.value }
                                         }))}
-                                        className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
+                                        className="w-full px-3 py-4 text-sm bg-white border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent min-w-0"
                                     >
                                         <option value="">Estado civil</option>
                                         <option value="solteiro">Solteiro(a)</option>
@@ -1567,7 +1581,7 @@ mx-auto mb-1">
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm text-gray-600 mb-1">Data de início</label>
                                     <input
@@ -1708,7 +1722,7 @@ mx-auto mb-1">
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                                     <select
@@ -1839,7 +1853,7 @@ hover:bg-gray-100 rounded-full">
                             </select>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Tipo de Pagamento *
@@ -1925,7 +1939,7 @@ hover:bg-gray-100 rounded-full">
                                     </p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Período do Dia *
@@ -1985,7 +1999,7 @@ hover:bg-gray-100 rounded-full">
                         {/* Data e Hora de Início */}
                         <div className="space-y-3">
                             <h3 className="font-semibold text-gray-900">Data e Hora de Início</h3>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Data de início</label>
                                     <input
@@ -2179,15 +2193,65 @@ rounded-full">
                                         />
                                     </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Data de Nascimento</label>
+                                    <div className="min-w-0 w-full truncate">
+                                        <label className="block text-sm font-medium text-gray-700 mb-1 truncate">Data de Nascimento</label>
                                         <input
                                             type="date"
                                             max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
                                             value={userProfile.birthDate || ''}
                                             onChange={(e) => setUserProfile({ ...userProfile, birthDate: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
+                                            className="w-full p-3 text-sm bg-white appearance-none border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black min-w-0"
                                         />
+                                    </div>
+
+                                    {/* SEÇÃO PORTFÓLIO (até 6 fotos) */}
+                                    <div className="border-t border-gray-100 pt-4 mt-2">
+                                        <label className="block text-sm font-medium text-gray-900 mb-1">Fotos do seu trabalho (Opcional)</label>
+                                        <p className="text-xs text-gray-500 mb-3">Adicione até 6 fotos para mostrar seu trabalho (portfólio).</p>
+                                        
+                                        <div className="grid grid-cols-3 gap-3 mb-2">
+                                            {(userProfile.imageJob || []).map((img, idx) => (
+                                                <div key={idx} className="relative aspect-square rounded-lg border overflow-hidden bg-gray-50 group">
+                                                    <img src={img} alt={`Trabalho ${idx + 1}`} className="w-full h-full object-cover" />
+                                                    <button 
+                                                        onClick={() => setUserProfile(p => ({ ...p, imageJob: (p.imageJob || []).filter((_, i) => i !== idx) }))}
+                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        title="Remover foto"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            {(userProfile.imageJob || []).length < 6 && (
+                                                <label className="aspect-square rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 hover:bg-gray-100 flex flex-col items-center justify-center cursor-pointer transition-colors text-gray-400 hover:text-gray-600">
+                                                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                                                    <span className="text-[10px] font-medium uppercase text-center leading-tight">Adicionar</span>
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        className="hidden" 
+                                                        multiple
+                                                        onChange={(e) => {
+                                                            if (e.target.files) {
+                                                                const validFiles = Array.from(e.target.files).slice(0, 6 - (userProfile.imageJob || []).length);
+                                                                validFiles.forEach(file => {
+                                                                    const reader = new FileReader();
+                                                                    reader.onloadend = () => {
+                                                                        setUserProfile(p => {
+                                                                            const currentImages = p.imageJob || [];
+                                                                            if (currentImages.length >= 6) return p;
+                                                                            return { ...p, imageJob: [...currentImages, reader.result as string] };
+                                                                        });
+                                                                    };
+                                                                    reader.readAsDataURL(file);
+                                                                });
+                                                            }
+                                                        }} 
+                                                    />
+                                                </label>
+                                            )}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 text-right">{(userProfile.imageJob || []).length}/6 adicionadas</p>
                                     </div>
                                 </>
                             )}

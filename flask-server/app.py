@@ -1259,7 +1259,7 @@ def get_resumes():
         if requested_ids:
             placeholders = ", ".join(["?"] * len(requested_ids))
             rows = db.execute(f"""
-                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile
+                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job
                 FROM resumes r
                 LEFT JOIN user_profiles up ON r.user_id = up.user_id
                 WHERE r.is_visible = true
@@ -1267,7 +1267,7 @@ def get_resumes():
             """, *requested_ids)
         else:
             rows = db.execute("""
-                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile
+                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job
                 FROM resumes r 
                 LEFT JOIN user_profiles up ON r.user_id = up.user_id
                 WHERE r.is_visible = true
@@ -1275,7 +1275,7 @@ def get_resumes():
     else:
         # Profissional vê apenas o próprio currículo
         rows = db.execute("""
-            SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile
+            SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job
             FROM resumes r 
             LEFT JOIN user_profiles up ON r.user_id = up.user_id
             WHERE r.user_id = ?
@@ -1283,11 +1283,26 @@ def get_resumes():
 
     import json
     results = []
+    
+    def parse_pg_array(val):
+        if not val:
+            return []
+        if isinstance(val, list):
+            return val
+        s = str(val).strip()
+        if s.startswith('{') and s.endswith('}'):
+            inner = s[1:-1].strip()
+            if not inner:
+                return []
+            return [x.strip().strip('"') for x in inner.split(',')]
+        return [s]
+
     for r in rows:
         item = dict(r)
         
         up_phone = item.pop("up_phone", None)
         up_imagem_profile = item.pop("up_imagem_profile", None)
+        up_image_job = item.pop("up_image_job", None)
         real_phone = ""
         if up_phone:
             try: real_phone = fernet.decrypt(up_phone.encode()).decode()
@@ -1295,6 +1310,9 @@ def get_resumes():
 
         if up_imagem_profile:
             item["profilePhoto"] = up_imagem_profile
+            
+        if up_image_job:
+            item["imageJob"] = parse_pg_array(up_image_job)
 
         # Parse JSONs
         for field, target in [
@@ -2243,6 +2261,7 @@ def get_dados():
             profile_data["lat"] = p.get("lat")
             profile_data["lng"] = p.get("lng")
             profile_data["imagem_profile"] = p.get("imagem_profile")
+            profile_data["image_job"] = normalize_worker_categories(p.get("image_job"))
             profile_data["worker_category"] = normalize_worker_categories(p.get("worker_category"))
         
         if user_rows:
