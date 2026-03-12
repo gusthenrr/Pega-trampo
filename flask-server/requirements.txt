@@ -10,3 +10,4 @@ requests==2.31.0
 SQLAlchemy>=2.0
 psycopg[binary]
 supabase>=2.0.0
+psycopg2>=2.9.11
