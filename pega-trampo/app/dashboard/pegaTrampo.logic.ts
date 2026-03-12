@@ -800,12 +800,14 @@ const computeJobRankingForProfessional = (job: any, userProfile: any) => {
     const jobRole = slugRole(job?.category || "")
 
     // 1) Match de role (melhor similaridade; desempate pela ordem da lista)
+    let exactRoleMatch = false
     let roleMatch = 0
     if (workerRoles.length && jobRole) {
         // match exato tem prioridade (e respeita a ordem)
         const exactIdx = workerRoles.indexOf(jobRole)
         if (exactIdx >= 0) {
             roleMatch = 1
+            exactRoleMatch = true
         } else {
             // pega o melhor score, mas se empatar fica o primeiro da lista
             let best = 0
@@ -873,6 +875,7 @@ const computeJobRankingForProfessional = (job: any, userProfile: any) => {
         roleMatch,
         textMatch,
         urgentBoost,
+        exactRoleMatch,
     }
 }
 
@@ -917,6 +920,7 @@ export const filterJobs = (params: {
                     _roleMatch: ranking.roleMatch,
                     _textMatch: ranking.textMatch,
                     _urgentBoost: ranking.urgentBoost,
+                    _exactRoleMatch: ranking.exactRoleMatch,
                 }
             })
             .filter(job => {
@@ -934,20 +938,12 @@ export const filterJobs = (params: {
                     return isNaN(parsed) ? 0 : parsed;
                 };
 
-                const aCategorySlug = slugRole(a.category || "")
-                const bCategorySlug = slugRole(b.category || "")
-
-                // se as duas propostas forem da mesma categoria, a distancia manda
-                if (aCategorySlug && aCategorySlug === bCategorySlug) {
-                    if (a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
-                    if (b._urgentBoost !== a._urgentBoost) return b._urgentBoost - a._urgentBoost
-                    if (b._textMatch !== a._textMatch) return b._textMatch - a._textMatch
-                    if (b._score !== a._score) return b._score - a._score
-                }
-
-                // entre categorias diferentes, mantem a relevancia geral
-                if (b._roleMatch !== a._roleMatch) return b._roleMatch - a._roleMatch
+                // prioridade absoluta para match exato de categoria
+                if (b._exactRoleMatch !== a._exactRoleMatch) return Number(b._exactRoleMatch) - Number(a._exactRoleMatch)
+                // depois, a menor distancia sempre vem primeiro
                 if (a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
+                // criterios secundarios so entram depois da distancia
+                if (b._roleMatch !== a._roleMatch) return b._roleMatch - a._roleMatch
                 if (b._textMatch !== a._textMatch) return b._textMatch - a._textMatch
                 if (b._urgentBoost !== a._urgentBoost) return b._urgentBoost - a._urgentBoost
                 if (b._score !== a._score) return b._score - a._score
