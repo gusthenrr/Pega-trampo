@@ -870,6 +870,9 @@ const computeJobRankingForProfessional = (job: any, userProfile: any) => {
     return {
         score: Math.round(s * 100),
         distanceKm,
+        roleMatch,
+        textMatch,
+        urgentBoost,
     }
 }
 
@@ -911,6 +914,9 @@ export const filterJobs = (params: {
                     ...job,
                     _score: ranking.score,
                     _distanceKm: ranking.distanceKm,
+                    _roleMatch: ranking.roleMatch,
+                    _textMatch: ranking.textMatch,
+                    _urgentBoost: ranking.urgentBoost,
                 }
             })
             .filter(job => {
@@ -928,10 +934,16 @@ export const filterJobs = (params: {
                     return isNaN(parsed) ? 0 : parsed;
                 };
 
-                // score desc primeiro
+                // match de categoria/similaridade primeiro
+                if (b._roleMatch !== a._roleMatch) return b._roleMatch - a._roleMatch
+                // com categoria equivalente, a proposta mais proxima vem primeiro
+                if (a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
+                // depois considera o match textual
+                if (b._textMatch !== a._textMatch) return b._textMatch - a._textMatch
+                // urgentes continuam recebendo prioridade
+                if (b._urgentBoost !== a._urgentBoost) return b._urgentBoost - a._urgentBoost
+                // score agregado como desempate adicional
                 if (b._score !== a._score) return b._score - a._score
-                // se o score empatar, inverte o desempate de distancia
-                if (a._distanceKm !== b._distanceKm) return b._distanceKm - a._distanceKm
                 // fallback por created_at/posted_at se existir
                 const da = getTimeSafe(a.created_at || a.postedAt);
                 const db = getTimeSafe(b.created_at || b.postedAt);
