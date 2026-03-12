@@ -201,6 +201,8 @@ export default function PegaTrampoApp() {
     const [candidatesModalJob, setCandidatesModalJob] = useState<CompanyJobApplications | null>(null)
     const [candidateSearchTerm, setCandidateSearchTerm] = useState('')
     const [resumes, setResumes] = useState<Resume[]>([])
+    const [isSavingResume, setIsSavingResume] = useState(false)
+    const resumeSaveLockedRef = useRef(false)
     const [showResumeDetails, setShowResumeDetails] = useState(false)
     const [selectedResume, setSelectedResume] = useState<Resume | null>(null)
     const initialJobPostState: CompanyJobPost = {
@@ -516,16 +518,27 @@ export default function PegaTrampoApp() {
 
     const handleViewRoutes = () => logic.handleViewRoutes({ setShowRouteModal })
 
-    const handleSaveResume = () =>
-        logic.handleSaveResume({
-            userResume,
-            userProfile,
-            setUserResume,
-            setResumes,
-            setShowResumeForm,
-            setResumeStep,
-            setNotifications,
-        })
+    const handleSaveResume = async () => {
+        if (resumeSaveLockedRef.current) return
+
+        resumeSaveLockedRef.current = true
+        setIsSavingResume(true)
+
+        try {
+            await logic.handleSaveResume({
+                userResume,
+                userProfile,
+                setUserResume,
+                setResumes,
+                setShowResumeForm,
+                setResumeStep,
+                setNotifications,
+            })
+        } finally {
+            resumeSaveLockedRef.current = false
+            setIsSavingResume(false)
+        }
+    }
 
     const handleViewResumeDetails = async (resume: Resume) => {
         logic.handleViewResumeDetails({ resume, setSelectedResume, setShowResumeDetails })
@@ -1836,10 +1849,10 @@ mx-auto mb-1">
                     <div className="max-w-md mx-auto">
                         <button
                             onClick={handleSaveResume}
-                            className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold 
-hover:bg-blue-600 transition-colors"
+                            disabled={isSavingResume}
+                            className={`w-full py-3 rounded-lg font-semibold transition-colors ${isSavingResume ? 'bg-blue-300 text-white cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
                         >
-                            Finalizar Cadastro
+                            {isSavingResume ? 'Salvando...' : 'Finalizar Cadastro'}
                         </button>
                     </div>
                 </div>
