@@ -794,7 +794,7 @@ const distanceScore = (km: number) => {
 // -------------------------
 // Score do job pro profissional (UPDATED)
 // -------------------------
-const computeJobScoreForProfessional = (job: any, userProfile: any) => {
+const computeJobRankingForProfessional = (job: any, userProfile: any) => {
     const workerCategories = getWorkerCategoryList(userProfile) // <- lista
     const workerRoles = workerCategories.map(slugRole).filter(Boolean)
     const jobRole = slugRole(job?.category || "")
@@ -849,8 +849,10 @@ const computeJobScoreForProfessional = (job: any, userProfile: any) => {
     const jLng = Number(job?.lng ?? job?.coordinates?.lng)
 
     let distPart = 0
+    let distanceKm = Number.POSITIVE_INFINITY
     if (isFinite(uLat) && isFinite(uLng) && isFinite(jLat) && isFinite(jLng)) {
         const km = haversineKm(uLat, uLng, jLat, jLng)
+        distanceKm = km
         distPart = distanceScore(km)
     }
 
@@ -865,7 +867,10 @@ const computeJobScoreForProfessional = (job: any, userProfile: any) => {
         urgentBoost
 
     const s = Math.max(0, Math.min(1, score01))
-    return Math.round(s * 100)
+    return {
+        score: Math.round(s * 100),
+        distanceKm,
+    }
 }
 
 // -------------------------
@@ -901,8 +906,12 @@ export const filterJobs = (params: {
     if (userProfile?.userType === "professional") {
         const ranked = baseFiltered
             .map(job => {
-                const score = computeJobScoreForProfessional(job, userProfile)
-                return { ...job, _score: score }
+                const ranking = computeJobRankingForProfessional(job, userProfile)
+                return {
+                    ...job,
+                    _score: ranking.score,
+                    _distanceKm: ranking.distanceKm,
+                }
             })
             .filter(job => {
                 // "Todas" mostra tudo, inclusive jÃ¡ candidatadas
@@ -921,6 +930,8 @@ export const filterJobs = (params: {
 
                 // score desc primeiro
                 if (b._score !== a._score) return b._score - a._score
+                // se o score empatar, a mais proxima vem primeiro
+                if (a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
                 // fallback por created_at/posted_at se existir
                 const da = getTimeSafe(a.created_at || a.postedAt);
                 const db = getTimeSafe(b.created_at || b.postedAt);
