@@ -1,4 +1,4 @@
-// src/types/pegaTrampo.ts
+﻿// src/types/pegaTrampo.ts
 
 export type PaymentType = 'hourly' | 'daily' | 'project' | 'monthly'
 export type UserType = 'client' | 'professional' | 'company'
@@ -101,6 +101,22 @@ export interface UserProfileEvaluationData {
     absenceCount: number
     divisionScore: number
     profileCompleteness: number
+}
+
+export interface CandidateEvaluation {
+    id: string | number
+    rating: number
+    comment?: string | null
+    created_at?: string | null
+    job_id?: string
+    evaluatorName: string
+    evaluatorImage?: string | null
+}
+
+export interface CandidateEvaluationsPayload {
+    averageRating: number
+    reviewsCount: number
+    evaluations: CandidateEvaluation[]
 }
 
 export interface UserProfile {
@@ -252,11 +268,13 @@ export interface Candidate {
     candidateId: string
     name: string
     phone: string
+    username: string
     email: string
     category: string
     appliedAt: string
     status: string
     resume: CandidateResumePreview
+    imageJob?: string[]
     profilePhoto?: string
     profile_photo?: string
     photoUrl?: string
@@ -272,11 +290,26 @@ export interface CompanyJobApplications {
     candidates: Candidate[]
 }
 
+export interface JobSession {
+    id: string
+    applicationId: string
+    status: 'accepted' | 'checked_in' | 'checked_out' | 'validated'
+    checkinPhotoUrl?: string
+    checkoutPhotoUrl?: string
+    checkinAt?: string
+    checkoutAt?: string
+    validatedAt?: string
+    evaluationSubmitted?: boolean
+    candidate_id: string | number
+    job_id: string | number
+}
+
 export interface MyApplication {
     applicationId: string
     status: string
     appliedAt: string
     job: Job
+    session?: JobSession
 }
 
 export type CNPJAddress = {
@@ -294,7 +327,8 @@ export type CNPJApiData = {
     status?: string
     cnaeDescription?: string
     address?: CNPJAddress
-    businessType?: string // vamos “chutar” depois
+    businessType?: string // vamos â€œchutarâ€ depois
 }
+
 
 

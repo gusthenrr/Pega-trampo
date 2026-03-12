@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from 'react'
 import {
@@ -20,196 +20,25 @@ import type {
     CompanyJobApplications,
     MyApplication,
     Candidate,
+    JobSession,
+    CandidateEvaluationsPayload,
 } from '../types/pegatrampo'
 
 import * as logic from './pegaTrampo.logic'
 import AgendaFilterPopover, { AgendaFilterValue } from '../components/AgendaFilterPopover'
 import { useRef } from 'react'
 import { broadcastSessionChanged } from '../lib/authChannel'
+import ProfilePage from './pages/ProfilePage'
+import SupportPage from './pages/SupportPage'
+import JobsPage from './pages/JobsPage'
+import ApplicationsPage from './pages/ApplicationsPage'
+import ResumesPage from './pages/ResumesPage'
 
-const categoryData = [
-    {
-        name: "Atendente/Garçom",
-        icon: User,
-        description: "Atendimento, balcão, salão, eventos",
-        color: "bg-blue-100 text-blue-600",
-    },
-    {
-        name: "Caixa",
-        icon: DollarSign,
-        description: "Caixa, recebimentos, fechamento",
-        color: "bg-green-100 text-green-700",
-    },
-
-    {
-        name: "Padeiro",
-        icon: Utensils,
-        description: "Pães, massas, fermentação",
-        color: "bg-orange-100 text-orange-600",
-    },
-    {
-        name: "Confeiteiro",
-        icon: Utensils,
-        description: "Doces, bolos, sobremesas",
-        color: "bg-pink-100 text-pink-600",
-    },
-    {
-        name: "Pizzaiolo",
-        icon: Utensils,
-        description: "Pizza, forno, preparo de massas",
-        color: "bg-red-100 text-red-600",
-    },
-    {
-        name: "Cozinheiro",
-        icon: Utensils,
-        description: "Cozinha, eventos, restaurantes",
-        color: "bg-amber-100 text-amber-700",
-    },
-    {
-        name: "Chapeiro",
-        icon: Utensils,
-        description: "Chapa, lanches, hamburgueria",
-        color: "bg-amber-100 text-amber-700",
-    },
-    {
-        name: "Auxiliar da cozinha",
-        icon: Utensils,
-        description: "Pré-preparo, apoio, limpeza do posto",
-        color: "bg-yellow-100 text-yellow-700",
-    },
-    {
-        name: "Churrasqueiro",
-        icon: Utensils,
-        description: "Churrasco, carnes, eventos",
-        color: "bg-rose-100 text-rose-700",
-    },
-    {
-        name: "Copeiro/Bartender",
-        icon: Utensils,
-        description: "Bebidas, drinks, apoio ao salão",
-        color: "bg-purple-100 text-purple-600",
-    },
-
-    {
-        name: "Diarista",
-        icon: Sparkles,
-        description: "Limpeza residencial e comercial",
-        color: "bg-cyan-100 text-cyan-600",
-    },
-
-    {
-        name: "Repostior/Estoquista",
-        icon: Briefcase,
-        description: "Reposição, estoque, organização",
-        color: "bg-slate-100 text-slate-600",
-    },
-    {
-        name: "Ajudande geral",
-        icon: Hammer,
-        description: "Apoio geral, carga/descarga, serviços gerais",
-        color: "bg-gray-100 text-gray-700",
-    },
-    {
-        name: "Motoboy/Entregador",
-        icon: Car,
-        description: "Entregas, rotas, suporte logístico",
-        color: "bg-indigo-100 text-indigo-600",
-    },
-] as const
+const categoryData = logic.catagory_work
 
 
 const categories = ['Recomendado', ...categoryData.map(cat => cat.name), 'Todas']
 
-const professions = [
-    'Confeiteiro/Doceira',
-    'Diarista',
-    'Cozinheiro/Chef',
-    'Jardineiro',
-    'Cabeleireiro/Barbeiro',
-    'Manicure/Pedicure',
-    'Massagista',
-    'Personal Trainer',
-    'Professor Particular',
-    'Motorista',
-    'Babá/Cuidador',
-    'Eletricista',
-    'Encanador',
-    'Pintor',
-    'Pedreiro',
-    'Marceneiro',
-    'Outros'
-]
-
-const skills = [
-    'Confeitaria',
-    'Doces finos',
-    'Bolos decorados',
-    'Limpeza residencial',
-    'Limpeza comercial',
-    'Organização',
-    'Jardinagem',
-    'Paisagismo',
-    'Poda de árvores',
-    'Corte feminino',
-    'Corte masculino',
-    'Coloração',
-    'Manicure',
-    'Pedicure',
-    'Unhas decoradas',
-    'Massagem relaxante',
-    'Massagem terapêutica',
-    'Drenagem linfática',
-    'Musculação',
-    'Pilates',
-    'Yoga',
-    'Matemática',
-    'Português',
-    'Inglês',
-    'Direção defensiva',
-    'Conhecimento da cidade',
-    'Primeiros socorros',
-    'Cuidados com idosos',
-    'Cuidados com crianças',
-    'Instalações elétricas',
-    'Manutenção elétrica',
-    'Instalações hidráulicas',
-    'Desentupimento',
-    'Pintura residencial',
-    'Pintura comercial',
-    'Textura',
-    'Alvenaria',
-    'Acabamento',
-    'Móveis sob medida',
-    'Restauração'
-]
-
-// Tipos de contrato disponíveis 
-const contractTypes = [
-    'Autônomo',
-    'Cooperado',
-    'Prestador de serviços (PJ)',
-    'Trainee',
-    'CLT (Efetivo)',
-    'Free-lancer',
-    'Temporário',
-    'Estágio'
-]
-
-// Benefícios disponíveis 
-const availableBenefits = [
-    'Vale transporte',
-    'Vale refeição',
-    'Vale alimentação',
-    'Plano de saúde',
-    'Plano odontológico',
-    'Seguro de vida',
-    'Participação nos lucros',
-    'Auxílio creche',
-    'Gympass',
-    'Convênio farmácia',
-    'Desconto em produtos',
-    'Estacionamento gratuito'
-]
 
 // Helpers para normalizar imagens de perfil vindas da API
 const getFirstValidImageUrl = (sources: Array<string | null | undefined>) => {
@@ -267,7 +96,14 @@ const getCandidateProfileImageUrl = (candidate?: Candidate | null) => {
         resumeAny?.personalInfo?.image,
     ])
 }
-// Função para formatar data relativa 
+
+const emptyCandidateEvaluations: CandidateEvaluationsPayload = {
+    averageRating: 0,
+    reviewsCount: 0,
+    evaluations: [],
+}
+
+// FunÃ§Ã£o para formatar data relativa 
 
 export default function PegaTrampoApp() {
     const [currentStep, setCurrentStep] = useState('welcome')
@@ -294,7 +130,7 @@ export default function PegaTrampoApp() {
     const [showSupport, setShowSupport] = useState(false)
     const [showHeader, setShowHeader] = useState(true)
 
-    // Lógica para esconder/mostrar header no scroll
+    // LÃ³gica para esconder/mostrar header no scroll
     useEffect(() => {
         let lastScrollY = window.scrollY
         const handleScroll = () => {
@@ -312,7 +148,7 @@ export default function PegaTrampoApp() {
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
-    // Restaura o estado da UI ao recarregar a página
+    // Restaura o estado da UI ao recarregar a pÃ¡gina
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const savedTab = sessionStorage.getItem('pt_activeTab')
@@ -364,7 +200,6 @@ export default function PegaTrampoApp() {
     const [resumeSearchTerm, setResumeSearchTerm] = useState('')
     const [candidatesModalJob, setCandidatesModalJob] = useState<CompanyJobApplications | null>(null)
     const [candidateSearchTerm, setCandidateSearchTerm] = useState('')
-    const [expandedJobId, setExpandedJobId] = useState<number | string | null>(null)
     const [resumes, setResumes] = useState<Resume[]>([])
     const [showResumeDetails, setShowResumeDetails] = useState(false)
     const [selectedResume, setSelectedResume] = useState<Resume | null>(null)
@@ -390,6 +225,19 @@ export default function PegaTrampoApp() {
     const [showMenu, setShowMenu] = useState(false)
     const [enlargedPhoto, setEnlargedPhoto] = useState<string | null>(null)
     const [newJobPost, setNewJobPost] = useState<CompanyJobPost>(initialJobPostState)
+
+    // -- Work Session states --
+    const [activeSession, setActiveSession] = useState<JobSession | null>(null)
+    const [sessionApplicationId, setSessionApplicationId] = useState<string | null>(null)
+    const [sessionLoading, setSessionLoading] = useState(false)
+    const [sessionPhotoPreview, setSessionPhotoPreview] = useState<string | null>(null)
+    const [sessionPhotoFile, setSessionPhotoFile] = useState<File | null>(null)
+    const [companySessionView, setCompanySessionView] = useState<{ session: JobSession, candidateName: string } | null>(null)
+    const [showEvaluationModal, setShowEvaluationModal] = useState(false)
+    const [evaluationData, setEvaluationData] = useState<{ candidateId: string | number, jobId: string, candidateName: string } | null>(null)
+    const [evaluationRating, setEvaluationRating] = useState(0)
+    const [evaluationSubmitting, setEvaluationSubmitting] = useState(false)
+    const [candidateEvaluationsData, setCandidateEvaluationsData] = useState<CandidateEvaluationsPayload>(emptyCandidateEvaluations)
 
     const handleLogout = async () => {
         if (!confirm('Tem certeza que deseja sair da sua conta?')) return
@@ -424,7 +272,7 @@ export default function PegaTrampoApp() {
                 location: `${addressData.city}, ${addressData.state}`
             }));
 
-            // J� tenta pegar coordenadas
+            // Jï¿½ tenta pegar coordenadas
             const coords = await logic.fetchCoordinates(addressData.fullAddress);
             if (coords) {
                 setNewJobPost(prev => ({ ...prev, coordinates: coords }));
@@ -542,12 +390,11 @@ export default function PegaTrampoApp() {
         updatedAt: '',
         isVisible: true
     })
-
     // Data Fetching Effect
     // Data Fetching Effect REMOVED (Redundant with logic.bootstrapInitialData)
 
 
-    // ========= WRAPPERS (mesmos nomes, zero l�gica aqui) =========
+    // ========= WRAPPERS (mesmos nomes, zero lï¿½gica aqui) =========
 
     // useEffect 1 (bootstrap)
     useEffect(() => {
@@ -564,7 +411,7 @@ export default function PegaTrampoApp() {
     }, [])
 
     useEffect(() => {
-        // Carrega notifica��es independente das outras infos se j� logado
+        // Carrega notificaï¿½ï¿½es independente das outras infos se jï¿½ logado
         const fetchNotifications = async () => {
             try {
                 const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/notifications`)
@@ -575,7 +422,7 @@ export default function PegaTrampoApp() {
                     }
                 }
             } catch (err) {
-                console.error("Erro ao buscar notificações", err)
+                console.error("Erro ao buscar notificaÃ§Ãµes", err)
             }
         }
         fetchNotifications()
@@ -597,7 +444,7 @@ export default function PegaTrampoApp() {
         return `${n} ${n === 1 ? "mes" : "meses"}`
     }
 
-    // estados s� pra controlar o input/select (UI)
+    // estados sï¿½ pra controlar o input/select (UI)
     const [durationQty, setDurationQty] = useState<number>(1)
     const [durationUnit, setDurationUnit] = useState<DurationUnit>("dia")
 
@@ -611,20 +458,6 @@ export default function PegaTrampoApp() {
             duration: formatDuration(safeQty, unit),
         }))
     }
-
-    // handlers (mant�m o MESMO nome)
-    const handleNextStep = () => logic.handleNextStep({ currentStep, setCurrentStep, userProfile })
-    const handlePrevStep = () => logic.handlePrevStep({ currentStep, setCurrentStep })
-
-    const handleSkillToggle = (skill: string) => logic.handleSkillToggle({ skill, setUserProfile })
-    const handleAvailabilityToggle = (period: string) =>
-        logic.handleAvailabilityToggle({ period, setUserProfile })
-
-    const handleCPFChange = (value: string) =>
-        logic.handleCPFChange({ value, userProfile, setUserProfile, setCpfError })
-
-    const handleCNPJChange = (value: string) =>
-        logic.handleCNPJChange({ value, setUserProfile, setCnpjLoading, setCnpjError })
 
     const handleApplyToJob = (job: Job) =>
         logic.handleApplyToJob({
@@ -694,8 +527,153 @@ export default function PegaTrampoApp() {
             setNotifications,
         })
 
-    const handleViewResumeDetails = (resume: Resume) =>
+    const handleViewResumeDetails = async (resume: Resume) => {
         logic.handleViewResumeDetails({ resume, setSelectedResume, setShowResumeDetails })
+        if (resume.userId) {
+            const evaluationPayload = await logic.fetchCandidateEvaluations(resume.userId)
+            setCandidateEvaluationsData(evaluationPayload)
+        } else {
+            setCandidateEvaluationsData(emptyCandidateEvaluations)
+        }
+    }
+
+    // -- Work session handlers --
+    const fetchSession = async (applicationId: string) => {
+        setSessionLoading(true)
+        try {
+            const res = await logic.fetchWithAuth(`${logic.API_BASE}/api/sessions/${applicationId}`)
+            if (res.ok) {
+                const d = await res.json()
+                setActiveSession(d.session || null)
+            }
+        } catch (e) { console.error(e) }
+        setSessionLoading(false)
+    }
+
+    const openSessionPanel = async (applicationId: string) => {
+        setSessionApplicationId(applicationId)
+        setSessionPhotoPreview(null)
+        setSessionPhotoFile(null)
+        await fetchSession(applicationId)
+    }
+
+    const handleSessionPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setSessionPhotoFile(file)
+        setSessionPhotoPreview(URL.createObjectURL(file))
+        e.target.value = ''
+    }
+
+    const handleSessionUpload = async (phase: 'checkin' | 'checkout') => {
+        if (!sessionPhotoFile || !sessionApplicationId) return
+        setSessionLoading(true)
+        try {
+            const form = new FormData()
+            form.append('application_id', sessionApplicationId)
+            form.append('photo', sessionPhotoFile)
+            const endpoint = phase === 'checkin' ? 'checkin' : 'checkout'
+            const res = await logic.fetchWithAuth(`${logic.API_BASE}/api/sessions/${endpoint}`, {
+                method: 'POST',
+                body: form,
+            })
+            const d = await res.json()
+            if (res.ok) {
+                setSessionPhotoPreview(null)
+                setSessionPhotoFile(null)
+                await fetchSession(sessionApplicationId)
+            } else {
+                alert(d.error || 'Erro ao enviar foto')
+            }
+        } catch (e) { console.error(e) }
+        setSessionLoading(false)
+    }
+
+    const openEvaluationModalForSession = (session: JobSession, candidateName: string) => {
+        if (session.evaluationSubmitted) {
+            alert('Esta sessao ja foi avaliada.')
+            return
+        }
+        if (!session.candidate_id || !session.job_id) {
+            alert('Nao foi possivel abrir a avaliacao porque os dados da sessao estao incompletos.')
+            return
+        }
+
+        setEvaluationData({
+            candidateId: session.candidate_id,
+            jobId: String(session.job_id),
+            candidateName,
+        })
+        setEvaluationRating(0)
+        setShowEvaluationModal(true)
+    }
+
+    const handleValidateSession = async (sessionId: string) => {
+        if (!confirm('Confirmar que o servico foi realizado com sucesso?')) return
+        setSessionLoading(true)
+        try {
+            const res = await logic.fetchWithAuth(`${logic.API_BASE}/api/sessions/${sessionId}/validate`, { method: 'PUT' })
+            const d = await res.json()
+            if (res.ok) {
+                if (companySessionView) {
+                    const validatedSession: JobSession = {
+                        ...companySessionView.session,
+                        status: 'validated',
+                        evaluationSubmitted: false,
+                    }
+                    setCompanySessionView(prev => prev ? { ...prev, session: validatedSession } : null)
+                    const appsRes = await logic.fetchWithAuth(`${logic.API_BASE}/api/company/applications`)
+                    if (appsRes.ok) {
+                        const appsData = await appsRes.json()
+                        if (appsData.success && Array.isArray(appsData.jobs)) {
+                            setCompanyJobsWithCandidates(appsData.jobs)
+                        }
+                    }
+                    openEvaluationModalForSession(validatedSession, companySessionView.candidateName)
+                }
+            } else {
+                alert(d.error || 'Erro ao validar')
+            }
+        } catch (e) { console.error(e) }
+        setSessionLoading(false)
+    }
+
+    const handleSubmitEvaluation = async () => {
+        if (evaluationRating === 0) {
+            alert('Por favor, selecione uma nota de 1 a 5 estrelas.')
+            return
+        }
+        if (!evaluationData) return
+
+        setEvaluationSubmitting(true)
+        try {
+            await logic.submitEvaluation({
+                evaluatedId: evaluationData.candidateId,
+                jobId: evaluationData.jobId,
+                rating: evaluationRating,
+                comment: ''
+            })
+            if (selectedResume?.userId && String(selectedResume.userId) === String(evaluationData.candidateId)) {
+                const refreshedEvaluations = await logic.fetchCandidateEvaluations(selectedResume.userId)
+                setCandidateEvaluationsData(refreshedEvaluations)
+            }
+            setCompanySessionView(prev => prev ? {
+                ...prev,
+                session: {
+                    ...prev.session,
+                    status: 'validated',
+                    evaluationSubmitted: true,
+                },
+            } : null)
+            alert('Avaliacao enviada com sucesso!')
+            setShowEvaluationModal(false)
+            setEvaluationData(null)
+        } catch (err: any) {
+            alert(err.message || 'Erro ao enviar avaliacao')
+        } finally {
+            setEvaluationSubmitting(false)
+        }
+    }
 
     const handleNotificationClick = async (notif: Notification) => {
         if (!notif.read) {
@@ -710,7 +688,7 @@ export default function PegaTrampoApp() {
         }
 
         // Navigate to the applications tab to see the accepted proposal
-        // The API sends "Voc� foi chamado para a proposta X", meaning it's an application status update.
+        // The API sends "Vocï¿½ foi chamado para a proposta X", meaning it's an application status update.
         if (notif.type === 'application' || notif.message.toLowerCase().includes('chamado para')) {
             setActiveTab('applications');
         } else if (notif.type === 'application' && notif.reference_id) {
@@ -718,7 +696,7 @@ export default function PegaTrampoApp() {
             if (foundResume) {
                 handleViewResumeDetails(foundResume);
             } else {
-                console.warn("Currículo não encontrado localmente. Pode não ter sido carregado ainda.");
+                console.warn("CurrÃ­culo nÃ£o encontrado localmente. Pode nÃ£o ter sido carregado ainda.");
             }
         }
 
@@ -727,51 +705,6 @@ export default function PegaTrampoApp() {
 
     const handleEditResume = (resume: Resume) =>
         logic.handleEditResume({ resume, setUserResume, setShowResumeForm, setResumeStep })
-
-    const handleProfileCepBlur = async () => {
-        const cep = userProfile.cep.replace(/\D/g, '')
-        if (cep.length !== 8) return
-
-        setLoading(true)
-        const addressData = await logic.fetchAddressByCEP(cep)
-        setLoading(false)
-
-        if (addressData) {
-            setUserProfile(prev => ({
-                ...prev,
-                address: addressData.street,
-                neighborhood: addressData.neighborhood,
-                city: addressData.city,
-                state: addressData.state,
-                // If coordinates are returned by fetchAddressByCEP (it doesn't, it uses fetchCoordinates separately)
-                // We need to fetch coordinates now
-            }))
-
-            // Fetch coordinates immediately
-            const coords = await logic.fetchCoordinates(addressData.fullAddress)
-            if (coords) {
-                // We don't have explicit lat/lng in UserProfile type yet displayed in logic file, 
-                // but we know we added them to the payload in handleSaveProfile. 
-                // Let's add them to UserProfile state if possible, or just trust handleSaveProfile 
-                // BUT handleSaveProfile uses userProfile state. 
-                // So we MUST store them in userProfile state.
-                // Let's check UserProfile type definition in pegatrampo.ts earlier. 
-                // It likely doesn't have lat/lng?
-                // Step 55 showed UserProfile type. I should check it.
-                // If not, I can just mix them in or update the type. 
-                // For now, I'll update the state assuming existing or dynamic property, 
-                // OR I should update the type.
-                // Let's update the type first if needed.
-                // For now, I'll assume they can be stored.
-                setUserProfile(prev => ({
-                    ...prev,
-                    lat: coords.lat,
-                    lng: coords.lng
-                } as any))
-
-            }
-        }
-    }
 
     const handleSaveProfile = () => {
         logic.handleSaveProfile({
@@ -807,20 +740,14 @@ export default function PegaTrampoApp() {
     const handleContactCompanyWhatsapp = (job: Job) => {
         const wa = getCompanyWhatsappNumber(job)
         if (!wa) {
-            alert('WhatsApp indisponível. Cadastre o número da empresa em companyInfo.whatsapp ou companyInfo.phone.')
+            alert('WhatsApp indisponÃ­vel. Cadastre o nÃºmero da empresa em companyInfo.whatsapp ou companyInfo.phone.')
             return
         }
 
-        const text = `Olá! Vi a vaga "${job.title}" no PegaTrampo e quero mais detalhes.`
+        const text = `OlÃ¡! Vi a vaga "${job.title}" no PegaTrampo e quero mais detalhes.`
         const url = `https://wa.me/${wa}?text=${encodeURIComponent(text)}`
         window.open(url, '_blank')
     }
-
-
-
-
-
-
 
     const unreadNotifications = notifications.filter(n => !n.read).length
 
@@ -837,7 +764,7 @@ export default function PegaTrampoApp() {
 hover:bg-white/20 rounded-full transition-all">
                             <ArrowLeft className="h-5 w-5 text-white" />
                         </button>
-                        <h1 className="text-lg font-bold text-white">Currículo Completo</h1>
+                        <h1 className="text-lg font-bold text-white">CurrÃ­culo Completo</h1>
                         <div className="w-10"></div>
                     </div>
                 </div>
@@ -859,15 +786,28 @@ rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg overflow-hi
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 
 mb-1">{selectedResume.personalInfo.name}</h2>
+                        {userProfile.userType === 'professional' && (
+                            <div className="flex items-center justify-center gap-1.5 text-amber-500 mb-2">
+                                <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                            key={star}
+                                            className={`h-4 w-4 ${star <= Math.round(userProfile.rating || 0) ? 'fill-amber-500 text-amber-500' : 'text-amber-200'}`}
+                                        />
+                                    ))}
+                                </div>
+                                <span className="text-sm font-semibold text-gray-600">({userProfile.reviews || 0})</span>
+                            </div>
+                        )}
                         <p className="text-lg text-blue-600 font-semibold 
 mb-3">{selectedResume.professionalInfo.category}</p>
                         <div className="flex items-center justify-center space-x-2 text-gray-600 mb-4">
                             <Clock className="h-4 w-4" />
                             <span className="text-sm">{selectedResume.professionalInfo.experience} de
-                                experiência</span>
+                                experiÃªncia</span>
                         </div>
 
-                        {/* Bot�o de Chamar em DESTAQUE */}
+                        {/* Botï¿½o de Chamar em DESTAQUE */}
                         <button
                             onClick={() => handleCallPerson(selectedResume)}
                             className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 
@@ -881,7 +821,82 @@ shadow-lg flex items-center justify-center space-x-3 transform hover:scale-105"
                 </div>
 
                 <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-4 mt-4">
-                    {/* Informa��es de Contato */}
+                    {/* Trabalhos ja feitos */}
+                    {selectedResume.imageJob && selectedResume.imageJob.length > 0 && (
+                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 mb-4">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4">Trabalhos jÃ¡ feitos:</h3>
+                            <div className="grid grid-cols-3 gap-2">
+                                {selectedResume.imageJob.map((imgUrl, index) => (
+                                    <div key={index} className="aspect-square bg-gray-100 overflow-hidden cursor-pointer rounded-lg border shadow-sm group" onClick={() => setEnlargedPhoto(imgUrl)}>
+                                        <img src={imgUrl} alt={`Trabalho ${index + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    {userProfile.userType === 'company' && (
+                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
+                        <div className="flex items-center space-x-2 mb-4">
+                            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                                <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900">Avaliacoes</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <div className="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-center">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Nota media</p>
+                                <p className="text-3xl font-black text-amber-600 mt-1">{candidateEvaluationsData.averageRating > 0 ? candidateEvaluationsData.averageRating.toFixed(1).replace('.', ',') : '0,0'}</p>
+                            </div>
+                            <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-center">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Total de avaliacoes</p>
+                                <p className="text-3xl font-black text-blue-600 mt-1">{candidateEvaluationsData.reviewsCount}</p>
+                            </div>
+                        </div>
+
+                        {candidateEvaluationsData.evaluations.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+                                Este profissional ainda nao recebeu avaliacoes de empresas.
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {candidateEvaluationsData.evaluations.map((evaluation) => (
+                                    <div key={evaluation.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-11 h-11 rounded-full overflow-hidden bg-white border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
+                                                {evaluation.evaluatorImage ? (
+                                                    <img src={evaluation.evaluatorImage} alt={evaluation.evaluatorName} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <Building2 className="h-5 w-5" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="font-bold text-gray-900 truncate">{evaluation.evaluatorName}</p>
+                                                        <div className="flex items-center gap-1 mt-1">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <Star
+                                                                    key={star}
+                                                                    className={`h-4 w-4 ${star <= evaluation.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs text-gray-400 shrink-0">
+                                                        {evaluation.created_at ? new Date(evaluation.created_at).toLocaleDateString('pt-BR') : ''}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-gray-600 mt-3">
+                                                    {evaluation.comment?.trim() ? evaluation.comment : 'Sem comentario informado.'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    )}
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                         <div className="flex items-center space-x-2 mb-4">
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center 
@@ -910,7 +925,7 @@ text-gray-900">{selectedResume.personalInfo.email}</p>
                             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                                 <MapPin className="h-5 w-5 text-gray-600" />
                                 <div>
-                                    <p className="text-xs text-gray-600">Endereço</p>
+                                    <p className="text-xs text-gray-600">EndereÃ§o</p>
                                     <p className="font-semibold 
 text-gray-900">{selectedResume.personalInfo.address}</p>
                                 </div>
@@ -918,20 +933,8 @@ text-gray-900">{selectedResume.personalInfo.address}</p>
                         </div>
                     </div>
 
-                    {/* Informa��es Profissionais */}
-                    {/* Trabalhos ja feitos */}
-                    {selectedResume.imageJob && selectedResume.imageJob.length > 0 && (
-                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 mb-4">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4">Trabalhos já feitos:</h3>
-                            <div className="grid grid-cols-3 gap-2">
-                                {selectedResume.imageJob.map((imgUrl, index) => (
-                                    <div key={index} className="aspect-square bg-gray-100 overflow-hidden cursor-pointer rounded-lg border shadow-sm group" onClick={() => setEnlargedPhoto(imgUrl)}>
-                                        <img src={imgUrl} alt={`Trabalho ${index + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    {/* Informaï¿½ï¿½es Profissionais */}
+
 
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                         <div className="flex items-center space-x-2 mb-4">
@@ -939,7 +942,7 @@ text-gray-900">{selectedResume.personalInfo.address}</p>
 justify-center">
                                 <Briefcase className="h-5 w-5 text-purple-600" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900">Informações Profissionais</h3>
+                            <h3 className="text-lg font-bold text-gray-900">InformaÃ§Ãµes Profissionais</h3>
                         </div>
                         <div className="space-y-3">
                             <div>
@@ -954,7 +957,7 @@ rounded-full text-xs font-medium">
                                 </div>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600 mb-1">Horário de Trabalho</p>
+                                <p className="text-sm text-gray-600 mb-1">HorÃ¡rio de Trabalho</p>
                                 <p className="font-medium 
 text-gray-900">{selectedResume.professionalInfo.workSchedule}</p>
                             </div>
@@ -962,7 +965,7 @@ text-gray-900">{selectedResume.professionalInfo.workSchedule}</p>
                         </div>
                     </div>
 
-                    {/* Experi�ncia Profissional */}
+                    {/* Experiï¿½ncia Profissional */}
                     {selectedResume.workExperience && selectedResume.workExperience.length > 0 && (
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                             <div className="flex items-center space-x-2 mb-4">
@@ -970,7 +973,7 @@ text-gray-900">{selectedResume.professionalInfo.workSchedule}</p>
 justify-center">
                                     <Award className="h-5 w-5 text-green-600" />
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900">Experiência Profissional</h3>
+                                <h3 className="text-lg font-bold text-gray-900">ExperiÃªncia Profissional</h3>
                             </div>
                             <div className="space-y-4">
                                 {selectedResume.workExperience.map((exp, index) => (
@@ -1031,7 +1034,7 @@ justify-center">
                             </div>
                         </div>
                     )}
-                    {/* Bot�o fixo no final */}
+                    {/* Botï¿½o fixo no final */}
                     <div className="sticky bottom-0 bg-white border-t p-4 -mx-4">
                         <button
                             onClick={() => handleCallPerson(selectedResume)}
@@ -1047,8 +1050,8 @@ shadow-lg flex items-center justify-center space-x-3"
 
                 {/* Modal Enlarge Photo */}
                 {enlargedPhoto && (
-                    <div 
-                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm" 
+                    <div
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
                         onClick={() => setEnlargedPhoto(null)}
                     >
                         <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2">
@@ -1094,7 +1097,7 @@ shadow-lg flex items-center justify-center space-x-3"
                 </div>
 
                 <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-4">
-                    {/* T�tulo + chips */}
+                    {/* Tï¿½tulo + chips */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-4">
                         <div className="flex items-start justify-between gap-3">
                             <h2 className="text-xl font-bold text-gray-900 leading-snug">
@@ -1109,7 +1112,7 @@ shadow-lg flex items-center justify-center space-x-3"
                                 )}
                                 {selectedJob.includesFood && (
                                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                                        ALIMENTAÇÃO
+                                        ALIMENTAÃ‡ÃƒO
                                     </span>
                                 )}
                             </div>
@@ -1147,7 +1150,7 @@ shadow-lg flex items-center justify-center space-x-3"
                                         : selectedJob.paymentType === 'daily'
                                             ? '/dia'
                                             : selectedJob.paymentType === 'monthly'
-                                                ? '/mês'
+                                                ? '/mÃªs'
                                                 : ' (projeto)'}
                                 </span>
                             </div>
@@ -1155,7 +1158,7 @@ shadow-lg flex items-center justify-center space-x-3"
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2 text-gray-700">
                                     <Calendar className="h-4 w-4 text-gray-400" />
-                                    <span>Início</span>
+                                    <span>InÃ­cio</span>
                                 </div>
                                 <span className="font-medium text-gray-900 text-right">
                                     {selectedJob.startDate
@@ -1167,7 +1170,7 @@ shadow-lg flex items-center justify-center space-x-3"
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2 text-gray-700">
                                     <Clock className="h-4 w-4 text-gray-400" />
-                                    <span>Horário de início</span>
+                                    <span>HorÃ¡rio de inÃ­cio</span>
                                 </div>
                                 <span className="font-medium text-gray-900 text-right">
                                     {selectedJob.startTime || 'A combinar'}
@@ -1177,7 +1180,7 @@ shadow-lg flex items-center justify-center space-x-3"
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2 text-gray-700">
                                     <Calendar className="h-4 w-4 text-gray-400" />
-                                    <span>Duração</span>
+                                    <span>DuraÃ§Ã£o</span>
                                 </div>
                                 <span className="font-medium text-gray-900 text-right">
                                     {selectedJob.duration || 'A combinar'}
@@ -1187,7 +1190,7 @@ shadow-lg flex items-center justify-center space-x-3"
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2 text-gray-700">
                                     <Clock className="h-4 w-4 text-gray-400" />
-                                    <span>Carga horária</span>
+                                    <span>Carga horÃ¡ria</span>
                                 </div>
                                 <span className="font-medium text-gray-900 text-right">
                                     {selectedJob.workHours ? selectedJob.workHours : 'A combinar'}
@@ -1199,15 +1202,15 @@ shadow-lg flex items-center justify-center space-x-3"
 
                     {/* Descrio completa */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                        <h3 className="font-bold text-gray-900 mb-2">Descrição</h3>
+                        <h3 className="font-bold text-gray-900 mb-2">DescriÃ§Ã£o</h3>
                         <p className="text-gray-700 text-sm leading-relaxed">
-                            {selectedJob.description || 'Sem descrição.'}
+                            {selectedJob.description || 'Sem descriÃ§Ã£o.'}
                         </p>
                     </div>
 
-                    {/* Localização + trajetos */}
+                    {/* LocalizaÃ§Ã£o + trajetos */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                        <h3 className="font-bold text-gray-900 mb-3">Localização</h3>
+                        <h3 className="font-bold text-gray-900 mb-3">LocalizaÃ§Ã£o</h3>
 
                         <div className="bg-gray-100 rounded-xl p-4 text-sm text-gray-700">
                             <div className="flex items-start gap-2">
@@ -1227,7 +1230,7 @@ shadow-lg flex items-center justify-center space-x-3"
                     </div>
                 </div>
 
-                {/* CTA fixo (as 2 a��es principais) */}
+                {/* CTA fixo (as 2 aï¿½ï¿½es principais) */}
                 <div className="sticky bottom-0 bg-white border-t p-4">
                     <div className="max-w-md mx-auto flex gap-3">
                         {!myApplications.some(app => app.job.id === selectedJob.id) ? (
@@ -1242,7 +1245,7 @@ shadow-lg flex items-center justify-center space-x-3"
                                     className="flex-1 bg-blue-400 text-white py-3 rounded-xl font-bold hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
                                 >
                                     <FileText className="h-5 w-5" />
-                                    <span>Criar Currículo</span>
+                                    <span>Criar CurrÃ­culo</span>
                                 </button>
                             ) : (
                                 <button
@@ -1259,7 +1262,7 @@ shadow-lg flex items-center justify-center space-x-3"
                         ) : (
                             <div className="flex-1 bg-green-50 text-green-700 border border-green-200 py-3 rounded-xl font-bold flex items-center justify-center gap-2">
                                 <Check className="h-5 w-5" />
-                                <span>Já candidatado</span>
+                                <span>JÃ¡ candidatado</span>
                             </div>
                         )}
 
@@ -1278,7 +1281,7 @@ shadow-lg flex items-center justify-center space-x-3"
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
                         <div className="bg-white rounded-2xl max-w-md w-full p-6">
                             <div className="text-center mb-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-2">Escolha o app de navegação</h2>
+                                <h2 className="text-xl font-bold text-gray-900 mb-2">Escolha o app de navegaÃ§Ã£o</h2>
                                 <p className="text-gray-600 text-sm">Selecione como deseja ver o trajeto para:</p>
                                 <p className="text-gray-900 font-medium">{selectedJob.address}</p>
                             </div>
@@ -1296,7 +1299,7 @@ shadow-lg flex items-center justify-center space-x-3"
                                     </div>
                                     <div className="flex-1 text-left">
                                         <h3 className="font-bold text-gray-900">Google Maps</h3>
-                                        <p className="text-gray-600 text-sm">Navegação completa com trânsito</p>
+                                        <p className="text-gray-600 text-sm">NavegaÃ§Ã£o completa com trÃ¢nsito</p>
                                     </div>
                                     <ExternalLink className="h-4 w-4 text-gray-400" />
                                 </button>
@@ -1351,7 +1354,7 @@ shadow-lg flex items-center justify-center space-x-3"
 
 
 
-    // Formul�rio de Cadastro de Curr�culo - Passo 1: Informa��es Pessoais MELHORADO 
+    // Formulï¿½rio de Cadastro de Currï¿½culo - Passo 1: Informaï¿½ï¿½es Pessoais MELHORADO 
     if (showResumeForm && resumeStep === 1) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col pt-[70px]">
@@ -1420,7 +1423,7 @@ mx-auto mb-1">
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Endereço Completo</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">EndereÃ§o Completo</label>
                                 <input
                                     type="text"
                                     value={userResume.personalInfo.address}
@@ -1428,7 +1431,7 @@ mx-auto mb-1">
                                         ...prev,
                                         personalInfo: { ...prev.personalInfo, address: e.target.value }
                                     }))}
-                                    placeholder="Ex: Rua das Flores, 123 - Centro, São Paulo"
+                                    placeholder="Ex: Rua das Flores, 123 - Centro, SÃ£o Paulo"
                                     className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
@@ -1462,7 +1465,7 @@ mx-auto mb-1">
                                         <option value="solteiro">Solteiro(a)</option>
                                         <option value="casado">Casado(a)</option>
                                         <option value="divorciado">Divorciado(a)</option>
-                                        <option value="viuvo">Viúvo(a)</option>
+                                        <option value="viuvo">ViÃºvo(a)</option>
                                     </select>
                                 </div>
                             </div>
@@ -1533,7 +1536,7 @@ hover:bg-blue-600 transition-colors"
         )
     }
 
-    // Formul�rio de Cadastro de Curr�culo - Passo 2: Experi�ncia Profissional NOVO 
+    // Formulï¿½rio de Cadastro de Currï¿½culo - Passo 2: Experiï¿½ncia Profissional NOVO 
     if (showResumeForm && resumeStep === 2) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col pt-[70px]">
@@ -1555,9 +1558,9 @@ mx-auto mb-1">
                 </div>
 
                 <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-6">
-                    {/* Experi�ncia Profissional */}
+                    {/* Experiï¿½ncia Profissional */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h2 className="text-xl font-bold text-blue-600 mb-4">Experiência Profissional</h2>
+                        <h2 className="text-xl font-bold text-blue-600 mb-4">ExperiÃªncia Profissional</h2>
 
                         <div className="space-y-4">
                             <div>
@@ -1565,7 +1568,7 @@ mx-auto mb-1">
                                 <input
                                     type="text"
                                     value={userResume.workExperience[0]?.company || ''}
-                                    placeholder="Ex: Padaria Pão Quente"
+                                    placeholder="Ex: Padaria PÃ£o Quente"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newExperience = [...userResume.workExperience]
@@ -1578,11 +1581,11 @@ mx-auto mb-1">
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Cargo/Função</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Cargo/FunÃ§Ã£o</label>
                                 <input
                                     type="text"
                                     value={userResume.workExperience[0]?.position || ''}
-                                    placeholder="Ex: Atendente de balcão"
+                                    placeholder="Ex: Atendente de balcÃ£o"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newExperience = [...userResume.workExperience]
@@ -1596,7 +1599,7 @@ mx-auto mb-1">
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Data de início</label>
+                                    <label className="block text-sm text-gray-600 mb-1">Data de inÃ­cio</label>
                                     <input
                                         type="month"
                                         value={userResume.workExperience[0]?.startDate || ''}
@@ -1611,7 +1614,7 @@ mx-auto mb-1">
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Data de saída</label>
+                                    <label className="block text-sm text-gray-600 mb-1">Data de saÃ­da</label>
                                     <input
                                         type="month"
                                         value={userResume.workExperience[0]?.endDate || ''}
@@ -1648,11 +1651,11 @@ mx-auto mb-1">
                             </label>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição das Atividades</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">DescriÃ§Ã£o das Atividades</label>
                                 <textarea
                                     rows={3}
                                     value={userResume.workExperience[0]?.description || ''}
-                                    placeholder="Ex: Atendimento ao cliente, organização do balcão e reposição de produtos"
+                                    placeholder="Ex: Atendimento ao cliente, organizaÃ§Ã£o do balcÃ£o e reposiÃ§Ã£o de produtos"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newExperience = [...userResume.workExperience]
@@ -1681,7 +1684,7 @@ mx-auto mb-1">
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Nível de Escolaridade</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">NÃ­vel de Escolaridade</label>
                                 <select
                                     value={userResume.education[0]?.level || ''}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
@@ -1701,21 +1704,21 @@ mx-auto mb-1">
                                         setUserResume(prev => ({ ...prev, education: newEducation }))
                                     }}
                                 >
-                                    <option value="">Selecione o nível</option>
+                                    <option value="">Selecione o nÃ­vel</option>
                                     <option value="fundamental">Ensino Fundamental</option>
-                                    <option value="medio">Ensino Médio</option>
-                                    <option value="tecnico">Técnico</option>
+                                    <option value="medio">Ensino MÃ©dio</option>
+                                    <option value="tecnico">TÃ©cnico</option>
                                     <option value="superior">Superior</option>
-                                    <option value="pos">Pós-graduação</option>
+                                    <option value="pos">PÃ³s-graduaÃ§Ã£o</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Instituição de Ensino</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">InstituiÃ§Ã£o de Ensino</label>
                                 <input
                                     type="text"
                                     value={userResume.education[0]?.institution || ''}
-                                    placeholder="Ex: SENAI São Paulo"
+                                    placeholder="Ex: SENAI SÃ£o Paulo"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newEducation = [...userResume.education]
@@ -1756,7 +1759,7 @@ mx-auto mb-1">
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ano de Conclusão</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ano de ConclusÃ£o</label>
                                     <input
                                         type="number"
                                         value={userResume.education[0]?.year || ''}
@@ -1777,10 +1780,10 @@ mx-auto mb-1">
                         </div>
                     </div>
 
-                    {/* SEÇÃO PORTFÓLIO (até 6 fotos) no currículo */}
+                    {/* SEÃ‡ÃƒO PORTFÃ“LIO (atÃ© 6 fotos) no currÃ­culo */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
                         <label className="block text-sm font-medium text-gray-900 mb-1">Fotos do seu trabalho (Opcional)</label>
-                        <p className="text-xs text-gray-500 mb-3">Adicione até 6 fotos para mostrar seu trabalho (portfólio).</p>
+                        <p className="text-xs text-gray-500 mb-3">Adicione atÃ© 6 fotos para mostrar seu trabalho (portfÃ³lio).</p>
 
                         <div className="grid grid-cols-3 gap-3 mb-2">
                             {(userResume.imageJob || []).map((img, idx) => (
@@ -1845,7 +1848,7 @@ hover:bg-blue-600 transition-colors"
     }
 
 
-    // Formul�rio de Publica��o de Trabalho (Empresas) - MELHORADO COM HORAS DIRETAS 
+    // Formulï¿½rio de Publicaï¿½ï¿½o de Trabalho (Empresas) - MELHORADO COM HORAS DIRETAS 
     if (showJobPostForm && userProfile.userType === 'company') {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1870,7 +1873,7 @@ hover:bg-gray-100 rounded-full">
                     <div className="space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Título da Proposta *
+                                TÃ­tulo da Proposta *
                             </label>
                             <input
                                 type="text"
@@ -1880,24 +1883,24 @@ hover:bg-gray-100 rounded-full">
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                             />
                             <p className="text-gray-500 text-xs mt-1">
-                                O título aparecerá em MAIÚSCULO nas propostas
+                                O tÃ­tulo aparecerÃ¡ em MAIÃšSCULO nas propostas
                             </p>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Descrição *
+                                DescriÃ§Ã£o *
                             </label>
                             <textarea
                                 rows={4}
                                 value={newJobPost.description}
                                 onChange={(e) => setNewJobPost({ ...newJobPost, description: e.target.value })}
-                                placeholder="Descreva tarefas, horário, local e requisitos da proposta"
+                                placeholder="Descreva tarefas, horÃ¡rio, local e requisitos da proposta"
                                 maxLength={70}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                             />
                             <p className="text-gray-500 text-xs mt-1">
-                                Máximo 70 caracteres ({newJobPost.description.length}/70)
+                                MÃ¡ximo 70 caracteres ({newJobPost.description.length}/70)
                             </p>
                         </div>
 
@@ -1930,7 +1933,7 @@ hover:bg-gray-100 rounded-full">
                                     <option value="hourly">Por Hora</option>
                                     <option value="daily">Por Dia</option>
                                     <option value="project">Por Projeto</option>
-                                    <option value="monthly">Por Mês</option>
+                                    <option value="monthly">Por MÃªs</option>
                                 </select>
                             </div>
                             <div>
@@ -1971,7 +1974,7 @@ hover:bg-gray-100 rounded-full">
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Endereço Completo *
+                                EndereÃ§o Completo *
                             </label>
                             <input
                                 type="text"
@@ -1984,8 +1987,8 @@ hover:bg-gray-100 rounded-full">
 
                         {/* MELHORADA: Seo de Horas com entrada direta */}
                         <div className="bg-blue-50 p-4 rounded-lg">
-                            <h3 className="font-medium text-blue-900 mb-3">Informações de Horário e
-                                Duração</h3>
+                            <h3 className="font-medium text-blue-900 mb-3">InformaÃ§Ãµes de HorÃ¡rio e
+                                DuraÃ§Ã£o</h3>
 
                             <div className="space-y-4">
                                 <div>
@@ -2006,7 +2009,7 @@ hover:bg-gray-100 rounded-full">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Período do Dia *
+                                            PerÃ­odo do Dia *
                                         </label>
                                         <select
                                             value={newJobPost.period}
@@ -2014,19 +2017,19 @@ hover:bg-gray-100 rounded-full">
                                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                         >
                                             <option value="">Selecione</option>
-                                            <option value="Manhã">Manhã</option>
+                                            <option value="ManhÃ£">ManhÃ£</option>
                                             <option value="Tarde">Tarde</option>
                                             <option value="Noite">Noite</option>
                                             <option value="Integral">Integral</option>
-                                            <option value="Manhã/Tarde">Manhã/Tarde</option>
+                                            <option value="ManhÃ£/Tarde">ManhÃ£/Tarde</option>
                                         </select>
                                         <p className="text-gray-600 text-xs mt-1">
-                                            Em que período do dia
+                                            Em que perÃ­odo do dia
                                         </p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Duração da Vaga *
+                                            DuraÃ§Ã£o da Vaga *
                                         </label>
                                         <div className="flex gap-2">
                                             <input
@@ -2044,12 +2047,12 @@ hover:bg-gray-100 rounded-full">
                                             >
                                                 <option value="dia">dia(s)</option>
                                                 <option value="semana">semana(s)</option>
-                                                <option value="mes">mês(es)</option>
+                                                <option value="mes">mÃªs(es)</option>
                                             </select>
                                         </div>
 
                                         <p className="text-gray-600 text-xs mt-1">
-                                            Por quanto tempo (será salvo como: <span className="font-medium">{formatDuration(durationQty, durationUnit)}</span>)
+                                            Por quanto tempo (serÃ¡ salvo como: <span className="font-medium">{formatDuration(durationQty, durationUnit)}</span>)
                                         </p>
 
                                         <p className="text-gray-600 text-xs mt-1">
@@ -2060,29 +2063,29 @@ hover:bg-gray-100 rounded-full">
                             </div>
                         </div>
 
-                        {/* Data e Hora de Início */}
+                        {/* Data e Hora de InÃ­cio */}
                         <div className="space-y-3">
-                            <h3 className="font-semibold text-gray-900">Data e Hora de Início</h3>
+                            <h3 className="font-semibold text-gray-900">Data e Hora de InÃ­cio</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de início</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de inÃ­cio</label>
                                     <input
                                         type="date"
                                         value={newJobPost.startDate || ''}
                                         onChange={(e) => setNewJobPost({ ...newJobPost, startDate: e.target.value })}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 focus:ring-blue-500 focus:border-transparent"
                                     />
-                                    <p className="text-gray-600 text-xs mt-1">Quando o trabalho começa</p>
+                                    <p className="text-gray-600 text-xs mt-1">Quando o trabalho comeÃ§a</p>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hora de início</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hora de inÃ­cio</label>
                                     <input
                                         type="time"
                                         value={newJobPost.startTime || ''}
                                         onChange={(e) => setNewJobPost({ ...newJobPost, startTime: e.target.value })}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 focus:ring-blue-500 focus:border-transparent"
                                     />
-                                    <p className="text-gray-600 text-xs mt-1">Horário para se apresentar</p>
+                                    <p className="text-gray-600 text-xs mt-1">HorÃ¡rio para se apresentar</p>
                                 </div>
                             </div>
                         </div>
@@ -2109,7 +2112,7 @@ hover:bg-gray-100 rounded-full">
                                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                 />
                                 <span className="text-sm font-medium text-gray-700">Inclui
-                                    alimentação</span>
+                                    alimentaÃ§Ã£o</span>
                             </label>
                         </div>
                     </div>
@@ -2122,7 +2125,7 @@ hover:bg-gray-100 rounded-full">
                             className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold 
 hover:bg-blue-600 transition-colors"
                         >
-                            {editingJobId ? 'Salvar Alterações' : 'Publicar Proposta'}
+                            {editingJobId ? 'Salvar AlteraÃ§Ãµes' : 'Publicar Proposta'}
                         </button>
                     </div>
                 </div>
@@ -2130,387 +2133,31 @@ hover:bg-blue-600 transition-colors"
         )
     }
 
-    // Tela de Perfil Completo com Sistema de Avalia��o - REMOVIDO PEGACOINS 
+    // Tela de Perfil Completo com Sistema de Avaliaï¿½ï¿½o - REMOVIDO PEGACOINS 
     if (showProfile) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col pt-[60px]">
-                <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-white shadow-sm border-b`}>
-                    <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-                        <button onClick={() => setShowProfile(false)} className="p-2 hover:bg-gray-100 
-rounded-full">
-                            <ArrowLeft className="h-5 w-5 text-gray-600" />
-                        </button>
-                        <h1 className="text-lg font-semibold text-gray-900">Perfil</h1>
-                        <button
-                            onClick={() => setIsEditingProfile(!isEditingProfile)}
-                            className="p-2 hover:bg-gray-100 rounded-full"
-                        >
-                            {isEditingProfile ? <X className="h-5 w-5 text-gray-600" /> : <Edit className="h-5 w-5 text-gray-600" />}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-6">
-                    {/* Perfil do Usu�rio - Edi��o ou Visualiza��o */}
-                    {isEditingProfile ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">Editar Perfil</h2>
-
-                            <div className="flex flex-col items-center mb-4">
-                                <div className="relative w-24 h-24 rounded-full border-4 border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center">
-                                    {userProfile.imagem_profile ? (
-                                        <img src={userProfile.imagem_profile} alt="Perfil" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <User className="h-12 w-12 text-gray-400" />
-                                    )}
-                                </div>
-                                <label className="mt-2 text-sm text-blue-600 font-medium cursor-pointer flex items-center justify-center space-x-1 hover:text-blue-700">
-                                    <Edit className="h-4 w-4" />
-                                    <span>Alterar Foto</span>
-                                    <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                                        if (e.target.files && e.target.files[0]) {
-                                            const file = e.target.files[0];
-                                            const reader = new FileReader();
-                                            reader.onloadend = () => {
-                                                setUserProfile({ ...userProfile, imagem_profile: reader.result as string });
-                                            };
-                                            reader.readAsDataURL(file);
-                                        }
-                                    }} />
-                                </label>
-                            </div>
-
-                            {userProfile.userType === 'company' ? (
-                                <>
-                                    {/* CAMPOS PARA EMPRESA */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Empresa</label>
-                                        <input
-                                            type="text"
-                                            value={userProfile.companyInfo?.companyName || ''}
-                                            onChange={(e) => setUserProfile({
-                                                ...userProfile,
-                                                companyInfo: { ...userProfile.companyInfo!, companyName: e.target.value }
-                                            })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Ramo de Atividade</label>
-                                        <input
-                                            type="text"
-                                            value={userProfile.companyInfo?.businessType || ''}
-                                            onChange={(e) => setUserProfile({
-                                                ...userProfile,
-                                                companyInfo: { ...userProfile.companyInfo!, businessType: e.target.value }
-                                            })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                                        <input
-                                            type="text"
-                                            value={userProfile.phone}
-                                            onChange={(e) => setUserProfile({ ...userProfile, phone: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
-                                        />
-                                    </div>
-
-                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-2">
-                                        <div>
-                                            <span className="text-xs text-gray-500 block">CNPJ (Não editável)</span>
-                                            <span className="font-mono text-sm font-medium text-gray-700">
-                                                {userProfile.companyInfo?.cnpj || 'Não informado'}
-                                            </span>
-                                        </div>
-                                        <div>
-                                            <span className="text-xs text-gray-500 block">Email (Não editável)</span>
-                                            <span className="text-sm font-medium text-gray-700">
-                                                {userProfile.companyInfo?.email || userProfile.email}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    {/* CAMPOS PARA PROFISSIONAL */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
-                                        <input
-                                            type="text"
-                                            value={userProfile.name}
-                                            onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
-                                        <input
-                                            type="text"
-                                            value={userProfile.phone}
-                                            onChange={(e) => setUserProfile({ ...userProfile, phone: e.target.value })}
-                                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black"
-                                        />
-                                    </div>
-
-                                    <div className="min-w-0 w-full truncate">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1 truncate">Data de Nascimento</label>
-                                        <input
-                                            type="date"
-                                            max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
-                                            value={userProfile.birthDate || ''}
-                                            onChange={(e) => setUserProfile({ ...userProfile, birthDate: e.target.value })}
-                                            className="w-full p-3 text-sm bg-white appearance-none border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-black min-w-0"
-                                        />
-                                    </div>
-                                </>
-                            )}
-
-                            <button
-                                onClick={handleSaveProfile}
-                                className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 transition-colors mt-4"
-                            >
-                                Salvar Alterações
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="bg-yellow-300 rounded-xl p-6 text-center">
-                            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center 
-    mx-auto mb-4 overflow-hidden shadow-sm">
-                                {userProfile.imagem_profile ? (
-                                    <img src={userProfile.imagem_profile} alt="Perfil" className="w-full h-full object-cover" />
-                                ) : (
-                                    <User className="h-10 w-10 text-gray-600" />
-                                )}
-                            </div>
-                            <h2 className="text-xl font-bold text-gray-900 mb-1">{userProfile.name || userProfile.username || 'Nome do Usuário'}</h2>
-                            <div className="mt-2 text-center flex flex-col items-center gap-2">
-                                {userProfile.userType === 'company' ? (
-                                    <span className="inline-block bg-black/10 text-gray-800 font-bold px-4 py-1.5 rounded-full text-sm shadow-sm backdrop-blur-sm">
-                                        {userProfile.companyInfo?.companyName || 'Empresa'}
-                                    </span>
-                                ) : (
-                                    (logic.getWorkerCategoryList({ workerCategory: userProfile.workerCategory || userProfile.profession }).length > 0
-                                        ? logic.getWorkerCategoryList({ workerCategory: userProfile.workerCategory || userProfile.profession })
-                                        : ['Profissão']).map((cat, idx) => (
-                                            <span key={idx} className="inline-block bg-black/10 text-gray-800 font-bold px-4 py-1.5 rounded-full text-sm shadow-sm backdrop-blur-sm">
-                                                {cat}
-                                            </span>
-                                        ))
-                                )}
-                            </div>
-                            <p className="text-gray-700 text-sm mt-1">
-                                {userProfile.city && userProfile.state ? `${userProfile.city} - ${userProfile.state}` : 'Localização não definida'}
-                            </p>
-
-                            {/* Barra de Progresso do Perfil */}
-                            {userProfile.userType === 'professional' && !userResume.id && (
-                                <div className="mt-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-sm font-medium text-gray-800">Complete seu curriculo</span>
-                                        <span className="text-sm font-bold text-gray-900">90%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                        <div
-                                            className="bg-green-500 h-2 rounded-full"
-                                            style={{ width: '90%' }}
-                                        ></div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Bot�o para criar curr�culo se n�o existir */}
-                    {userProfile.userType === 'professional' && !userResume.id && (
-                        <div className="mt-4">
-                            <button
-                                onClick={() => {
-                                    setShowProfile(false)
-                                    setActiveTab('resumes')
-                                    setShowResumeForm(true)
-                                    setResumeStep(1)
-                                }}
-                                className="w-full bg-blue-500 text-white py-3 rounded-lg font-bold text-lg hover:bg-blue-600 transition-all shadow-md flex items-center justify-center space-x-2"
-                            >
-                                <FileText className="h-5 w-5" />
-                                <span>Adicionar Curriculo</span>
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Detalhes do Perfil - Informaes Relevantes */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-4 overflow-hidden">
-                        <div className="p-4 bg-gray-50 border-b border-gray-100">
-                            <h3 className="font-bold text-gray-900">Informações Detalhadas</h3>
-                        </div>
-
-                        <div className="p-4 space-y-4">
-                            {userProfile.userType === 'company' ? (
-                                <>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Sobre a Empresa</p>
-                                        <p className="text-gray-700 text-sm">
-                                            {userProfile.companyInfo?.description || 'Nenhuma descrição informada.'}
-                                        </p>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-2">Ramo de Atividade</p>
-                                            <div className="bg-gradient-to-r from-teal-500 to-emerald-600 p-4 rounded-xl shadow-sm text-white flex items-center space-x-3 transform transition-transform hover:-translate-y-0.5 hover:shadow-md">
-                                                <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-                                                    <Briefcase className="h-6 w-6 text-white" />
-                                                </div>
-                                                <span className="font-bold text-lg capitalize tracking-wide drop-shadow-sm">
-                                                    {userProfile.companyInfo?.businessType || 'Não informado'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">CNPJ</p>
-                                            <div className="flex items-center space-x-2 text-gray-700 bg-gray-50 p-2 rounded-lg">
-                                                <Building2 className="h-4 w-4 text-gray-500" />
-                                                <span className="font-medium font-mono">
-                                                    {userProfile.companyInfo?.cnpj || 'Não informado'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Contato</p>
-                                        <div className="flex items-center space-x-2 text-gray-700">
-                                            <Mail className="h-4 w-4 text-gray-400" />
-                                            <span>{userProfile.companyInfo?.email || userProfile.email}</span>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-bold mb-2">Profissão / Categoria</p>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            {(logic.getWorkerCategoryList({ workerCategory: userResume.professionalInfo?.category || userProfile.workerCategory || userProfile.profession }).length > 0
-                                                ? logic.getWorkerCategoryList({ workerCategory: userResume.professionalInfo?.category || userProfile.workerCategory || userProfile.profession })
-                                                : ['Não informado']).map((cat, idx) => (
-                                                    <div key={idx} className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 rounded-xl shadow-sm text-white flex items-center space-x-3 transform transition-transform hover:-translate-y-0.5 hover:shadow-md">
-                                                        <div className="bg-white/20 p-2 rounded-lg backdrop-blur-sm">
-                                                            <User className="h-6 w-6 text-white" />
-                                                        </div>
-                                                        <span className="font-bold text-lg capitalize tracking-wide drop-shadow-sm">
-                                                            {cat}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                        </div>
-                                    </div>
-
-                                    {userProfile.bio && (
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Biografia</p>
-                                            <p className="text-gray-700 text-sm bg-gray-50 p-3 rounded-lg italic">
-                                                "{userProfile.bio}"
-                                            </p>
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-1 gap-4">
-                                        <div>
-                                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Detalhes</p>
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between text-sm border-b border-gray-100 pb-2">
-                                                    <span className="text-gray-500">Experiência</span>
-                                                    <span className="font-medium text-gray-900">{userResume.professionalInfo?.experience || userProfile.experience || 'N/A'}</span>
-                                                </div>
-                                                <div className="flex items-center justify-between text-sm border-b border-gray-100 pb-2">
-                                                    <span className="text-gray-500">Cidade</span>
-                                                    <span className="font-medium text-gray-900">{userProfile.city} - {userProfile.state}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <ProfilePage
+                showHeader={showHeader}
+                setShowProfile={setShowProfile}
+                isEditingProfile={isEditingProfile}
+                setIsEditingProfile={setIsEditingProfile}
+                userProfile={userProfile}
+                setUserProfile={setUserProfile}
+                handleSaveProfile={handleSaveProfile}
+                userResume={userResume}
+                setActiveTab={setActiveTab}
+                setShowResumeForm={setShowResumeForm}
+                setResumeStep={setResumeStep}
+            />
         )
     }
-
     // Tela de Suporte com Chat Funcional 
     if (showSupport) {
         return (
-            <div className="min-h-screen bg-gray-50 flex flex-col pt-[60px]">
-                <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-white shadow-sm border-b`}>
-                    <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
-                        <button onClick={() => setShowSupport(false)} className="p-2 hover:bg-gray-100 
-rounded-full">
-                            <ArrowLeft className="h-5 w-5 text-gray-600" />
-                        </button>
-                        <h1 className="text-lg font-semibold text-gray-900">Suporte</h1>
-                        <div className="w-10"></div>
-                    </div>
-                </div>
-
-                <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-6">
-                    {/* Central de Ajuda */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center 
-justify-center mx-auto mb-4">
-                                <HelpCircle className="h-8 w-8 text-blue-600" />
-                            </div>
-                            <h2 className="text-xl font-bold text-gray-900 mb-2">Como podemos
-                                ajudar?</h2>
-                            <p className="text-gray-600">Estamos aqui para resolver suas dúvidas</p>
-                        </div>
-                    </div>
-
-                    {/* Op��es de Contato */}
-                    <div className="space-y-3">
-                        <button className="w-full bg-white rounded-xl shadow-sm border border-gray-100 
-p-4 flex items-center space-x-4 hover:shadow-md transition-all">
-                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center 
-justify-center">
-                                <Mail className="h-6 w-6 text-blue-600" />
-                            </div>
-                            <div className="flex-1 text-left">
-                                <h3 className="font-bold text-gray-900">E-mail</h3>
-                                <p className="text-gray-600 text-sm">suporte@pegatrampo.com</p>
-                            </div>
-                        </button>
-                    </div>
-
-                    {/* FAQ */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h3 className="font-bold text-gray-900 mb-4">Perguntas Frequentes</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <h4 className="font-medium text-gray-900 mb-1">Como publico uma proposta
-                                    de trabalho?</h4>
-                                <p className="text-gray-600 text-sm">Apenas empresas cadastradas podem
-                                    publicar propostas. Faça seu cadastro como empresa para ter acesso a essa
-                                    funcionalidade.</p>
-                            </div>
-
-                            <div>
-                                <h4 className="font-medium text-gray-900 mb-1">Posso alterar meu
-                                    perfil?</h4>
-                                <p className="text-gray-600 text-sm">Sim! Acesse "Meu Perfil" no menu inferior
-                                    e clique no icone de edição para atualizar suas informações.</p>
-                            </div>
-                        </div>
-                    </div>
-
-
-                </div>
-            </div>
+            <SupportPage
+                showHeader={showHeader}
+                setShowSupport={setShowSupport}
+            />
         )
     }
 
@@ -2524,10 +2171,9 @@ justify-center">
                         <div className="flex flex-col md:flex-row md:items-center md:gap-2">
                             <h1 className="text-xl font-bold text-white leading-tight">PegaTrampo</h1>
                             <p className="text-blue-100 text-sm md:text-base font-medium leading-tight">
-                                <span className="hidden md:inline">Olá </span>
-                                Olá, {userProfile.userType === 'company'
+                                Ola, {userProfile.userType === 'company'
                                     ? (userProfile.companyInfo?.companyName || 'Empresa')
-                                    : (userProfile.name || 'Usuário')}
+                                    : (userProfile.name || 'Usuario')}
                             </p>
                         </div>
                     </div>
@@ -2553,15 +2199,12 @@ justify-center">
                 </div>
             </div>
 
-
-
-            {/* Painel de Notifica��es */}
             {showNotifications && (
                 <div className="bg-white border-b shadow-lg">
                     <div className="max-w-md mx-auto">
                         <div className="p-4 border-b">
                             <div className="flex items-center justify-between">
-                                <h2 className="font-semibold text-gray-900">Notificações</h2>
+                                <h2 className="font-semibold text-gray-900">Notificacoes</h2>
                                 <button
                                     onClick={() => setShowNotifications(false)}
                                     className="text-gray-500 hover:text-gray-700"
@@ -2573,7 +2216,7 @@ justify-center">
                         <div className="max-h-[220px] overflow-y-auto">
                             {notifications.length === 0 ? (
                                 <div className="p-4 text-center text-gray-500">
-                                    Nenhuma notificação ainda
+                                    Nenhuma notificacao ainda
                                 </div>
                             ) : (
                                 notifications.map((notification) => (
@@ -2602,536 +2245,279 @@ justify-center">
                 </div>
             )}
 
-
-            {userProfile.userType === 'professional' && activeTab === 'jobs' && (
-                <div className="bg-white border-b p-4 space-y-3">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Buscar por: cozinheiro, padeiro, diarista..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 focus:ring-blue-500 focus:border-transparent"
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
-                        <div className="flex items-center space-x-2 flex-shrink-0">
-                            {/* Bolinha da Agenda */}
-                            <button
-                                ref={btnAgendaRef as React.RefObject<HTMLButtonElement>}
-                                onClick={() => setOpenAgenda(true)}
-                                className={`h-9 w-9 rounded-full flex items-center justify-center border transition-all shadow-sm ${selectedDate ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
-                            >
-                                <Calendar className="h-4 w-4" />
+            {activeTab === 'jobs' && (
+                <JobsPage
+                    userProfile={userProfile}
+                    searchTerm={searchTerm}
+                    setSearchTerm={setSearchTerm}
+                    selectedDate={selectedDate}
+                    setSelectedDate={setSelectedDate}
+                    selectedCategory={selectedCategory}
+                    setSelectedCategory={setSelectedCategory}
+                    categories={categories}
+                    btnAgendaRef={btnAgendaRef}
+                    setOpenAgenda={setOpenAgenda}
+                    filteredJobs={filteredJobs}
+                    handleViewJobDetails={handleViewJobDetails}
+                    setEditingJobId={setEditingJobId}
+                    setNewJobPost={setNewJobPost}
+                    setShowJobPostForm={setShowJobPostForm}
+                    updateDuration={updateDuration}
+                    initialJobPostState={initialJobPostState}
+                    handleEditJob={handleEditJob}
+                    handleDeleteJob={handleDeleteJob}
+                    formatRelativeDate={formatRelativeDate}
+                />
+            )}
+                {/* ===================== SESSION PANEL (Candidate) ===================== */}
+                {sessionApplicationId && (
+                    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col animate-in slide-in-from-right duration-300">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-5 flex items-center gap-3 shadow-lg">
+                            <button onClick={() => { setSessionApplicationId(null); setActiveSession(null) }} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30">
+                                <ArrowLeft className="h-5 w-5" />
                             </button>
-
-                            {/* Filtro de Categoria Modernizado */}
-                            <div className="flex items-center border border-gray-300/80 rounded-full bg-gray-50/50 hover:bg-gray-100/50 transition-colors px-1 h-9">
-                                <div className="pl-3 pr-1 flex items-center h-full">
-                                    <Filter className="h-3.5 w-3.5 text-gray-500" />
-                                </div>
-                                <select
-                                    value={selectedCategory}
-                                    onChange={(e) => setSelectedCategory(e.target.value)}
-                                    className="pr-2 py-1.5 text-xs font-medium text-gray-700 focus:ring-0 min-w-[100px] border-none outline-none bg-transparent appearance-none cursor-pointer"
-                                    style={{ WebkitAppearance: 'none' }}
-                                >
-                                    {categories.map(category => (
-                                        <option key={category} value={category}>{category}</option>
-                                    ))}
-                                </select>
+                            <div>
+                                <h2 className="font-bold text-lg">Controle do ServiÃ§o</h2>
+                                <p className="text-blue-100 text-xs">Acompanhe sua jornada de trabalho</p>
                             </div>
                         </div>
 
-                        {/* Bot�o Limpar Filtros */}
-                        {(searchTerm || selectedDate || selectedCategory !== 'Recomendado') && (
-                            <button
-                                onClick={() => {
-                                    setSearchTerm('')
-                                    setSelectedDate('')
-                                    setSelectedCategory('Recomendado')
-                                }}
-                                className="text-xs font-bold text-blue-600 hover:text-blue-800 whitespace-nowrap bg-blue-50 px-3 py-1.5 rounded-full"
-                            >
-                                Limpar
-                            </button>
-                        )}
-                    </div>
-                </div>
-            )}
+                        <div className="flex-1 overflow-y-auto p-4 max-w-md mx-auto w-full">
+                            {sessionLoading ? (
+                                <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-4 border-purple-500 border-t-transparent" /></div>
+                            ) : (
+                                <>
+                                    {/* Timeline */}
+                                    <div className="bg-white rounded-2xl shadow-md p-5 mb-4">
+                                        <h3 className="font-bold text-gray-800 mb-6 text-sm uppercase tracking-wide">Progresso do ServiÃ§o</h3>
+                                        <div className="relative">
+                                            {/* Vertical line */}
+                                            <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gray-200" />
 
-            <div className="p-4">
-                {activeTab === 'jobs' && (
-                    <div className="space-y-4">
-                        <h2 className="text-gray-900 font-bold text-xl mb-4">
-                            {userProfile.userType === 'company'
-                                ? 'Minhas propostas de trabalho'
-                                : 'Propostas de trabalho'}
-                        </h2>
-                        {userProfile.userType === 'professional' && (
-                            <>
-                                {/* Se��o de Propostas das Empresas - Filtradas por categoria do funcion�rio */}
-                                {filteredJobs.map((job) => (
-                                    <div
-                                        key={job.id}
-                                        className="bg-white rounded-2xl shadow-sm border border-gray-300 overflow-hidden"
-                                    >
-                                        <div className="p-4 pb-1">
-                                            {/* Cabe�alho: logo + nome do estabelecimento + cargo */}
-                                            <div className="flex items-start gap-3">
-                                                <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                                                    {(job.companyInfo as any)?.imagem_profile || (job.companyInfo as any)?.profile_image_url || (job.companyInfo as any)?.logo || (job.companyInfo as any)?.profilePhoto ? (
-                                                        <img src={(job.companyInfo as any)?.imagem_profile || (job.companyInfo as any)?.profile_image_url || (job.companyInfo as any)?.logo || (job.companyInfo as any)?.profilePhoto} alt={job.companyInfo?.name || "Empresa"} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <Building2 className="h-5 w-5 text-gray-700" />
-                                                    )}
-                                                </div>
-
-                                                <div className="min-w-0">
-                                                    <h4 className="text-base font-bold text-gray-900 leading-snug truncate">
-                                                        {job.companyInfo?.name || job.postedBy || "Estabelecimento"}
-                                                    </h4>
-
-                                                    <p className="text-xs text-gray-600 truncate">
-                                                        {job.title || "Cargo"}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            {/* Linha divis�ria */}
-                                            <div className="my-3 border-t border-gray-300" />
-
-                                            {/* Linhas: Valor / Data / Hor�rio */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-2 text-gray-900">
-                                                        <Wallet className="h-4 w-4 text-gray-700" />
-                                                        <span className="text-sm">Valor</span>
+                                            {[ 
+                                                { key: 'accepted', label: 'Aceito pela empresa', icon: 'ðŸŽ‰', doneStatuses: ['accepted','checked_in','checked_out','validated'] },
+                                                { key: 'checked_in', label: 'Check-in feito', icon: 'ðŸ“', doneStatuses: ['checked_in','checked_out','validated'] },
+                                                { key: 'checked_out', label: 'Check-out feito', icon: 'ðŸ', doneStatuses: ['checked_out','validated'] },
+                                                { key: 'validated', label: 'Validado pela empresa', icon: 'â­', doneStatuses: ['validated'] },
+                                            ].map((step, idx) => {
+                                                const done = activeSession ? step.doneStatuses.includes(activeSession.status) : false
+                                                const isCurrent = activeSession?.status === step.key
+                                                return (
+                                                    <div key={idx} className="relative flex items-start gap-4 mb-6 last:mb-0">
+                                                        <div className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center text-lg shadow-md transition-all duration-500 ${
+                                                            done ? 'bg-gradient-to-br from-green-400 to-emerald-500 scale-110' : isCurrent ? 'bg-gradient-to-br from-blue-400 to-purple-500 animate-pulse' : 'bg-gray-100'
+                                                        }`}>
+                                                            {step.icon}
+                                                        </div>
+                                                        <div className="pt-1.5">
+                                                            <p className={`font-semibold text-sm ${done ? 'text-green-700' : isCurrent ? 'text-blue-700' : 'text-gray-400'}`}>{step.label}</p>
+                                                            {step.key === 'checked_in' && activeSession?.checkinAt && (
+                                                                <p className="text-xs text-gray-400 mt-0.5">Ã s {new Date(activeSession.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                            )}
+                                                            {step.key === 'checked_out' && activeSession?.checkoutAt && (
+                                                                <p className="text-xs text-gray-400 mt-0.5">Ã s {new Date(activeSession.checkoutAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                            )}
+                                                            {step.key === 'validated' && activeSession?.validatedAt && (
+                                                                <p className="text-xs text-gray-400 mt-0.5">Ã s {new Date(activeSession.validatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                            )}
+                                                        </div>
                                                     </div>
-
-                                                    <span className="text-sm font-bold text-green-600">
-                                                        R$ {job.rate}
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-2 text-gray-900">
-                                                        <Calendar className="h-4 w-4 text-gray-700" />
-                                                        <span className="text-sm">Data</span>
-                                                    </div>
-
-                                                    <span className="text-sm text-gray-900">
-                                                        {job.startDate
-                                                            ? new Date(job.startDate + "T00:00:00").toLocaleDateString("pt-BR")
-                                                            : "A combinar"}
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-2 text-gray-900">
-                                                        <Clock className="h-4 w-4 text-gray-700" />
-                                                        <span className="text-sm">Horário</span>
-                                                    </div>
-
-                                                    <span className="text-sm font-medium text-gray-900">
-                                                        {job.startTime || "A combinar"}
-                                                    </span>
-                                                </div>
-                                            </div>
-
-                                            {/* Linha divis�ria (menos espa�o antes do bot�o) */}
-                                            <div className="mt-2 border-t border-gray-300" />
+                                                )
+                                            })}
                                         </div>
-
-                                        {/* �Detalhes� com menos altura e mais perto */}
-                                        <button
-                                            onClick={() => handleViewJobDetails(job)}
-                                            className="w-full py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50/50 transition"
-                                        >
-                                            Detalhes
-                                        </button>
                                     </div>
-                                ))}
 
-
-                                {filteredJobs.length === 0 && (
-                                    <div className="text-center py-12">
-                                        <BriefcaseIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                            Nenhuma proposta encontrada
-                                        </h3>
-                                        <p className="text-gray-500">
-                                            {searchTerm
-                                                ? `Nenhuma proposta encontrada para "${searchTerm}". Tente outras palavras-chave como "cozinheiro", "padeiro" ou "diarista".`
-                                                : 'Aguarde novas propostas serem publicadas nessa area de atuação.'
-                                            }
-                                        </p>
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {userProfile.userType === 'company' && (
-                            <div className="space-y-4">
-                                {/* Bot�o de Adicionar Trabalho (Vis�vel apenas para empresas) */}
-                                <div className="flex justify-end">
-                                    <button
-                                        onClick={() => {
-                                            setEditingJobId(null)
-                                            setNewJobPost(initialJobPostState)
-                                            setShowJobPostForm(true)
-                                            updateDuration(1, "dia")
-                                        }}
-                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                                    >
-                                        <Plus className="h-5 w-5" />
-                                        <span>Publicar Nova Vaga</span>
-                                    </button>
-                                </div>
-
-                                {filteredJobs.map((job) => (
-                                    <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-                                        <div className="flex flex-wrap items-start justify-between mb-3 gap-2">
-                                            <div className="flex items-center gap-3 flex-1 min-w-[150px]">
-                                                <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
-                                                    {(job.companyInfo as any)?.imagem_profile || (job.companyInfo as any)?.profile_image_url || (job.companyInfo as any)?.logo || (job.companyInfo as any)?.profilePhoto ? (
-                                                        <img src={(job.companyInfo as any)?.imagem_profile || (job.companyInfo as any)?.profile_image_url || (job.companyInfo as any)?.logo || (job.companyInfo as any)?.profilePhoto} alt={job.companyInfo?.name || "Empresa"} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <Building2 className="h-4 w-4 text-gray-700" />
-                                                    )}
-                                                </div>
-                                                <h3 className="font-bold text-gray-900 text-lg break-words">{job.title.toUpperCase()}</h3>
-                                            </div>
-                                            <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                                {job.isUrgent && (
-                                                    <div className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">
-                                                        URGENTE
+                                    {/* Photo preview already sent */}
+                                    {(activeSession?.checkinPhotoUrl || activeSession?.checkoutPhotoUrl) && (
+                                        <div className="bg-white rounded-2xl shadow-md p-5 mb-4">
+                                            <h3 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wide">Fotos Enviadas</h3>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {activeSession?.checkinPhotoUrl && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1 font-medium">ðŸ“ Check-in</p>
+                                                        <img src={activeSession.checkinPhotoUrl} onClick={() => setEnlargedPhoto(activeSession.checkinPhotoUrl!)} className="w-full h-28 object-cover rounded-xl cursor-pointer shadow" alt="Check-in" />
                                                     </div>
                                                 )}
-                                                {job.includesFood && (
-                                                    <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                                                        ALIMENTAÇÃO
+                                                {activeSession?.checkoutPhotoUrl && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-500 mb-1 font-medium">ðŸ Check-out</p>
+                                                        <img src={activeSession.checkoutPhotoUrl} onClick={() => setEnlargedPhoto(activeSession.checkoutPhotoUrl!)} className="w-full h-28 object-cover rounded-xl cursor-pointer shadow" alt="Check-out" />
                                                     </div>
                                                 )}
-                                                <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                                                    ATIVA
-                                                </div>
                                             </div>
                                         </div>
+                                    )}
 
-                                        <p className="text-gray-600 text-sm mb-3">{(job.description || '')}</p>
+                                        {/* Photo upload area - only show when action needed */}
+                                        {activeSession && ['accepted', 'checked_in'].includes(activeSession.status) && (
+                                            <div className="bg-white rounded-2xl shadow-md p-5">
+                                                <h3 className="font-bold text-gray-800 mb-1 text-sm uppercase tracking-wide">
+                                                    {activeSession.status === 'accepted' ? 'ðŸ“ Fazer Check-in' : 'ðŸ Fazer Check-out'}
+                                                </h3>
+                                                <p className="text-xs text-gray-500 mb-4">
+                                                    {activeSession.status === 'accepted'
+                                                        ? 'Tire uma foto ao chegar no local de trabalho'
+                                                        : 'Tire uma foto ao concluir o serviÃ§o'}
+                                                </p>
 
-                                        <div className="grid grid-cols-1 gap-2 text-sm mb-4">
-                                            <div className="flex items-center text-gray-600">
-                                                <MapPin className="h-4 w-4 mr-2" />
-                                                <span>{job.address}</span>
-                                            </div>
-                                            <div className="flex items-center text-gray-600">
-                                                <DollarSign className="h-4 w-4 mr-2" />
-                                                <span className="font-medium text-green-600">
-                                                    R$ {job.rate}{job.paymentType === 'hourly' ? '/hora' : job.paymentType === 'daily' ? '/dia' : job.paymentType === 'monthly' ? '/mês' : ' (projeto)'}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center text-gray-600">
-                                                <Calendar className="h-4 w-4 mr-2" />
-                                                <span>{job.startDate ? new Date(job.startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'Sem data'} / {job.startTime || 'Sem horário'}</span>
-                                            </div>
-                                            <div className="flex items-center text-gray-600">
-                                                <Clock className="h-4 w-4 mr-2" />
-                                                <span>{job.workHours} - {job.period}</span>
-                                            </div>
-                                            {job.includesFood && (
-                                                <div className="flex items-center text-green-600">
-                                                    <Utensils className="h-4 w-4 mr-2" />
-                                                    <span>Inclui alimentação</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                                {/* Preview */}
+                                                {sessionPhotoPreview ? (
+                                                    <div className="relative mb-4">
+                                                        <img src={sessionPhotoPreview} className="w-full h-52 object-cover rounded-xl shadow" alt="Preview" />
+                                                        <button onClick={() => { setSessionPhotoPreview(null); setSessionPhotoFile(null) }} className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1">
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-blue-300 rounded-xl bg-blue-50 cursor-pointer hover:bg-blue-100 transition">
+                                                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleSessionPhotoSelect} />
+                                                        <div className="text-4xl mb-2">ðŸ“·</div>
+                                                        <p className="text-blue-600 font-semibold text-sm">Toque para tirar foto</p>
+                                                        <p className="text-gray-400 text-xs mt-1">ou escolha da galeria</p>
+                                                    </label>
+                                                )}
 
-                                        <div className="flex items-center justify-end pt-3 border-t border-gray-100">
-                                            <div className="flex items-center space-x-2">
-                                                <button
-                                                    onClick={() => handleEditJob(job)}
-                                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                                                >
-                                                    Editar
-                                                </button>
-                                                <span className="text-gray-300">|</span>
-                                                <button
-                                                    onClick={() => handleDeleteJob(job.id)}
-                                                    className="text-red-600 hover:text-red-800 text-sm font-medium"
-                                                >
-                                                    Excluir
-                                                </button>
-                                                <span className="text-gray-300">|</span>
-                                                <div className="text-sm text-gray-500">
-                                                    {formatRelativeDate(job.postedAt)}
-                                                </div>
+                                                {sessionPhotoFile && (
+                                                    <button
+                                                        onClick={() => handleSessionUpload(activeSession.status === 'accepted' ? 'checkin' : 'checkout')}
+                                                        disabled={sessionLoading}
+                                                        className="w-full mt-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-purple-200 hover:opacity-90 transition disabled:opacity-50"
+                                                    >
+                                                        {sessionLoading ? 'Enviando...' : activeSession.status === 'accepted' ? 'âœ… Confirmar Check-in' : 'âœ… Confirmar Check-out'}
+                                                    </button>
+                                                )}
                                             </div>
-                                        </div>
+                                        )}
 
-                                    </div>
-                                ))}
+                                        {activeSession?.status === 'checked_out' && (
+                                            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
+                                                <p className="text-2xl mb-2">â³</p>
+                                                <p className="font-bold text-amber-800">Aguardando validaÃ§Ã£o</p>
+                                                <p className="text-amber-600 text-sm mt-1">A empresa vai confirmar seu serviÃ§o em breve</p>
+                                            </div>
+                                        )}
 
-                                {filteredJobs.length === 0 && (
-                                    <div className="text-center py-12">
-                                        <Plus className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                        <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                            Nenhuma proposta publicada
-                                        </h3>
-                                        <p className="text-gray-500 mb-4">
-                                            Publique sua primeira proposta de trabalho para encontrar profissionais qualificados.
-                                        </p>
-                                        <button
-                                            onClick={() => {
-                                                setEditingJobId(null)
-                                                setNewJobPost(initialJobPostState)
-                                                setShowJobPostForm(true)
-                                                updateDuration(1, "dia")
-                                            }}
-                                            className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
-                                        >
-                                            Publicar Proposta
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        )}
+                                        {activeSession?.status === 'validated' && (
+                                            <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center">
+                                                <p className="text-4xl mb-2">ðŸŽ‰</p>
+                                                <p className="font-bold text-green-800 text-lg">ServiÃ§o Validado!</p>
+                                                <p className="text-green-600 text-sm mt-1">A empresa confirmou que vocÃª realizou o trabalho</p>
+                                            </div>
+                                        )}
+                                </>
+                            )}
+                        </div>
                     </div>
                 )}
 
-                {activeTab === 'applications' && (<div className="min-h-screen bg-gray-50">
-                    <div className="max-w-md mx-auto px-4 pt-4 pb-2">
-                        <div className="bg-blue-600 rounded-xl p-4 shadow-sm">
-                            <h2 className="text-lg font-bold text-white">Minhas Candidaturas</h2>
-                            <p className="text-blue-100 text-sm mt-1">Trampos que você já se candidatou</p>
+                {/* ===================== COMPANY SESSION VIEW ===================== */}
+                {companySessionView && (
+                    <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col animate-in slide-in-from-right duration-300">
+                        <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-5 flex items-center gap-3 shadow-lg">
+                            <button onClick={() => setCompanySessionView(null)} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30">
+                                <ArrowLeft className="h-5 w-5" />
+                            </button>
+                            <div>
+                                <h2 className="font-bold text-lg">Controle do Candidato</h2>
+                                <p className="text-blue-100 text-xs">{companySessionView.candidateName}</p>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 max-w-md mx-auto w-full space-y-4">
+                            {/* Status badge */}
+                            <div className={`rounded-2xl p-4 text-center font-bold text-lg ${
+                                companySessionView.session.status === 'validated' ? 'bg-green-100 text-green-700' :
+                                companySessionView.session.status === 'checked_out' ? 'bg-amber-100 text-amber-700' :
+                                companySessionView.session.status === 'checked_in' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-700'
+                            }`}>
+                                {companySessionView.session.status === 'validated' ? 'âœ… ServiÃ§o Validado' :
+                                 companySessionView.session.status === 'checked_out' ? 'â³ Aguardando sua validaÃ§Ã£o' :
+                                 companySessionView.session.status === 'checked_in' ? 'ðŸ”µ Candidato no local' :
+                                 'ðŸŸ¡ Aguardando chegada'}
+                            </div>
+
+                            {/* Photos */}
+                            <div className="bg-white rounded-2xl shadow-md p-5">
+                                <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wide">Fotos de ComprovaÃ§Ã£o</h3>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-xs font-semibold text-gray-500 mb-2">ðŸ“ Check-in</p>
+                                        {companySessionView.session.checkinPhotoUrl ? (
+                                            <img src={companySessionView.session.checkinPhotoUrl} onClick={() => setEnlargedPhoto(companySessionView!.session.checkinPhotoUrl!)} className="w-full h-32 object-cover rounded-xl cursor-pointer shadow hover:opacity-90 transition" alt="Check-in" />
+                                        ) : (
+                                            <div className="w-full h-32 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Aguardando</div>
+                                        )}
+                                        {companySessionView.session.checkinAt && <p className="text-xs text-gray-400 mt-1 text-center">{new Date(companySessionView.session.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-semibold text-gray-500 mb-2">ðŸ Check-out</p>
+                                        {companySessionView.session.checkoutPhotoUrl ? (
+                                            <img src={companySessionView.session.checkoutPhotoUrl} onClick={() => setEnlargedPhoto(companySessionView!.session.checkoutPhotoUrl!)} className="w-full h-32 object-cover rounded-xl cursor-pointer shadow hover:opacity-90 transition" alt="Check-out" />
+                                        ) : (
+                                            <div className="w-full h-32 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Aguardando</div>
+                                        )}
+                                        {companySessionView.session.checkoutAt && <p className="text-xs text-gray-400 mt-1 text-center">{new Date(companySessionView.session.checkoutAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Validate button */}
+                            {companySessionView.session.status === 'checked_out' && (
+                                <button
+                                    onClick={() => handleValidateSession(companySessionView.session.id)}
+                                    disabled={sessionLoading}
+                                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-green-200 hover:opacity-90 transition disabled:opacity-50"
+                                >
+                                    {sessionLoading ? 'Validando...' : 'âœ… Validar ServiÃ§o'}
+                                </button>
+                            )}
+
+                            {companySessionView.session.status === 'validated' && !companySessionView.session.evaluationSubmitted && (
+                                <button
+                                    onClick={() => openEvaluationModalForSession(companySessionView.session, companySessionView.candidateName)}
+                                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 hover:opacity-90 transition"
+                                >
+                                    â­ Avaliar Candidato
+                                </button>
+                            )}
+
+                            {companySessionView.session.status === 'validated' && companySessionView.session.evaluationSubmitted && (
+                                <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-5 text-center">
+                                    <p className="text-lg font-bold text-green-800">Avaliacao enviada</p>
+                                    <p className="text-sm text-green-600 mt-1">O feedback deste candidato ja foi registrado pela sua empresa.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
+                )}
 
-                    <div className="max-w-md mx-auto p-4 space-y-3">
-                        {myApplications.length === 0 ? (
-                            <div className="bg-white p-4 rounded-xl border">
-                                <p className="text-gray-700 font-medium">Você ainda não se candidatou em nenhum trampo.</p>
-                            </div>
-                        ) : (
-                            myApplications.map(app => (
-                                <div key={app.applicationId} className="bg-white p-4 rounded-xl border">
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <p className="font-bold text-gray-900">{app.job.title.toUpperCase()}</p>
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${['aprovado', 'accepted'].includes(app.status?.toLowerCase()) ? 'bg-green-100 text-green-800' :
-                                                    ['finalizado', 'finished'].includes(app.status?.toLowerCase()) ? 'bg-gray-200 text-gray-800' :
-                                                        'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                    {['aprovado', 'accepted'].includes(app.status?.toLowerCase()) ? 'APROVADO' :
-                                                        (['finalizado', 'finished'].includes(app.status?.toLowerCase()) ? 'FINALIZADO' : 'PENDENTE')}
-                                                </span>
-                                            </div>
-                                            <p className="text-sm text-gray-600">{app.job.address}</p>
-                                            <div className="flex gap-4 mt-2 text-xs text-gray-600">
-                                                <span className="flex items-center gap-1">
-                                                    <Calendar className="h-3 w-3" />
-                                                    {app.job.startDate ? new Date(app.job.startDate + 'T00:00:00').toLocaleDateString('pt-BR') : 'A combinar'}
-                                                </span>
-                                                <span className="flex items-center gap-1">
-                                                    <Clock className="h-3 w-3" />
-                                                    {app.job.startTime || 'A combinar'}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
 
-                                    <div className="mt-2 text-xs text-gray-500">
-                                        Candidatado em: {new Date(app.appliedAt).toLocaleString()}
-                                    </div>
-
-                                    <button
-                                        onClick={() => handleViewJobDetails(app.job)}
-                                        className="w-full mt-3 border-t border-gray-100 pt-3 text-sm font-semibold text-gray-800 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        <Eye className="h-4 w-4" />
-                                        <span>Mais detalhes</span>
-                                    </button>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-                )
-                }
+                {activeTab === 'applications' && (
+                    <ApplicationsPage
+                        myApplications={myApplications}
+                        openSessionPanel={openSessionPanel}
+                        handleViewJobDetails={handleViewJobDetails}
+                    />
+                )}
 
                 {activeTab === 'resumes' && (
-                    <div className="space-y-4">
-                        {/* Header da seo  para empresa: busca + ttulo; para profissional: ttulo + boto s se no tem currculo */}
-                        {userProfile.userType === 'company' ? (
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3">
-                                <h2 className="text-lg font-bold text-gray-900">Currículos</h2>
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Buscar profissional..."
-                                        value={resumeSearchTerm}
-                                        onChange={(e) => setResumeSearchTerm(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 focus:ring-blue-500 focus:border-transparent"
-                                    />
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-lg font-bold text-gray-900">Meu Currículo</h2>
-                            </div>
-                        )}
-
-                        {/* Conteúdo */}
-                        {filteredResumes.length === 0 ? (
-                            <div className="text-center py-12">
-                                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                    Nenhum currículo encontrado
-                                </h3>
-                                <p className="text-gray-500 mb-4">
-                                    {resumeSearchTerm
-                                        ? `Nenhum currículo encontrado para "${resumeSearchTerm}".`
-                                        : userProfile.userType === 'professional'
-                                            ? 'Crie seu currículo para se candidatar às vagas!'
-                                            : 'Aqui aparecerão os currículos de pessoas interessadas nas suas propostas.'}
-                                </p>
-                                {userProfile.userType === 'professional' && (
-                                    <button
-                                        onClick={() => {
-                                            setShowResumeForm(true)
-                                            setResumeStep(1)
-                                        }}
-                                        className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
-                                    >
-                                        Cadastrar Currículo
-                                    </button>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {userProfile.userType === 'company' ? (
-                                    companyJobsWithCandidates.length === 0 ? (
-                                        <div className="text-center py-8">
-                                            <p className="text-gray-500">Nenhuma vaga postada ainda.</p>
-                                        </div>
-                                    ) : (
-                                        companyJobsWithCandidates.map((job) => {
-                                            const hasCandidates = job.candidates && job.candidates.length > 0;
-
-                                            return (
-                                                <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                                                    <div
-                                                        className="p-4 cursor-pointer hover:bg-gray-50 transition-colors flex justify-between items-center"
-                                                        onClick={() => {
-                                                            if (hasCandidates) {
-                                                                setCandidatesModalJob(job);
-                                                                setCandidateSearchTerm('');
-                                                            }
-                                                        }}
-                                                    >
-                                                        <div>
-                                                            <h3 className="font-bold text-gray-900 text-lg">{job.title}</h3>
-                                                            <p className="text-sm text-gray-500">{hasCandidates ? `${job.candidates.length} interessado(s)` : 'Sem interessados ainda'}</p>
-                                                        </div>
-                                                        {hasCandidates && (
-                                                            <div className="text-blue-500">
-                                                                <ChevronRight className="h-5 w-5" />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )
-                                        })
-                                    )
-                                ) : (
-                                    filteredResumes.map((resume) => {
-                                        const resumePhoto = getResumeProfileImageUrl(resume, userProfile)
-                                        const visibleSkills = (resume.skills || []).slice(0, 5)
-
-                                        return (
-                                            <div key={resume.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleViewResumeDetails(resume)}
-                                                    className="w-full p-4 text-left hover:bg-gray-50 transition-colors"
-                                                >
-                                                    <div className="flex items-start gap-4">
-                                                        <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
-                                                            {resumePhoto ? (
-                                                                <img src={resumePhoto} alt={`Foto de ${resume.personalInfo.name}`} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <User className="h-7 w-7" />
-                                                            )}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-start justify-between gap-3">
-                                                                <div>
-                                                                    <h3 className="font-bold text-gray-900 text-lg">{resume.personalInfo.name}</h3>
-                                                                    <p className="text-sm text-gray-600">{resume.professionalInfo.category || 'Categoria nï¿½o informada'}</p>
-                                                                </div>
-                                                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${resume.isVisible ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
-                                                                    {resume.isVisible ? 'Visível' : 'Oculto'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Briefcase className="h-4 w-4 text-gray-400" />
-                                                                    <span>{resume.professionalInfo.experience || 'Experiï¿½ncia nï¿½o informada'}</span>
-                                                                </div>
-                                                                <div className="flex items-center gap-2">
-                                                                    <Mail className="h-4 w-4 text-gray-400" />
-                                                                    <span className="truncate">{resume.personalInfo.email || 'E-mail nï¿½o informado'}</span>
-                                                                </div>
-                                                            </div>
-                                                            {resume.bio && (
-                                                                <p className="mt-3 text-sm text-gray-600 line-clamp-3">{resume.bio}</p>
-                                                            )}
-                                                            {visibleSkills.length > 0 && (
-                                                                <div className="mt-3 flex flex-wrap gap-2">
-                                                                    {visibleSkills.map((skill, index) => (
-                                                                        <span key={`${resume.id}-${skill}-${index}`} className="inline-flex items-center rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-medium">
-                                                                            {skill}
-                                                                        </span>
-                                                                    ))}
-                                                                    {(resume.skills || []).length > 5 && (
-                                                                        <span className="text-gray-400 text-xs flex items-center">+{(resume.skills || []).length - 5}</span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </button>
-
-                                                <div className="px-4 pb-3 flex gap-2">
-                                                    <button
-                                                        onClick={() => handleEditResume(resume)}
-                                                        className="flex-1 flex items-center justify-center gap-2 bg-blue-500 text-white py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-600 transition-colors"
-                                                    >
-                                                        <Edit className="h-4 w-4" />
-                                                        <span>Editar</span>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteResume(resume.id)}
-                                                        className="flex items-center justify-center gap-2 bg-red-50 text-red-600 px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-red-100 transition-colors border border-red-200"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )
-                                    })
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    <ResumesPage
+                        userProfile={userProfile}
+                        resumeSearchTerm={resumeSearchTerm}
+                        setResumeSearchTerm={setResumeSearchTerm}
+                        filteredResumes={filteredResumes}
+                        setShowResumeForm={setShowResumeForm}
+                        setResumeStep={setResumeStep}
+                        companyJobsWithCandidates={companyJobsWithCandidates}
+                        setCandidatesModalJob={setCandidatesModalJob}
+                        setCandidateSearchTerm={setCandidateSearchTerm}
+                        getResumeProfileImageUrl={getResumeProfileImageUrl}
+                        handleViewResumeDetails={handleViewResumeDetails}
+                        handleEditResume={handleEditResume}
+                        handleDeleteResume={handleDeleteResume}
+                    />
                 )}
-            </div>
-
             <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-purple-100 px-0 py-2 pb-safe shadow-[0_-10px_40px_rgba(99,102,241,0.1)] z-40">
                 <div className="flex items-center w-full max-w-md mx-auto relative pb-2 pt-1">
                     <div style={{ flexGrow: 2 }}></div>
@@ -3173,7 +2559,7 @@ justify-center">
                             <FileText className="h-6 w-6" />
                         </div>
                         <span className={`absolute -bottom-1 text-[10px] font-bold transition-all duration-300 text-center w-full ${activeTab === 'resumes' && !showProfile && !showSupport ? 'text-purple-700 opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100'}`}>
-                            Currículo
+                            CurrÃ­culo
                         </span>
                     </button>
                     <div style={{ flexGrow: 2 }}></div>
@@ -3241,7 +2627,7 @@ justify-center">
                                     </div>
                                     <span className="text-lg">Sair</span>
                                 </button>
-                                <p className="text-center text-gray-400 text-xs mt-4">Versão 1.0.0</p>
+                                <p className="text-center text-gray-400 text-xs mt-4">VersÃ£o 1.0.0</p>
                             </div>
                         </div>
                     </div>
@@ -3317,10 +2703,11 @@ justify-center">
                                                             <p className="text-sm text-gray-600 truncate">{candidate.category}</p>
                                                         </div>
                                                         <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) ? 'bg-green-100 text-green-800' :
-                                                            ['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'bg-gray-200 text-gray-800' :
+                                                            ['cancelado', 'cancelled', 'canceled'].includes(candidate.status?.toLowerCase()) ? 'bg-red-100 text-red-800' :
+                                                            ['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'bg-blue-100 text-blue-800' :
                                                                 'bg-yellow-100 text-yellow-800'
                                                             }`}>
-                                                            {['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) ? 'APROVADO' : (['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'FINALIZADO' : 'PENDENTE')}
+                                                            {['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) ? 'APROVADO' : (['cancelado', 'cancelled', 'canceled'].includes(candidate.status?.toLowerCase()) ? 'CANCELADO' : (['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'FINALIZADO' : 'PENDENTE'))}
                                                         </span>
                                                     </div>
                                                     <div className="text-xs text-gray-500 mt-2 space-y-1">
@@ -3329,14 +2716,16 @@ justify-center">
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2 mt-2 border-t border-gray-100 pt-3">
+                                            <div className="flex gap-2 mt-2 border-t border-gray-100 pt-3 flex-wrap">
                                                 {candidate.resume && (
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             const fullResumeMock = {
                                                                 ...candidate.resume,
+                                                                userId: candidate.candidateId,
                                                                 profilePhoto: getCandidateProfileImageUrl(candidate) || undefined,
+                                                                imageJob: candidate.imageJob || [],
                                                                 personalInfo: {
                                                                     name: candidate.name,
                                                                     email: candidate.email || '',
@@ -3359,12 +2748,35 @@ justify-center">
                                                                 updatedAt: '',
                                                                 isVisible: true
                                                             } as unknown as Resume;
-                                                            // Optional: we can hide candidatesModalJob when opening resume
                                                             handleViewResumeDetails(fullResumeMock);
                                                         }}
                                                         className="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100 transition"
                                                     >
                                                         Resumo Currículo
+                                                    </button>
+                                                )}
+                                                {['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) && (
+                                                    <button
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            setSessionLoading(true);
+                                                            try {
+                                                                const res = await logic.fetchWithAuth(`${logic.API_BASE}/api/sessions/${candidate.applicationId}`);
+                                                                if (res.ok) {
+                                                                    const d = await res.json();
+                                                                    if (d.session) {
+                                                                        setCompanySessionView({ session: d.session, candidateName: candidate.name });
+                                                                        setCandidatesModalJob(null);
+                                                                    } else {
+                                                                        alert('SessÃ£o nÃ£o encontrada para este candidato.');
+                                                                    }
+                                                                }
+                                                            } catch(e) { console.error(e); }
+                                                            setSessionLoading(false);
+                                                        }}
+                                                        className="flex-1 bg-purple-50 text-purple-700 py-2 rounded-lg text-sm font-semibold hover:bg-purple-100 transition flex items-center justify-center gap-1"
+                                                    >
+                                                        <span>ðŸŽ¯</span> Ver Controle
                                                     </button>
                                                 )}
                                                 {(!candidate.status || candidate.status === 'pendente' || candidate.status === 'pending') && (
@@ -3393,16 +2805,75 @@ justify-center">
                 </div>
             )}
 
+            {/* Modal de AvaliaÃ§Ã£o */}
+            {showEvaluationModal && evaluationData && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col p-6 space-y-6">
+                        <div className="text-center space-y-2">
+                            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                                <Star className="h-10 w-10 text-blue-600 fill-blue-600" />
+                            </div>
+                            <h3 className="text-2xl font-black text-gray-900 leading-tight">Avalie o seu Candidato!</h3>
+                            <p className="text-gray-500 text-sm">Como foi o serviço de <span className="font-bold text-gray-800">{evaluationData.candidateName}</span>?</p>
+                        </div>
+
+                        <div className="flex justify-center gap-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <button
+                                    key={star}
+                                    onClick={() => setEvaluationRating(star)}
+                                    className="focus:outline-none transition-transform active:scale-90"
+                                >
+                                    <Star
+                                        className={`h-10 w-10 transition-colors ${
+                                            star <= evaluationRating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'
+                                        }`}
+                                    />
+                                </button>
+                            ))}
+                        </div>
+
+
+                        <div className="flex flex-col gap-3 pt-2">
+                            <button
+                                onClick={handleSubmitEvaluation}
+                                disabled={evaluationSubmitting || evaluationRating === 0}
+                                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all disabled:opacity-50 disabled:shadow-none"
+                            >
+                                {evaluationSubmitting ? 'Enviando...' : 'Enviar Avaliacao'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowEvaluationModal(false)
+                                    setEvaluationData(null)
+                                }}
+                                className="w-full py-2 text-gray-400 font-semibold text-sm hover:text-gray-600 transition-colors"
+                            >
+                                Avaliar Depois
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Enlarge Photo (Global para a view principal) */}
+            {enlargedPhoto && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+                    onClick={() => setEnlargedPhoto(null)}
+                >
+                    <button className="absolute top-4 right-4 text-white hover:text-gray-300 p-2">
+                        <X className="w-8 h-8" />
+                    </button>
+                    <div className="max-w-[90%] max-h-[90vh] flex items-center justify-center cursor-auto" onClick={(e) => e.stopPropagation()}>
+                        <img src={enlargedPhoto} alt="Trabalho ampliado" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />
+                    </div>
+                </div>
+            )}
+
         </div >
     )
 }
-
-
-
-
-
-
-
 
 
 
