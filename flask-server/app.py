@@ -46,7 +46,6 @@ def env_bool(name: str, default: bool = False) -> bool:
 
 JWT_ENABLED = env_bool("JWT_ENABLED", True)
 DEV_USER_ID = int(os.getenv("DEV_USER_ID", "1"))
-
 COOKIE_NAME = (os.getenv("JWT_COOKIE_NAME") or "__Host-token").strip()
 COOKIE_SECURE = env_bool("JWT_COOKIE_SECURE", True)
 COOKIE_SAMESITE = (os.getenv("JWT_COOKIE_SAMESITE") or "None").strip()
