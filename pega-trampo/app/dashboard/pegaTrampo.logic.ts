@@ -934,15 +934,22 @@ export const filterJobs = (params: {
                     return isNaN(parsed) ? 0 : parsed;
                 };
 
-                // match de categoria/similaridade primeiro
+                const aCategorySlug = slugRole(a.category || "")
+                const bCategorySlug = slugRole(b.category || "")
+
+                // se as duas propostas forem da mesma categoria, a distancia manda
+                if (aCategorySlug && aCategorySlug === bCategorySlug) {
+                    if (a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
+                    if (b._urgentBoost !== a._urgentBoost) return b._urgentBoost - a._urgentBoost
+                    if (b._textMatch !== a._textMatch) return b._textMatch - a._textMatch
+                    if (b._score !== a._score) return b._score - a._score
+                }
+
+                // entre categorias diferentes, mantem a relevancia geral
                 if (b._roleMatch !== a._roleMatch) return b._roleMatch - a._roleMatch
-                // com categoria equivalente, a proposta mais proxima vem primeiro
                 if (a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
-                // depois considera o match textual
                 if (b._textMatch !== a._textMatch) return b._textMatch - a._textMatch
-                // urgentes continuam recebendo prioridade
                 if (b._urgentBoost !== a._urgentBoost) return b._urgentBoost - a._urgentBoost
-                // score agregado como desempate adicional
                 if (b._score !== a._score) return b._score - a._score
                 // fallback por created_at/posted_at se existir
                 const da = getTimeSafe(a.created_at || a.postedAt);
