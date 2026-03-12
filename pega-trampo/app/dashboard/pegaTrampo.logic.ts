@@ -930,8 +930,8 @@ export const filterJobs = (params: {
 
                 // score desc primeiro
                 if (b._score !== a._score) return b._score - a._score
-                // se o score empatar, a mais proxima vem primeiro
-                if (a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
+                // se o score empatar, inverte o desempate de distancia
+                if (a._distanceKm !== b._distanceKm) return b._distanceKm - a._distanceKm
                 // fallback por created_at/posted_at se existir
                 const da = getTimeSafe(a.created_at || a.postedAt);
                 const db = getTimeSafe(b.created_at || b.postedAt);
