@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, HelpCircle, User, Utensils, Sparkles, Lock, Check, Eye, EyeOff } from "lucide-react"
+import * as logic from "../../dashboard/pegaTrampo.logic"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
 const REGISTER_ENDPOINT = "/api/register"
@@ -46,14 +47,6 @@ type RegisterForm = {
     imageJob: string[]
 }
 
-type CepLookupResult = {
-    address: string
-    neighborhood: string
-    city: string
-    state: string
-    fullAddress: string
-}
-
 function onlyDigits(v: string) {
     return (v || "").replace(/\D/g, "")
 }
@@ -76,51 +69,6 @@ function formatCEP(cep: string): string {
     const clean = onlyDigits(cep).slice(0, 8)
     if (clean.length <= 5) return clean
     return `${clean.slice(0, 5)}-${clean.slice(5)}`
-}
-
-async function fetchAddressByCEP(cep: string): Promise<CepLookupResult | null> {
-    const cleanCEP = onlyDigits(cep)
-    if (cleanCEP.length !== 8) return null
-
-    const res = await fetch(`https://brasilapi.com.br/api/cep/v1/${cleanCEP}`)
-    if (!res.ok) return null
-
-    const data = await res.json()
-    const street = (data.street || '').trim()
-    const neighborhood = (data.neighborhood || '').trim()
-    const city = (data.city || '').trim()
-    const state = (data.state || '').trim()
-    const address = street || [neighborhood, city, state].filter(Boolean).join(', ')
-    const fullAddress = [street, neighborhood, city, state, 'Brasil'].filter(Boolean).join(', ')
-
-    if (!city || !state || !fullAddress) return null
-
-    return {
-        address,
-        neighborhood,
-        city,
-        state,
-        fullAddress,
-    }
-}
-
-async function fetchCoordinates(address: string): Promise<{ lat: number; lng: number } | null> {
-    const q = address.trim()
-    if (!q) return null
-
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(q)}`, {
-        headers: { Accept: 'application/json' },
-    })
-    if (!res.ok) return null
-
-    const data = await res.json()
-    if (!Array.isArray(data) || !data[0]) return null
-
-    const lat = Number.parseFloat(data[0].lat)
-    const lng = Number.parseFloat(data[0].lon)
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
-
-    return { lat, lng }
 }
 
 function validateCPF(cpf: string): boolean {
@@ -248,12 +196,12 @@ export default function CadastroPage() {
         setErrorMsg('')
 
         try {
-            const addressData = await fetchAddressByCEP(cleanCEP)
+            const addressData = await logic.fetchAddressByCEP(cleanCEP)
             if (!addressData) {
                 throw new Error('Nao foi possivel localizar esse CEP.')
             }
 
-            const coords = await fetchCoordinates(addressData.fullAddress)
+            const coords = await logic.fetchCoordinates(addressData.fullAddress)
             if (!coords) {
                 throw new Error('Nao foi possivel obter a localizacao desse CEP.')
             }
@@ -261,7 +209,7 @@ export default function CadastroPage() {
             setForm((p) => ({
                 ...p,
                 cep: formatCEP(cleanCEP),
-                address: addressData.address,
+                address: addressData.fullAddress,
                 neighborhood: addressData.neighborhood,
                 city: addressData.city,
                 state: addressData.state,
