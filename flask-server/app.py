@@ -2055,6 +2055,22 @@ def register_user():
         full_name = (data.get("full_name") or data.get("name") or "").strip()
         cpf = only_digits(data.get("cpf") or "")
         phone_raw = (data.get("phone") or "").strip()
+        cep = only_digits(data.get("cep") or "")
+        address_raw = (data.get("address") or "").strip()
+        neighborhood_raw = (data.get("neighborhood") or "").strip()
+        city_raw = (data.get("city") or "").strip()
+        state_raw = (data.get("state") or "").strip()
+
+        def parse_optional_float(value):
+            if value in (None, ""):
+                return None
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        lat = parse_optional_float(data.get("lat"))
+        lng = parse_optional_float(data.get("lng"))
         categories = parse_categories(data)  # <-- LISTA AQUI
         imagem_profile = data.get("imagem_profile")
         image_job_raw = data.get("image_job")
@@ -2078,6 +2094,12 @@ def register_user():
 
         if not cpf or len(cpf) != 11:
             return api_error("CPF invÃ¡lido", 400)
+
+        if user_type == "professional" and len(cep) != 8:
+            return api_error("CEP invalido", 400)
+
+        if user_type == "professional" and (lat is None or lng is None):
+            return api_error("Localizacao invalida para busca por proximidade", 400)
 
         if not categories:
             return api_error("Selecione pelo menos 1 categoria", 400)
@@ -2130,15 +2152,15 @@ def register_user():
             "cpf": enc(cpf),
             "phone": enc(phone_raw) if phone_raw else None,
 
-            "address": None,
+            "address": enc(address_raw) if address_raw else None,
             "number": None,
             "complement": None,
-            "neighborhood": None,
-            "city": None,
-            "state": None,
-            "cep": None,
-            "lat": None,
-            "lng": None,
+            "neighborhood": enc(neighborhood_raw) if neighborhood_raw else None,
+            "city": enc(city_raw) if city_raw else None,
+            "state": enc(state_raw) if state_raw else None,
+            "cep": enc(cep) if cep else None,
+            "lat": lat,
+            "lng": lng,
             "birth_date": None,
 
             # com cs50: envia literal de array e faz cast no SQL

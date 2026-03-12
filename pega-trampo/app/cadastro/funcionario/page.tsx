@@ -35,8 +35,23 @@ type RegisterForm = {
     cpf: string
     phone: string
     username: string
+    cep: string
+    address: string
+    neighborhood: string
+    city: string
+    state: string
+    lat: number | null
+    lng: number | null
     imagemProfile: string
     imageJob: string[]
+}
+
+type CepLookupResult = {
+    address: string
+    neighborhood: string
+    city: string
+    state: string
+    fullAddress: string
 }
 
 function onlyDigits(v: string) {
@@ -55,6 +70,57 @@ function formatCPF(cpf: string): string {
     if (p3) out += `.${p3}`
     if (p4) out += `-${p4}`
     return out
+}
+
+function formatCEP(cep: string): string {
+    const clean = onlyDigits(cep).slice(0, 8)
+    if (clean.length <= 5) return clean
+    return `${clean.slice(0, 5)}-${clean.slice(5)}`
+}
+
+async function fetchAddressByCEP(cep: string): Promise<CepLookupResult | null> {
+    const cleanCEP = onlyDigits(cep)
+    if (cleanCEP.length !== 8) return null
+
+    const res = await fetch(`https://brasilapi.com.br/api/cep/v1/${cleanCEP}`)
+    if (!res.ok) return null
+
+    const data = await res.json()
+    const street = (data.street || '').trim()
+    const neighborhood = (data.neighborhood || '').trim()
+    const city = (data.city || '').trim()
+    const state = (data.state || '').trim()
+    const address = street || [neighborhood, city, state].filter(Boolean).join(', ')
+    const fullAddress = [street, neighborhood, city, state, 'Brasil'].filter(Boolean).join(', ')
+
+    if (!city || !state || !fullAddress) return null
+
+    return {
+        address,
+        neighborhood,
+        city,
+        state,
+        fullAddress,
+    }
+}
+
+async function fetchCoordinates(address: string): Promise<{ lat: number; lng: number } | null> {
+    const q = address.trim()
+    if (!q) return null
+
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(q)}`, {
+        headers: { Accept: 'application/json' },
+    })
+    if (!res.ok) return null
+
+    const data = await res.json()
+    if (!Array.isArray(data) || !data[0]) return null
+
+    const lat = Number.parseFloat(data[0].lat)
+    const lng = Number.parseFloat(data[0].lon)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+
+    return { lat, lng }
 }
 
 function validateCPF(cpf: string): boolean {
@@ -96,6 +162,7 @@ export default function CadastroPage() {
 
     const [step, setStep] = useState<Step>(1)
     const [loading, setLoading] = useState(false)
+    const [cepLoading, setCepLoading] = useState(false)
     const [errorMsg, setErrorMsg] = useState<string>("")
     const [successMsg, setSuccessMsg] = useState<string>("")
 
@@ -108,6 +175,13 @@ export default function CadastroPage() {
         cpf: "",
         phone: "",
         username: "",
+        cep: "",
+        address: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        lat: null,
+        lng: null,
         imagemProfile: "",
         imageJob: [],
     })
@@ -138,13 +212,77 @@ export default function CadastroPage() {
     const canGoStep2 = emailOk && passwordOk
     const canGoStep3 = form.category.length > 0
 
+    const hasResolvedCoordinates = Number.isFinite(form.lat) && Number.isFinite(form.lng)
+
     const canSubmit =
         form.fullName.trim().length >= 3 &&
         onlyDigits(form.cpf).length === 11 &&
         cpfIsValid &&
         form.phone.trim().length >= 8 &&
+        onlyDigits(form.cep).length === 8 &&
+        hasResolvedCoordinates &&
         form.username.trim().length >= 3 &&
         !/\s/.test(form.username.trim())
+
+    async function handleCepBlur() {
+        const cleanCEP = onlyDigits(form.cep)
+
+        if (!cleanCEP) return
+
+        if (cleanCEP.length !== 8) {
+            setErrorMsg('Digite um CEP valido com 8 digitos.')
+            setForm((p) => ({
+                ...p,
+                cep: formatCEP(cleanCEP),
+                address: '',
+                neighborhood: '',
+                city: '',
+                state: '',
+                lat: null,
+                lng: null,
+            }))
+            return
+        }
+
+        setCepLoading(true)
+        setErrorMsg('')
+
+        try {
+            const addressData = await fetchAddressByCEP(cleanCEP)
+            if (!addressData) {
+                throw new Error('Nao foi possivel localizar esse CEP.')
+            }
+
+            const coords = await fetchCoordinates(addressData.fullAddress)
+            if (!coords) {
+                throw new Error('Nao foi possivel obter a localizacao desse CEP.')
+            }
+
+            setForm((p) => ({
+                ...p,
+                cep: formatCEP(cleanCEP),
+                address: addressData.address,
+                neighborhood: addressData.neighborhood,
+                city: addressData.city,
+                state: addressData.state,
+                lat: coords.lat,
+                lng: coords.lng,
+            }))
+        } catch (err) {
+            setForm((p) => ({
+                ...p,
+                address: '',
+                neighborhood: '',
+                city: '',
+                state: '',
+                lat: null,
+                lng: null,
+            }))
+            setErrorMsg(err instanceof Error ? err.message : 'Nao foi possivel validar o CEP informado.')
+        } finally {
+            setCepLoading(false)
+        }
+    }
 
     function back() {
         setErrorMsg("")
@@ -163,7 +301,7 @@ export default function CadastroPage() {
         setSuccessMsg("")
 
         if (!canSubmit) {
-            setErrorMsg("Preencha os dados corretamente (CPF, telefone e username) antes de finalizar.")
+            setErrorMsg("Preencha os dados corretamente (CPF, telefone, CEP valido e username) antes de finalizar.")
             return
         }
 
@@ -178,6 +316,13 @@ export default function CadastroPage() {
                 phone: form.phone,
                 username: form.username.trim(),
                 password: form.password,
+                cep: onlyDigits(form.cep),
+                address: form.address || null,
+                neighborhood: form.neighborhood || null,
+                city: form.city || null,
+                state: form.state || null,
+                lat: form.lat,
+                lng: form.lng,
                 imagem_profile: form.imagemProfile || null,
                 image_job: form.imageJob.length > 0 ? form.imageJob : null,
             }
@@ -469,6 +614,32 @@ export default function CadastroPage() {
                             </div>
 
                             <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">CEP *</label>
+                                <input
+                                    value={form.cep}
+                                    onChange={(e) => setForm((p) => ({
+                                        ...p,
+                                        cep: formatCEP(e.target.value),
+                                        address: '',
+                                        neighborhood: '',
+                                        city: '',
+                                        state: '',
+                                        lat: null,
+                                        lng: null,
+                                    }))}
+                                    onBlur={handleCepBlur}
+                                    placeholder="00000-000"
+                                    maxLength={9}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Usamos o CEP para localizar propostas proximas de voce.</p>
+                                {cepLoading ? <p className="text-xs text-blue-600 mt-1">Validando CEP...</p> : null}
+                                {!cepLoading && form.city && form.state ? (
+                                    <p className="text-xs text-green-600 mt-1">Local detectado: {form.city} - {form.state}</p>
+                                ) : null}
+                            </div>
+
+                            <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Nome da conta (username) *</label>
                                 <input
                                     value={form.username}
@@ -529,10 +700,10 @@ export default function CadastroPage() {
 
                             <button
                                 onClick={submit}
-                                disabled={!canSubmit || loading}
+                                disabled={!canSubmit || loading || cepLoading}
                                 className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700 transition-colors"
                             >
-                                {loading ? "Criando e enviando verificação..." : "Finalizar e verificar e-mail"}
+                                {loading ? "Criando e enviando verificacao..." : cepLoading ? "Validando CEP..." : "Finalizar e verificar e-mail"}
                             </button>
 
                             <button

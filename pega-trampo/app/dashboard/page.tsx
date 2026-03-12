@@ -799,17 +799,17 @@ rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg overflow-hi
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 
 mb-1">{selectedResume.personalInfo.name}</h2>
-                        {userProfile.userType === 'professional' && (
+                        {(userProfile.userType === 'professional' || userProfile.userType === 'company') && (
                             <div className="flex items-center justify-center gap-1.5 text-amber-500 mb-2">
                                 <div className="flex items-center gap-1">
                                     {[1, 2, 3, 4, 5].map((star) => (
                                         <Star
                                             key={star}
-                                            className={`h-4 w-4 ${star <= Math.round(userProfile.rating || 0) ? 'fill-amber-500 text-amber-500' : 'text-amber-200'}`}
+                                            className={`h-4 w-4 ${star <= Math.round(userProfile.userType === 'company' ? candidateEvaluationsData.averageRating : (userProfile.rating || 0)) ? 'fill-amber-500 text-amber-500' : 'text-amber-200'}`}
                                         />
                                     ))}
                                 </div>
-                                <span className="text-sm font-semibold text-gray-600">({userProfile.reviews || 0})</span>
+                                <span className="text-sm font-semibold text-gray-600">({userProfile.userType === 'company' ? candidateEvaluationsData.reviewsCount : (userProfile.reviews || 0)})</span>
                             </div>
                         )}
                         <p className="text-lg text-blue-600 font-semibold 
@@ -846,69 +846,6 @@ shadow-lg flex items-center justify-center space-x-3 transform hover:scale-105"
                                 ))}
                             </div>
                         </div>
-                    )}
-                    {userProfile.userType === 'company' && (
-                        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-                        <div className="flex items-center space-x-2 mb-4">
-                            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                                <Star className="h-5 w-5 text-amber-500 fill-amber-500" />
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900">Avaliacoes</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3 mb-4">
-                            <div className="rounded-2xl bg-amber-50 border border-amber-100 p-4 text-center">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Nota media</p>
-                                <p className="text-3xl font-black text-amber-600 mt-1">{candidateEvaluationsData.averageRating > 0 ? candidateEvaluationsData.averageRating.toFixed(1).replace('.', ',') : '0,0'}</p>
-                            </div>
-                            <div className="rounded-2xl bg-blue-50 border border-blue-100 p-4 text-center">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Total de avaliacoes</p>
-                                <p className="text-3xl font-black text-blue-600 mt-1">{candidateEvaluationsData.reviewsCount}</p>
-                            </div>
-                        </div>
-
-                        {candidateEvaluationsData.evaluations.length === 0 ? (
-                            <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
-                                Este profissional ainda nao recebeu avaliacoes de empresas.
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {candidateEvaluationsData.evaluations.map((evaluation) => (
-                                    <div key={evaluation.id} className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                                        <div className="flex items-start gap-3">
-                                            <div className="w-11 h-11 rounded-full overflow-hidden bg-white border border-gray-200 flex items-center justify-center text-gray-400 shrink-0">
-                                                {evaluation.evaluatorImage ? (
-                                                    <img src={evaluation.evaluatorImage} alt={evaluation.evaluatorName} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <Building2 className="h-5 w-5" />
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="flex items-start justify-between gap-3">
-                                                    <div>
-                                                        <p className="font-bold text-gray-900 truncate">{evaluation.evaluatorName}</p>
-                                                        <div className="flex items-center gap-1 mt-1">
-                                                            {[1, 2, 3, 4, 5].map((star) => (
-                                                                <Star
-                                                                    key={star}
-                                                                    className={`h-4 w-4 ${star <= evaluation.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-200'}`}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    <span className="text-xs text-gray-400 shrink-0">
-                                                        {evaluation.created_at ? new Date(evaluation.created_at).toLocaleDateString('pt-BR') : ''}
-                                                    </span>
-                                                </div>
-                                                <p className="text-sm text-gray-600 mt-3">
-                                                    {evaluation.comment?.trim() ? evaluation.comment : 'Sem comentario informado.'}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                     )}
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                         <div className="flex items-center space-x-2 mb-4">

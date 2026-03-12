@@ -843,10 +843,10 @@ const computeJobScoreForProfessional = (job: any, userProfile: any) => {
     }
 
     // 3) DistÃ¢ncia (se tiver coords)
-    const uLat = Number(userProfile?.lat)
-    const uLng = Number(userProfile?.lng)
-    const jLat = Number(job?.lat)
-    const jLng = Number(job?.lng)
+    const uLat = Number(userProfile?.lat ?? userProfile?.coordinates?.lat)
+    const uLng = Number(userProfile?.lng ?? userProfile?.coordinates?.lng)
+    const jLat = Number(job?.lat ?? job?.coordinates?.lat)
+    const jLng = Number(job?.lng ?? job?.coordinates?.lng)
 
     let distPart = 0
     if (isFinite(uLat) && isFinite(uLng) && isFinite(jLat) && isFinite(jLng)) {
@@ -918,12 +918,6 @@ export const filterJobs = (params: {
                     const parsed = new Date(String(d).replace(' ', 'T')).getTime();
                     return isNaN(parsed) ? 0 : parsed;
                 };
-
-                if (selectedSlug === "todas") {
-                    const da = getTimeSafe(a.created_at || a.postedAt);
-                    const db = getTimeSafe(b.created_at || b.postedAt);
-                    return db - da;
-                }
 
                 // score desc primeiro
                 if (b._score !== a._score) return b._score - a._score
