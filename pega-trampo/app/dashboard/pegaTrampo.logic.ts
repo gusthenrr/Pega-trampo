@@ -791,6 +791,19 @@ const distanceScore = (km: number) => {
     return Math.max(0, Math.min(1, Math.exp(-km / 12)))
 }
 
+const readCoordinate = (...values: any[]) => {
+    for (const value of values) {
+        if (value === null || value === undefined) continue
+        if (typeof value === 'string' && value.trim() === '') continue
+
+        const normalized = typeof value === 'string' ? value.replace(',', '.').trim() : value
+        const num = Number(normalized)
+        if (Number.isFinite(num)) return num
+    }
+
+    return null
+}
+
 // -------------------------
 // Score do job pro profissional (UPDATED)
 // -------------------------
@@ -845,10 +858,10 @@ const computeJobRankingForProfessional = (job: any, userProfile: any) => {
     }
 
     // 3) DistÃ¢ncia (se tiver coords)
-    const uLat = Number(userProfile?.lat ?? userProfile?.coordinates?.lat)
-    const uLng = Number(userProfile?.lng ?? userProfile?.coordinates?.lng)
-    const jLat = Number(job?.lat ?? job?.coordinates?.lat)
-    const jLng = Number(job?.lng ?? job?.coordinates?.lng)
+    const uLat = readCoordinate(userProfile?.lat, userProfile?.coordinates?.lat, userProfile?.latitude)
+    const uLng = readCoordinate(userProfile?.lng, userProfile?.coordinates?.lng, userProfile?.longitude)
+    const jLat = readCoordinate(job?.lat, job?.coordinates?.lat, job?.latitude)
+    const jLng = readCoordinate(job?.lng, job?.coordinates?.lng, job?.longitude)
 
     let distPart = 0
     let distanceKm = Number.POSITIVE_INFINITY
