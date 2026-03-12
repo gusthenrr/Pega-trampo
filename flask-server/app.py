@@ -807,7 +807,7 @@ def get_jobs():
             # Force exactly the profile's phone. If none exists, clear out any buggy old data.
             item["companyInfo"]["phone"] = real_phone
             if up_imagem_profile:
-                item["companyInfo"]["imagem_profile"] = up_imagem_profile
+                item["companyInfo"]["imagem_profile"] = get_signed_url(up_imagem_profile) or up_imagem_profile
 
             item["paymentType"] = item.pop("payment_type", None)
             item["workHours"] = item.pop("work_hours", None)
@@ -980,7 +980,7 @@ def get_my_applications():
             # Force exactly the profile's phone. If none exists, clear out any buggy old data.
             item["companyInfo"]["phone"] = real_phone
             if up_imagem_profile:
-                item["companyInfo"]["imagem_profile"] = up_imagem_profile
+                item["companyInfo"]["imagem_profile"] = get_signed_url(up_imagem_profile) or up_imagem_profile
 
             # job fields -> frontend shape
             item["paymentType"] = item.pop("payment_type", None)
@@ -3203,4 +3203,3 @@ def get_user_evaluations(evaluated_id):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
-
