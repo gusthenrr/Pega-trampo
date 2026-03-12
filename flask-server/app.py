@@ -1,4 +1,4 @@
-﻿
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import psycopg2
@@ -46,6 +46,7 @@ def env_bool(name: str, default: bool = False) -> bool:
 
 JWT_ENABLED = env_bool("JWT_ENABLED", True)
 DEV_USER_ID = int(os.getenv("DEV_USER_ID", "1"))
+
 COOKIE_NAME = (os.getenv("JWT_COOKIE_NAME") or "__Host-token").strip()
 COOKIE_SECURE = env_bool("JWT_COOKIE_SECURE", True)
 COOKIE_SAMESITE = (os.getenv("JWT_COOKIE_SAMESITE") or "None").strip()
@@ -2532,13 +2533,13 @@ def get_company_applications():
                 raw_image_job = app.get("image_job")
                 if raw_image_job:
                     if isinstance(raw_image_job, list):
-                        c_image_job = [str(x) for x in raw_image_job if x]
+                        c_image_job = [get_signed_url(str(x)) or str(x) for x in raw_image_job if x]
                     else:
                         s = str(raw_image_job).strip()
                         if s.startswith("{") and s.endswith("}"):
                             inner = s[1:-1].strip()
                             if inner:
-                                c_image_job = [x.strip().strip('"') for x in inner.split(",") if x.strip()]
+                                c_image_job = [get_signed_url(x.strip().strip('"')) or x.strip().strip('"') for x in inner.split(",") if x.strip()]
 
                 candidates.append({
                     "applicationId": app["app_id"],
@@ -3202,18 +3203,4 @@ def get_user_evaluations(evaluated_id):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
