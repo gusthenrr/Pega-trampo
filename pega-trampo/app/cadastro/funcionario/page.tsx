@@ -172,8 +172,8 @@ export default function CadastroPage() {
         form.username.trim().length >= 3 &&
         !/\s/.test(form.username.trim())
 
-    async function handleCepBlur() {
-        const cleanCEP = onlyDigits(form.cep)
+    async function handleCepBlur(rawCep?: string) {
+        const cleanCEP = onlyDigits(rawCep ?? form.cep)
 
         if (!cleanCEP) return
 
@@ -201,7 +201,19 @@ export default function CadastroPage() {
                 throw new Error('Nao foi possivel localizar esse CEP.')
             }
 
-            const coords = await logic.fetchCoordinates(addressData.fullAddress)
+            const geoQueries = [
+                addressData.fullAddress,
+                [addressData.neighborhood, addressData.city, addressData.state].filter(Boolean).join(', '),
+                [addressData.city, addressData.state].filter(Boolean).join(' - '),
+                `${cleanCEP}, Brasil`,
+            ].filter(Boolean)
+
+            let coords = null
+            for (const query of geoQueries) {
+                coords = await logic.fetchCoordinates(query)
+                if (coords) break
+            }
+
             if (!coords) {
                 throw new Error('Nao foi possivel obter a localizacao desse CEP.')
             }
@@ -575,7 +587,7 @@ export default function CadastroPage() {
                                         lat: null,
                                         lng: null,
                                     }))}
-                                    onBlur={handleCepBlur}
+                                    onBlur={(e) => void handleCepBlur(e.target.value)}
                                     placeholder="00000-000"
                                     maxLength={9}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
