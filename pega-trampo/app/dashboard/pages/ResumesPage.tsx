@@ -91,7 +91,7 @@ export default function ResumesPage(props: any) {
                                 const hasCandidates = job.candidates && job.candidates.length > 0
 
                                 return (
-                                    <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden max-w-3xl">
+                                    <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden max-w-3xl mx-1 sm:mx-0">
                                         <div
                                             className="p-4 cursor-pointer hover:bg-gray-50 transition-colors flex justify-between items-center"
                                             onClick={() => {

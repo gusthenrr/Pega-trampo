@@ -978,40 +978,7 @@ text-gray-900">{selectedResumeAddress}</p>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    {/* Informações Profissionais */}
-
-
-                    <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
-                        <div className="flex items-center space-x-2 mb-4">
-                            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center 
-justify-center">
-                                <Briefcase className="h-5 w-5 text-purple-600" />
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900">Informações Profissionais</h3>
-                        </div>
-                        <div className="space-y-3">
-                            <div>
-                                <p className="text-sm text-gray-600 mb-1">Tipos de Contrato</p>
-                                <div className="flex flex-wrap gap-2">
-                                    {selectedResume.professionalInfo.contractTypes.map((type, index) => (
-                                        <span key={index} className="bg-blue-100 text-blue-800 px-3 py-1 
-rounded-full text-xs font-medium">
-                                            {type}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600 mb-1">Horário de Trabalho</p>
-                                <p className="font-medium 
-text-gray-900">{selectedResume.professionalInfo.workSchedule}</p>
-                            </div>
-
-                        </div>
-                    </div>
-
+                    </div>
                     {/* Experiência Profissional */}
                     {selectedResume.workExperience && selectedResume.workExperience.length > 0 && (
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
@@ -2929,6 +2896,7 @@ hover:bg-blue-600 transition-colors"
         </div >
     )
 }
+
 
 
 
