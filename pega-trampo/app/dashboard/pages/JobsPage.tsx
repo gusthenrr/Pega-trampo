@@ -36,6 +36,29 @@ export default function JobsPage(props: any) {
         formatRelativeDate,
     } = props
 
+    const getJobStatusBadge = (status?: string) => {
+        const normalizedStatus = String(status || 'ativa').trim().toLowerCase()
+
+        if (normalizedStatus === 'finalizada') {
+            return {
+                label: 'FINALIZADA',
+                className: 'bg-blue-100 text-blue-800',
+            }
+        }
+
+        if (normalizedStatus === 'inativa') {
+            return {
+                label: 'INATIVA',
+                className: 'bg-gray-200 text-gray-700',
+            }
+        }
+
+        return {
+            label: 'ATIVA',
+            className: 'bg-green-100 text-green-800',
+        }
+    }
+
     return (
         <>
             {userProfile.userType === 'professional' && (
@@ -201,7 +224,10 @@ export default function JobsPage(props: any) {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
-                                    {filteredJobs.map((job: any) => (
+                                    {filteredJobs.map((job: any) => {
+                                        const statusBadge = getJobStatusBadge(job.status)
+
+                                        return (
                                         <div key={job.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-full flex flex-col">
                                             <div className="flex flex-wrap items-start justify-between mb-3 gap-2">
                                                 <div className="flex items-center gap-3 flex-1 min-w-[150px]">
@@ -217,7 +243,7 @@ export default function JobsPage(props: any) {
                                                 <div className="flex flex-wrap items-center gap-2 shrink-0">
                                                     {job.isUrgent && <div className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-medium">URGENTE</div>}
                                                     {job.includesFood && <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">ALIMENTACAO</div>}
-                                                    <div className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">ATIVA</div>
+                                                    <div className={`${statusBadge.className} px-2 py-1 rounded-full text-xs font-medium`}>{statusBadge.label}</div>
                                                 </div>
                                             </div>
 
@@ -260,7 +286,8 @@ export default function JobsPage(props: any) {
                                                 </div>
                                             </div>
                                         </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
 
                                 {filteredJobs.length === 0 && (

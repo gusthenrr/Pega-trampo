@@ -528,6 +528,7 @@ except Exception as _e:
 def ensure_postgres_runtime_schema():
     statements = [
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cep TEXT",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ativa'",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS image_job TEXT[]",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS rating DOUBLE PRECISION NOT NULL DEFAULT 0",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS reviews_count INTEGER NOT NULL DEFAULT 0",
@@ -550,6 +551,36 @@ def ensure_jobs_cep_column():
         db_write("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cep TEXT")
     except Exception as schema_err:
         print(f"WARN: ensure jobs.cep failed: {schema_err}")
+
+
+def ensure_jobs_status_column():
+    try:
+        db_write("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ativa'")
+    except Exception as schema_err:
+        print(f"WARN: ensure jobs.status failed: {schema_err}")
+
+
+def expire_jobs_without_candidate():
+    today_iso = datetime.now().date().isoformat()
+    try:
+        db_write(
+            """
+            UPDATE jobs j
+            SET status = 'inativa'
+            WHERE LOWER(COALESCE(j.status, 'ativa')) = 'ativa'
+              AND NULLIF(TRIM(COALESCE(j.start_date, '')), '') IS NOT NULL
+              AND SUBSTRING(j.start_date FROM 1 FOR 10) < %s
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM job_applications ja
+                  WHERE ja.job_id = j.id
+                    AND LOWER(COALESCE(ja.status, '')) IN ('aprovado', 'accepted', 'finalizado', 'finished')
+              )
+            """,
+            today_iso,
+        )
+    except Exception as schema_err:
+        print(f"WARN: expire jobs failed: {schema_err}")
 
 # ---- Supabase Storage helpers ----
 def upload_session_photo(file_bytes: bytes, path: str, content_type: str) -> str:
@@ -668,6 +699,7 @@ def create_job():
     data = request.json or {}
     user_id = current_user_id()
     ensure_jobs_cep_column()
+    ensure_jobs_status_column()
 
     import uuid, json
     job_id = data.get("id") or str(uuid.uuid4())
@@ -697,7 +729,7 @@ def create_job():
                 posted_by, posted_by_user_id, posted_at,
                 period, duration, is_urgent,
                 company_only, includes_food,
-                lat, lng, cep, company_info_json,
+                lat, lng, cep, status, company_info_json,
                 start_date, start_time
             ) VALUES (
                 %s, %s, %s, %s, %s, %s,
@@ -705,7 +737,7 @@ def create_job():
                 %s, %s, CURRENT_TIMESTAMP,
                 %s, %s, %s,
                 %s, %s,
-                %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
                 %s, %s
             ) RETURNING id
         """,
@@ -729,6 +761,7 @@ def create_job():
             job_lat,
             job_lng,
             enc(job_cep),
+            "ativa",
             company_info_json,
             data.get("startDate"),
             data.get("startTime")
@@ -743,6 +776,8 @@ def create_job():
 def get_jobs():
     print("get_jobs")
     ensure_jobs_cep_column()
+    ensure_jobs_status_column()
+    expire_jobs_without_candidate()
 
     identity = current_user_id()
     user_type = "professional"
@@ -763,7 +798,8 @@ def get_jobs():
                 SELECT j.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile 
                 FROM jobs j 
                 LEFT JOIN user_profiles up ON j.posted_by_user_id = up.user_id 
-                WHERE j.posted_by_user_id = %s 
+                WHERE j.posted_by_user_id = %s
+                  AND LOWER(COALESCE(j.status, 'ativa')) = 'ativa'
                 ORDER BY j.created_at DESC
             """, user_id)
 
@@ -782,6 +818,7 @@ def get_jobs():
                     ON ja.job_id = j.id
                    AND ja.candidate_id = %s
                 LEFT JOIN user_profiles up ON j.posted_by_user_id = up.user_id
+                WHERE LOWER(COALESCE(j.status, 'ativa')) = 'ativa'
                 ORDER BY j.created_at DESC
             """, candidate_id)
 
@@ -790,6 +827,7 @@ def get_jobs():
                 SELECT j.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile 
                 FROM jobs j 
                 LEFT JOIN user_profiles up ON j.posted_by_user_id = up.user_id 
+                WHERE LOWER(COALESCE(j.status, 'ativa')) = 'ativa'
                 ORDER BY j.created_at DESC
             """)
 
@@ -846,6 +884,7 @@ def get_jobs():
             item["startDate"] = item.pop("start_date", None)
             item["startTime"] = item.pop("start_time", None)
             item["alreadyApplied"] = bool(item.pop("already_applied", 0))
+            item["status"] = str(item.get("status") or "ativa").strip().lower()
 
             item.pop("company_info_json", None)
             results.append(item)
@@ -2961,41 +3000,58 @@ def session_checkout():
 
 @app.route("/api/sessions/<session_id>/validate", methods=["PUT"])
 def validate_session(session_id):
-    """Company validates completed work."""
+    """Company validates or rejects completed work."""
     user_id = current_user_id()
     if not user_id:
-        return api_error("NÃ£o autorizado", 401)
+        return api_error("NÃƒÂ£o autorizado", 401)
     try:
+        data = request.get_json(silent=True) or {}
+        completed = data.get("completed")
+        if completed is None:
+            completed = True
+
         rows = db.execute(
             "SELECT * FROM job_sessions WHERE id = %s AND company_id = %s",
             session_id, user_id
         )
         if not rows:
-            return api_error("SessÃ£o nÃ£o encontrada", 404)
+            return api_error("SessÃƒÂ£o nÃƒÂ£o encontrada", 404)
         s = rows[0]
         if s["status"] != "checked_out":
-            return api_error(f"SÃ³ Ã© possÃ­vel validar apÃ³s o check-out. Status atual: {s['status']}", 409)
+            return api_error(f"SÃƒÂ³ ÃƒÂ© possÃƒÂ­vel validar apÃƒÂ³s o check-out. Status atual: {s['status']}", 409)
 
         now = datetime.now(timezone.utc).isoformat()
-        db_write("""
-            UPDATE job_sessions SET validated_at = %s, status = 'validated'
-            WHERE id = %s
-        """, now, session_id)
-        db_write("UPDATE job_applications SET status = 'finalizado' WHERE id = %s", s["application_id"])
+        if completed:
+            db_write("""
+                UPDATE job_sessions SET validated_at = %s, status = 'validated'
+                WHERE id = %s
+            """, now, session_id)
+            db_write("UPDATE job_applications SET status = 'finalizado' WHERE id = %s", s["application_id"])
+            db_write("UPDATE jobs SET status = 'finalizada' WHERE id = %s", s["job_id"])
+            db_write(
+                "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (%s, 'session_validated', %s, %s)",
+                s["candidate_id"],
+                "Seu serviÃƒÂ§o foi validado pela empresa! Ã¢Å“â€¦",
+                s["job_id"]
+            )
+            return api_ok(message="ServiÃƒÂ§o validado com sucesso!", status="validated")
 
-        # Notifica candidato
+        db_write("""
+            UPDATE job_sessions SET validated_at = NULL, status = 'cancelled'
+            WHERE id = %s
+        """, session_id)
+        db_write("UPDATE job_applications SET status = 'cancelado' WHERE id = %s", s["application_id"])
+        db_write("UPDATE jobs SET status = 'inativa' WHERE id = %s", s["job_id"])
         db_write(
-            "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (%s, 'session_validated', %s, %s)",
+            "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (%s, 'session_cancelled', %s, %s)",
             s["candidate_id"],
-            "Seu serviÃ§o foi validado pela empresa! âœ…",
+            "A empresa informou que o serviÃƒÂ§o nÃƒÂ£o foi concluÃƒÂ­do.",
             s["job_id"]
         )
-        return api_ok(message="ServiÃ§o validado com sucesso!")
+        return api_ok(message="ServiÃƒÂ§o marcado como nÃƒÂ£o concluÃƒÂ­do.", status="cancelled")
     except Exception as e:
-        print(f"Erro ao validar sessÃ£o: {e}")
-        return api_error("Erro ao validar sessÃ£o", 500)
-
-
+        print(f"Erro ao validar sessÃƒÂ£o: {e}")
+        return api_error("Erro ao validar sessÃƒÂ£o", 500)
 @app.route("/api/get_dados", methods=["GET"])
 def get_dados():
     user_id = current_user_id()
@@ -3330,3 +3386,5 @@ def get_user_evaluations(evaluated_id):
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+

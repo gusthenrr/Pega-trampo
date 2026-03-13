@@ -1,4 +1,4 @@
-﻿// src/types/pegaTrampo.ts
+// src/types/pegaTrampo.ts
 
 export type PaymentType = 'hourly' | 'daily' | 'project' | 'monthly'
 export type UserType = 'client' | 'professional' | 'company'
@@ -35,6 +35,7 @@ export interface JobCompanyInfo {
 
 export interface Job {
     id: string
+    status?: 'ativa' | 'finalizada' | 'inativa'
     title: string
     description: string
     category: string
@@ -297,7 +298,7 @@ export interface CompanyJobApplications {
 export interface JobSession {
     id: string
     applicationId: string
-    status: 'accepted' | 'checked_in' | 'checked_out' | 'validated'
+    status: 'accepted' | 'checked_in' | 'checked_out' | 'validated' | 'cancelled'
     checkinPhotoUrl?: string
     checkoutPhotoUrl?: string
     checkinAt?: string

@@ -927,12 +927,16 @@ export const filterJobs = (params: {
     selectedDate?: string
 }) => {
     const { jobs, searchTerm, selectedCategory, userProfile, selectedDate } = params
+    const hiddenStatuses = new Set(['finalizada', 'inativa'])
 
     const searchLower = normalizeText(searchTerm || "")
     const selectedSlug = selectedCategory === "Todas" ? "todas" : (selectedCategory === "Recomendado" ? "recomendado" : slugRole(selectedCategory))
 
     // 1) Filtro bÃ¡sico por busca e por data (se houver)
     const baseFiltered = jobs.filter(job => {
+        const jobStatus = String(job.status || 'ativa').trim().toLowerCase()
+        if (hiddenStatuses.has(jobStatus)) return false
+
         if (searchLower) {
             const text = normalizeText(`${job.title || ""} ${job.description || ""} ${job.category || ""} ${job.address || ""}`)
             if (!text.includes(searchLower)) return false

@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from 'react'
 import {
@@ -659,20 +659,25 @@ export default function PegaTrampoApp() {
         setShowEvaluationModal(true)
     }
 
-    const handleValidateSession = async (sessionId: string) => {
-        if (!confirm('Confirmar que o servico foi realizado com sucesso?')) return
+    const handleValidateSession = async (sessionId: string, completed: boolean) => {
+        if (!confirm(completed ? 'Confirmar que o servico foi realizado com sucesso?' : 'Confirmar que o funcionario nao concluiu o servico?')) return
         setSessionLoading(true)
         try {
-            const res = await logic.fetchWithAuth(`${logic.API_BASE}/api/sessions/${sessionId}/validate`, { method: 'PUT' })
+            const res = await logic.fetchWithAuth(`${logic.API_BASE}/api/sessions/${sessionId}/validate`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ completed }),
+            })
             const d = await res.json()
             if (res.ok) {
                 if (companySessionView) {
-                    const validatedSession: JobSession = {
+                    const nextStatus: JobSession['status'] = d.status === 'cancelled' ? 'cancelled' : 'validated'
+                    const updatedSession: JobSession = {
                         ...companySessionView.session,
-                        status: 'validated',
-                        evaluationSubmitted: false,
+                        status: nextStatus,
+                        evaluationSubmitted: nextStatus === 'validated' ? false : companySessionView.session.evaluationSubmitted,
                     }
-                    setCompanySessionView(prev => prev ? { ...prev, session: validatedSession } : null)
+                    setCompanySessionView(prev => prev ? { ...prev, session: updatedSession } : null)
                     const appsRes = await logic.fetchWithAuth(`${logic.API_BASE}/api/company/applications`)
                     if (appsRes.ok) {
                         const appsData = await appsRes.json()
@@ -680,7 +685,9 @@ export default function PegaTrampoApp() {
                             setCompanyJobsWithCandidates(appsData.jobs)
                         }
                     }
-                    openEvaluationModalForSession(validatedSession, companySessionView.candidateName)
+                    if (nextStatus === 'validated') {
+                        openEvaluationModalForSession(updatedSession, companySessionView.candidateName)
+                    }
                 }
             } else {
                 alert(d.error || 'Erro ao validar')
@@ -780,6 +787,7 @@ export default function PegaTrampoApp() {
         } else if (
             notificationType === 'application_status' ||
             notificationType === 'session_validated' ||
+            notificationType === 'session_cancelled' ||
             notificationMessage.includes('chamado para')
         ) {
             setActiveTab('applications');
@@ -2427,6 +2435,13 @@ hover:bg-blue-600 transition-colors"
                                                 <p className="text-green-600 text-sm mt-1">A empresa confirmou que vocÃª realizou o trabalho</p>
                                             </div>
                                         )}
+                                        {activeSession?.status === 'cancelled' && (
+                                            <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
+                                                <p className="text-4xl mb-2">âŒ</p>
+                                                <p className="font-bold text-red-800 text-lg">Servico nao concluido</p>
+                                                <p className="text-red-600 text-sm mt-1">A empresa informou que o trabalho nao foi concluido.</p>
+                                            </div>
+                                        )}
                                 </>
                             )}
                         </div>
@@ -2449,11 +2464,13 @@ hover:bg-blue-600 transition-colors"
                             {/* Status badge */}
                             <div className={`rounded-2xl p-4 text-center font-bold text-lg ${
                                 companySessionView.session.status === 'validated' ? 'bg-green-100 text-green-700' :
+                                companySessionView.session.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                                 companySessionView.session.status === 'checked_out' ? 'bg-amber-100 text-amber-700' :
                                 companySessionView.session.status === 'checked_in' ? 'bg-blue-100 text-blue-700' :
                                 'bg-gray-100 text-gray-700'
                             }`}>
                                 {companySessionView.session.status === 'validated' ? 'âœ… ServiÃ§o Validado' :
+                                 companySessionView.session.status === 'cancelled' ? 'âŒ Servico nao concluido' :
                                  companySessionView.session.status === 'checked_out' ? 'â³ Aguardando sua validaÃ§Ã£o' :
                                  companySessionView.session.status === 'checked_in' ? 'ðŸ”µ Candidato no local' :
                                  'ðŸŸ¡ Aguardando chegada'}
@@ -2486,13 +2503,22 @@ hover:bg-blue-600 transition-colors"
 
                             {/* Validate button */}
                             {companySessionView.session.status === 'checked_out' && (
-                                <button
-                                    onClick={() => handleValidateSession(companySessionView.session.id)}
-                                    disabled={sessionLoading}
-                                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-green-200 hover:opacity-90 transition disabled:opacity-50"
-                                >
-                                    {sessionLoading ? 'Validando...' : 'âœ… Validar ServiÃ§o'}
-                                </button>
+                                <div className="grid grid-cols-1 gap-3">
+                                    <button
+                                        onClick={() => handleValidateSession(companySessionView.session.id, true)}
+                                        disabled={sessionLoading}
+                                        className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-green-200 hover:opacity-90 transition disabled:opacity-50"
+                                    >
+                                        {sessionLoading ? 'Validando...' : 'âœ… Validar ServiÃ§o'}
+                                    </button>
+                                    <button
+                                        onClick={() => handleValidateSession(companySessionView.session.id, false)}
+                                        disabled={sessionLoading}
+                                        className="w-full bg-gradient-to-r from-red-500 to-rose-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-red-200 hover:opacity-90 transition disabled:opacity-50"
+                                    >
+                                        {sessionLoading ? 'Validando...' : 'âŒ Nao Concluiu'}
+                                    </button>
+                                </div>
                             )}
 
                             {companySessionView.session.status === 'validated' && !companySessionView.session.evaluationSubmitted && (

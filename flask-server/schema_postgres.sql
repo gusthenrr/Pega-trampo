@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS jobs (
 
   posted_by_user_id INTEGER,
   cep TEXT,
+  status TEXT DEFAULT 'ativa',
   start_date TEXT,
   start_time TEXT,
 
