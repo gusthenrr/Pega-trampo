@@ -865,7 +865,7 @@ const computeJobRankingForProfessional = (job: any, userProfile: any) => {
 
     let distPart = 0
     let distanceKm = Number.POSITIVE_INFINITY
-    if (isFinite(uLat) && isFinite(uLng) && isFinite(jLat) && isFinite(jLng)) {
+    if (uLat !== null && uLng !== null && jLat !== null && jLng !== null) {
         const km = haversineKm(uLat, uLng, jLat, jLng)
         distanceKm = km
         distPart = distanceScore(km)
