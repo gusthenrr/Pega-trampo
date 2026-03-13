@@ -1,5 +1,5 @@
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 import psycopg2
 from psycopg2.extras import DictCursor
@@ -202,6 +202,7 @@ from flask_jwt_extended.exceptions import NoAuthorizationError
 
 @app.before_request
 def check_jwt_globally():
+    g.current_user_id = DEV_USER_ID if not JWT_ENABLED else None
     # ✅ Se JWT estiver desligado no .env, não bloqueia nada
     if not JWT_ENABLED:
         return
@@ -213,14 +214,18 @@ def check_jwt_globally():
         if not is_public:
             try:
                 verify_jwt_in_request()
+                identity = get_jwt_identity()
+                try:
+                    g.current_user_id = int(identity) if identity is not None else None
+                except (TypeError, ValueError):
+                    g.current_user_id = None
                 client_user_id = request.headers.get("X-Client-User-Id")
                 if client_user_id:
-                    jwt_user_id = current_user_id()
-                    if not jwt_user_id:
-                        jwt_user_id = current_user_id()
+                    jwt_user_id = g.current_user_id
                     if str(jwt_user_id) != str(client_user_id):
                         return jsonify({"success": False, "error": "Sessão cruzada divergente. Faça login novamente.", "session_mismatch": True}), 401
             except Exception as e:
+                g.current_user_id = None
                 return jsonify({"success": False, "error": "Token expirado ou inválido", "msg": str(e)}), 401
 
 @app.route("/api/logout", methods=["POST"])
@@ -248,21 +253,21 @@ def current_user_id():
     if not JWT_ENABLED:
         return DEV_USER_ID
 
+    cached_user_id = getattr(g, "current_user_id", None)
+    if cached_user_id is not None:
+        return cached_user_id
+
     # garante que o JWT foi verificado (cookie/header conforme config)
     try:
         verify_jwt_in_request(optional=True)
+        identity = get_jwt_identity()
+        cached_user_id = int(identity) if identity is not None else None
     except Exception:
-        return None
+        cached_user_id = None
 
-    identity = get_jwt_identity()
-    if identity is None:
-        return None
-
-    # aceita identity como int ou string numérica
-    try:
-        return int(identity)
-    except (TypeError, ValueError):
-        return None
+    # cache do usuário autenticado para o restante do request
+    g.current_user_id = cached_user_id
+    return cached_user_id
 
 def set_auth_cookie(resp, jwt_value: str):
     cookie_domain = None if COOKIE_NAME.startswith("__Host-") else COOKIE_DOMAIN
@@ -1770,17 +1775,6 @@ def delete_resume(resume_id):
 
 @app.route("/api/auth/me", methods=["GET"])
 def auth_me():
-    print("[ME] cookie keys:", list(request.cookies.keys()))
-    try:
-        verify_jwt_in_request(optional=True)
-    except Exception as e:
-        print("[ME] verify error:", repr(e))
-    print("[ME] identity:", get_jwt_identity())
-    """
-    Returns basic session info for session validation.
-    - 200 if authenticated
-    - 401 if not authenticated
-    """
     uid = current_user_id()
     if uid is None:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
@@ -2644,12 +2638,43 @@ def get_company_applications():
         
         results = []
         import json
+        job_ids = [job["id"] for job in my_jobs if job.get("id")]
+        applications_by_job = {}
+
+        if job_ids:
+            placeholders = ", ".join(["%s"] * len(job_ids))
+            application_rows = db.execute(f"""
+                SELECT 
+                    ja.job_id,
+                    ja.id as app_id, 
+                    ja.status, 
+                    ja.created_at as app_date,
+                    ja.candidate_id,
+                    u.email,
+                    u.username,
+                    up.full_name,
+                    up.phone,
+                    up.worker_category as category,
+                    up.imagem_profile as profile_photo,
+                    up.image_job,
+                    r.id as resume_id,
+                    r.professional_info_json,
+                    r.work_experience_json
+                FROM job_applications ja
+                JOIN usuarios u ON ja.candidate_id = u.id
+                LEFT JOIN user_profiles up ON u.id = up.user_id
+                LEFT JOIN resumes r ON u.id = r.user_id
+                WHERE ja.job_id IN ({placeholders})
+                ORDER BY ja.created_at DESC
+            """, *job_ids)
+            for app in application_rows:
+                applications_by_job.setdefault(app["job_id"], []).append(app)
 
         for job in my_jobs:
             job_id = job["id"]
             
             # 3. Buscar candidaturas para este job
-            applications = db.execute("""
+            applications = applications_by_job.get(job["id"]) or db.execute("""
                 SELECT 
                     ja.id as app_id, 
                     ja.status, 
@@ -3144,7 +3169,8 @@ def get_dados():
             # localização (lat/lng) vão em texto plano
             profile_data["lat"] = p.get("lat")
             profile_data["lng"] = p.get("lng")
-            profile_data["imagem_profile"] = get_signed_url(p.get("imagem_profile")) or p.get("imagem_profile")
+            profile_image_path = p.get("imagem_profile")
+            profile_data["imagem_profile"] = (get_signed_url(profile_image_path) or profile_image_path) if profile_image_path else None
             
             def parse_pg_array(val):
                 if not val:
@@ -3181,8 +3207,6 @@ def get_dados():
 
         # 2. Fetch Resume
         resume_rows = db.execute("SELECT * FROM resumes WHERE user_id = %s ORDER BY updated_at DESC LIMIT 1", user_id)
-        print("resume_rows")
-        print(resume_rows)
         resume_data = None
         if resume_rows:
             r = dict(resume_rows[0])
@@ -3216,8 +3240,6 @@ def get_dados():
             r["personalInfo"]["phone"] = profile_data.get("phone") or ""
                 
             resume_data = r
-        print("resume_data")
-        print(resume_data)
         return jsonify({"success": True, "user_id": user_id, "profile": profile_data, "resume": resume_data})
 
     except Exception as e:

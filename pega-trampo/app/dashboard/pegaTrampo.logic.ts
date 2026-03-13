@@ -468,6 +468,12 @@ export const bootstrapInitialData = async (params: {
 
     let currentUserId = ''
     let currentUserType: 'professional' | 'company' = 'professional'
+    const notificationCacheKey = '__PT_NOTIFICATIONS__'
+    const redirectToLandingPage = () => {
+        if (typeof window !== 'undefined') {
+            window.location.href = '/'
+        }
+    }
 
     try {
         let dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
@@ -476,7 +482,7 @@ export const bootstrapInitialData = async (params: {
             dadosRes = await fetchWithAuth(`${API_BASE}/api/get_dados`)
         }
         if (!dadosRes.ok) {
-            window.location.href = '/'
+            redirectToLandingPage()
             return
         }
 
@@ -557,6 +563,9 @@ export const bootstrapInitialData = async (params: {
         }
     } catch (e) {
         console.error('Erro ao buscar dados do usuário:', e)
+        setApiError('Erro ao validar sessão')
+        redirectToLandingPage()
+        return
     }
 
     try {
@@ -564,31 +573,37 @@ export const bootstrapInitialData = async (params: {
             let companyCandidateIds = new Set<string>()
 
             if (currentUserId) {
-                const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
+                const [jobsRes, appsRes, notificationsRes] = await Promise.all([
+                    fetchWithAuth(`${API_BASE}/api/jobs`),
+                    fetchWithAuth(`${API_BASE}/api/company/applications`),
+                    fetchWithAuth(`${API_BASE}/api/notifications`),
+                ])
+
                 if (jobsRes.ok) {
                     const jobsData = await jobsRes.json()
                     setJobs(jobsData)
                 }
 
-                console.log('Fetching company applications for user:', currentUserId)
-                try {
-                    const appsRes = await fetchWithAuth(`${API_BASE}/api/company/applications`)
-                    if (appsRes.ok) {
-                        const appsData = await appsRes.json()
-                        if (appsData.success && appsData.jobs) {
-                            setCompanyJobsWithCandidates(appsData.jobs)
-                            companyCandidateIds = new Set<string>(
-                                (appsData.jobs || [])
-                                    .flatMap((job: any) => job?.candidates || [])
-                                    .map((candidate: any) => String(candidate?.candidateId || '').trim())
-                                    .filter((id: string) => id.length > 0),
-                            )
-                        }
-                    } else {
-                        console.error('Failed to fetch company applications:', appsRes.status, appsRes.statusText)
+                if (appsRes.ok) {
+                    const appsData = await appsRes.json()
+                    if (appsData.success && appsData.jobs) {
+                        setCompanyJobsWithCandidates(appsData.jobs)
+                        companyCandidateIds = new Set<string>(
+                            (appsData.jobs || [])
+                                .flatMap((job: any) => job?.candidates || [])
+                                .map((candidate: any) => String(candidate?.candidateId || '').trim())
+                                .filter((id: string) => id.length > 0),
+                        )
                     }
-                } catch (innerErr) {
-                    console.error('Error fetching company applications:', innerErr)
+                } else {
+                    console.error('Failed to fetch company applications:', appsRes.status, appsRes.statusText)
+                }
+
+                if (notificationsRes.ok && typeof window !== 'undefined') {
+                    const notificationsData = await notificationsRes.json()
+                    if (notificationsData.notifications) {
+                        ;(window as typeof window & Record<string, unknown>)[notificationCacheKey] = notificationsData.notifications
+                    }
                 }
             } else {
                 setJobs([])
@@ -616,16 +631,27 @@ export const bootstrapInitialData = async (params: {
                 setResumes([])
             }
         } else {
-            const jobsRes = await fetchWithAuth(`${API_BASE}/api/jobs`)
+            const [jobsRes, appsRes, notificationsRes] = await Promise.all([
+                fetchWithAuth(`${API_BASE}/api/jobs`),
+                fetchWithAuth(`${API_BASE}/api/my/applications`),
+                fetchWithAuth(`${API_BASE}/api/notifications`),
+            ])
+
             if (jobsRes.ok) {
                 const jobsData = await jobsRes.json()
                 setJobs(jobsData)
             }
 
-            const appsRes = await fetchWithAuth(`${API_BASE}/api/my/applications`)
             if (appsRes.ok) {
                 const appsData = await appsRes.json()
                 if (appsData.success) setMyApplications(appsData.applications || [])
+            }
+
+            if (notificationsRes.ok && typeof window !== 'undefined') {
+                const notificationsData = await notificationsRes.json()
+                if (notificationsData.notifications) {
+                    ;(window as typeof window & Record<string, unknown>)[notificationCacheKey] = notificationsData.notifications
+                }
             }
         }
 

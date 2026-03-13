@@ -22,32 +22,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
 
     if (!isOpen) return null
 
-    const waitForServerSession = async (apiUrl: string) => {
-        const maxAttempts = 8
-
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            const authRes = await fetch(`${apiUrl}/api/auth/me`, {
-                method: "GET",
-                credentials: "include",
-                cache: "no-store",
-            })
-
-            console.log("waitForServerSession", {
-                attempt,
-                status: authRes.status,
-            })
-
-            if (authRes.ok) return true
-
-            // Safari can occasionally lag in attaching a just-set cookie.
-            if (attempt < maxAttempts) {
-                await new Promise((resolve) => setTimeout(resolve, 120 * attempt))
-            }
-        }
-
-        return false
-    }
-
     const handleCadastrese = () => {
         setEmail("")
         setPassword("")
@@ -79,11 +53,6 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
             const data = await res.json()
 
             if (res.ok && data.success) {
-                const sessionReady = await waitForServerSession(apiUrl)
-                if (!sessionReady) {
-                    setError("Sessão não foi validada. Tente novamente.")
-                    return
-                }
 
                 if (typeof window !== 'undefined') {
                     sessionStorage.setItem('known_user_id', String(data.user.id))
@@ -93,6 +62,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
                 broadcastSessionChanged('LOGIN')
                 // Redirecionar para dashboard
                 router.push("/dashboard")
+                router.refresh()
                 onClose()
             } else {
                 setError(data.error || "Erro ao fazer login")

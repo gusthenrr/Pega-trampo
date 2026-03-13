@@ -660,6 +660,15 @@ export default function PegaTrampoApp() {
     useEffect(() => {
         // Carrega notificações independente das outras infos se já logado
         const fetchNotifications = async () => {
+            if (typeof window !== 'undefined') {
+                const prefetched = (window as typeof window & { __PT_NOTIFICATIONS__?: Notification[] }).__PT_NOTIFICATIONS__
+                if (Array.isArray(prefetched)) {
+                    setNotifications(prefetched)
+                    delete (window as typeof window & { __PT_NOTIFICATIONS__?: Notification[] }).__PT_NOTIFICATIONS__
+                    return
+                }
+            }
+
             try {
                 const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/notifications`)
                 if (res.ok) {

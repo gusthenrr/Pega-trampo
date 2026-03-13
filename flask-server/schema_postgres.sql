@@ -165,6 +165,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_job_app_unique
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_cnpj ON user_profiles(cnpj);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_cpf ON user_profiles(cpf);
+CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
 
 CREATE INDEX IF NOT EXISTS idx_jobs_posted_by_user_id ON jobs(posted_by_user_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_lat_lng ON jobs(lat, lng);
