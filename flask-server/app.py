@@ -671,6 +671,7 @@ def create_job():
 
     import uuid, json
     job_id = data.get("id") or str(uuid.uuid4())
+    job_cep = only_digits(data.get("cep") or "")
 
     # Nome de exibiÃ§Ã£o (opcional, sÃ³ para mostrar no app)
     profile_rows = db.execute("SELECT company_name, full_name FROM user_profiles WHERE user_id = %s", user_id)
@@ -687,51 +688,54 @@ def create_job():
     company_info = data.get("companyInfo") or {}
     company_info_json = json.dumps(company_info, ensure_ascii=False)
 
-    db_write("""
-        INSERT INTO jobs (
-            id, title, description, category, payment_type, rate,
-            location, area, address, work_hours,
-            posted_by, posted_by_user_id, posted_at,
-            period, duration, is_urgent,
-            company_only, includes_food,
-            lat, lng, cep, company_info_json,
-            start_date, start_time
-        ) VALUES (
-            %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s,
-            %s, %s, CURRENT_TIMESTAMP,
-            %s, %s, %s,
-            %s, %s,
-            %s, %s, %s, %s,
-            %s, %s
-        ) RETURNING id
-    """,
-        job_id,
-        data.get("title"),
-        data.get("description"),
-        data.get("category"),
-        data.get("paymentType"),
-        data.get("rate"),
-        data.get("location"),
-        data.get("area"),
-        data.get("address"),
-        data.get("workHours"),
-        posted_by,
-        user_id,
-        data.get("period"),
-        data.get("duration"),
-        True if data.get("isUrgent") else False,
-        True if data.get("companyOnly") else False,
-        True if data.get("includesFood") else False,
-        (data.get("coordinates") or {}).get("lat"),
-        (data.get("coordinates") or {}).get("lng"),
-        enc(only_digits(data.get("cep") or "")),
-        company_info_json,
-        data.get("startDate"),
-        data.get("startTime")
-    )
-
-    return api_ok(id=job_id)
+    try:
+        db_write("""
+            INSERT INTO jobs (
+                id, title, description, category, payment_type, rate,
+                location, area, address, work_hours,
+                posted_by, posted_by_user_id, posted_at,
+                period, duration, is_urgent,
+                company_only, includes_food,
+                lat, lng, cep, company_info_json,
+                start_date, start_time
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s,
+                %s, %s, CURRENT_TIMESTAMP,
+                %s, %s, %s,
+                %s, %s,
+                %s, %s, %s, %s,
+                %s, %s
+            ) RETURNING id
+        """,
+            job_id,
+            data.get("title"),
+            data.get("description"),
+            data.get("category"),
+            data.get("paymentType"),
+            data.get("rate"),
+            data.get("location"),
+            data.get("area"),
+            data.get("address"),
+            data.get("workHours"),
+            posted_by,
+            user_id,
+            data.get("period"),
+            data.get("duration"),
+            True if data.get("isUrgent") else False,
+            True if data.get("companyOnly") else False,
+            True if data.get("includesFood") else False,
+            (data.get("coordinates") or {}).get("lat"),
+            (data.get("coordinates") or {}).get("lng"),
+            enc(job_cep),
+            company_info_json,
+            data.get("startDate"),
+            data.get("startTime")
+        )
+        return api_ok(id=job_id)
+    except Exception as e:
+        print(f"Erro ao criar vaga: {e}")
+        return api_error(f"Erro ao criar vaga: {e}", 500)
 
 
 @app.route("/api/jobs", methods=["GET"])
@@ -856,6 +860,7 @@ def update_job(job_id):
     data = request.json or {}
     user_id = current_user_id()
     ensure_jobs_cep_column()
+    job_cep = only_digits(data.get("cep") or "")
 
     # 1. Verificar se a vaga existe e pertence Ã  empresa
     row = db.execute("SELECT id, posted_by_user_id FROM jobs WHERE id = %s", job_id)
@@ -912,7 +917,7 @@ def update_job(job_id):
             1 if data.get("includesFood") else 0,
             (data.get("coordinates") or {}).get("lat"),
             (data.get("coordinates") or {}).get("lng"),
-            enc(only_digits(data.get("cep") or "")),
+            enc(job_cep),
             company_info_json,
             data.get("startDate"),
             data.get("startTime"),
@@ -921,7 +926,7 @@ def update_job(job_id):
         return api_ok(message="Vaga atualizada com sucesso")
     except Exception as e:
         print(f"Erro ao atualizar vaga: {e}")
-        return api_error("Erro ao atualizar vaga", 500)
+        return api_error(f"Erro ao atualizar vaga: {e}", 500)
 
 @app.route("/api/jobs/<job_id>", methods=["DELETE"])
 def delete_job(job_id):
