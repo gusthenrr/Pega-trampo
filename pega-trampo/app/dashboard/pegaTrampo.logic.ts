@@ -1568,9 +1568,10 @@ export const handleDeleteResume = async (params: {
 export const handleAcceptApplication = async (params: {
     applicationId: string
     setCompanyJobsWithCandidates: SetState<CompanyJobApplications[]>
+    setCandidatesModalJob?: SetState<CompanyJobApplications | null>
     setNotifications: SetState<Notification[]>
 }) => {
-    const { applicationId, setCompanyJobsWithCandidates, setNotifications } = params
+    const { applicationId, setCompanyJobsWithCandidates, setCandidatesModalJob, setNotifications } = params
 
     try {
         const res = await fetchWithAuth(`${API_BASE}/api/applications/${applicationId}/accept`, {
@@ -1581,14 +1582,42 @@ export const handleAcceptApplication = async (params: {
 
         if (!res.ok || data.success === false) {
             showToastMessage(data.error || 'Erro ao aceitar candidatura')
-            return
+            return false
         }
 
-                const appsRes = await fetchWithAuth(`${API_BASE}/api/company/applications`)
+        const applyAcceptedStatus = (jobs: CompanyJobApplications[]) =>
+            jobs.map(job => ({
+                ...job,
+                candidates: (job.candidates || []).map(candidate =>
+                    candidate.applicationId === applicationId
+                        ? { ...candidate, status: 'accepted' }
+                        : candidate
+                ),
+            }))
+
+        setCompanyJobsWithCandidates(prev => applyAcceptedStatus(prev))
+        setCandidatesModalJob?.(prev => {
+            if (!prev) return prev
+
+            return {
+                ...prev,
+                candidates: (prev.candidates || []).map(candidate =>
+                    candidate.applicationId === applicationId
+                        ? { ...candidate, status: 'accepted' }
+                        : candidate
+                ),
+            }
+        })
+
+        const appsRes = await fetchWithAuth(`${API_BASE}/api/company/applications`)
         if (appsRes.ok) {
             const appsData = await appsRes.json()
             if (appsData.success && Array.isArray(appsData.jobs)) {
                 setCompanyJobsWithCandidates(appsData.jobs)
+                setCandidatesModalJob?.(prev => {
+                    if (!prev) return prev
+                    return appsData.jobs.find((job: CompanyJobApplications) => job.id === prev.id) || prev
+                })
             }
         }
 
@@ -1603,10 +1632,12 @@ export const handleAcceptApplication = async (params: {
             read: false,
         }
         setNotifications(prev => [successNotification, ...prev])
+        return true
 
     } catch (e) {
         console.error("Erro ao aceitar candidatura:", e)
         showToastMessage('Erro de conexÃ£o ao aceitar candidatura.')
+        return false
     }
 }
 

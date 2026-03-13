@@ -7,7 +7,7 @@ import {
     ArrowLeft, HelpCircle, Check, Home, Bookmark, Settings, Menu, Send, Eye, Users, Award,
     Zap, Hammer, Scissors, Car, Baby, Utensils, Paintbrush, Wrench, GraduationCap, Camera,
     Music, Shirt, TreePine, Laptop, Phone, Shield, Truck, Sparkles, Flower2, Palette, Edit,
-    FileText, LogOut, MapPinIcon, Mail, Building2, UserCheck, Briefcase as
+    FileText, LogOut, MapPinIcon, Mail, Building2, UserCheck, Loader2, Briefcase as
         BriefcaseIcon, Navigation, Route, ExternalLink, Upload, X, Trash2, Wallet, ChevronUp, ChevronDown
 } from 'lucide-react'
 
@@ -96,6 +96,32 @@ const getCandidateProfileImageUrl = (candidate?: Candidate | null) => {
         resumeAny?.personalInfo?.image,
     ])
 }
+
+const buildResumeFromCandidate = (candidate: Candidate): Resume => ({
+    ...(candidate.resume as unknown as Record<string, unknown>),
+    userId: candidate.candidateId,
+    profilePhoto: getCandidateProfileImageUrl(candidate) || undefined,
+    imageJob: candidate.imageJob || [],
+    personalInfo: {
+        name: candidate.name,
+        email: candidate.email || '',
+        phone: candidate.phone || '',
+        address: '',
+        neighborhood: '',
+        city: '',
+        state: '',
+        birthDate: '',
+        maritalStatus: '',
+        profilePhoto: getCandidateProfileImageUrl(candidate) || undefined,
+    },
+    education: [],
+    skills: [],
+    bio: '',
+    availability: [],
+    createdAt: candidate.appliedAt || '',
+    updatedAt: '',
+    isVisible: true,
+}) as Resume
 
 const emptyCandidateEvaluations: CandidateEvaluationsPayload = {
     averageRating: 0,
@@ -200,6 +226,7 @@ export default function PegaTrampoApp() {
     const [resumeSearchTerm, setResumeSearchTerm] = useState('')
     const [candidatesModalJob, setCandidatesModalJob] = useState<CompanyJobApplications | null>(null)
     const [candidateSearchTerm, setCandidateSearchTerm] = useState('')
+    const [acceptingApplicationId, setAcceptingApplicationId] = useState<string | null>(null)
     const [resumes, setResumes] = useState<Resume[]>([])
     const [isSavingResume, setIsSavingResume] = useState(false)
     const resumeSaveLockedRef = useRef(false)
@@ -711,17 +738,51 @@ export default function PegaTrampoApp() {
             }
         }
 
-        // Navigate to the applications tab to see the accepted proposal
-        // The API sends "Vocï¿½ foi chamado para a proposta X", meaning it's an application status update.
-        if (notif.type === 'application' || notif.message.toLowerCase().includes('chamado para')) {
-            setActiveTab('applications');
-        } else if (notif.type === 'application' && notif.reference_id) {
-            const foundResume = resumes.find(r => r.id === notif.reference_id);
+        const notificationType = String(notif.type || '').toLowerCase()
+        const notificationMessage = String(notif.message || '').toLowerCase()
+
+        if (userProfile.userType === 'company' && notificationType === 'application') {
+            setActiveTab('resumes')
+
+            const foundResume = resumes.find(r => String(r.id) === String(notif.reference_id || ''))
             if (foundResume) {
-                handleViewResumeDetails(foundResume);
-            } else {
-                console.warn("CurrÃ­culo nÃ£o encontrado localmente. Pode nÃ£o ter sido carregado ainda.");
+                await handleViewResumeDetails(foundResume)
+                setShowNotifications(false);
+                return
             }
+
+            const relatedCandidate = companyJobsWithCandidates
+                .flatMap(job => job.candidates || [])
+                .find(candidate => String(candidate.resume?.id || '') === String(notif.reference_id || ''))
+
+            if (relatedCandidate?.resume) {
+                await handleViewResumeDetails(buildResumeFromCandidate(relatedCandidate))
+                setShowNotifications(false);
+                return
+            }
+
+            if (notif.reference_id) {
+                try {
+                    const resumesRes = await logic.fetchWithAuth(`${logic.API_BASE}/api/resumes`)
+                    if (resumesRes.ok) {
+                        const resumesData = await resumesRes.json()
+                        if (Array.isArray(resumesData)) {
+                            const fetchedResume = resumesData.find((resume: Resume) => String(resume.id) === String(notif.reference_id))
+                            if (fetchedResume) {
+                                await handleViewResumeDetails(fetchedResume)
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erro ao abrir curriculo pela notificacao:", e)
+                }
+            }
+        } else if (
+            notificationType === 'application_status' ||
+            notificationType === 'session_validated' ||
+            notificationMessage.includes('chamado para')
+        ) {
+            setActiveTab('applications');
         }
 
         setShowNotifications(false);
@@ -2456,6 +2517,7 @@ hover:bg-blue-600 transition-colors"
 
                 {activeTab === 'applications' && (
                     <ApplicationsPage
+                        userProfile={userProfile}
                         myApplications={myApplications}
                         openSessionPanel={openSessionPanel}
                         handleViewJobDetails={handleViewJobDetails}
@@ -2682,34 +2744,7 @@ hover:bg-blue-600 transition-colors"
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            const fullResumeMock = {
-                                                                ...candidate.resume,
-                                                                userId: candidate.candidateId,
-                                                                profilePhoto: getCandidateProfileImageUrl(candidate) || undefined,
-                                                                imageJob: candidate.imageJob || [],
-                                                                personalInfo: {
-                                                                    name: candidate.name,
-                                                                    email: candidate.email || '',
-                                                                    phone: candidate.phone || '',
-                                                                    gender: '',
-                                                                    cep: '',
-                                                                    address: '',
-                                                                    addressNumber: '',
-                                                                    complement: '',
-                                                                    neighborhood: '',
-                                                                    city: '',
-                                                                    state: '',
-                                                                    profilePhoto: getCandidateProfileImageUrl(candidate) || undefined
-                                                                },
-                                                                education: [],
-                                                                skills: [],
-                                                                bio: '',
-                                                                availability: [],
-                                                                createdAt: candidate.appliedAt || '',
-                                                                updatedAt: '',
-                                                                isVisible: true
-                                                            } as unknown as Resume;
-                                                            handleViewResumeDetails(fullResumeMock);
+                                                            handleViewResumeDetails(buildResumeFromCandidate(candidate));
                                                         }}
                                                         className="flex-1 bg-blue-50 text-blue-700 py-2 rounded-lg text-sm font-semibold hover:bg-blue-100 transition"
                                                     >
@@ -2742,18 +2777,33 @@ hover:bg-blue-600 transition-colors"
                                                 )}
                                                 {(!candidate.status || candidate.status === 'pendente' || candidate.status === 'pending') && (
                                                     <button
-                                                        onClick={(e) => {
+                                                        onClick={async (e) => {
                                                             e.stopPropagation();
-                                                            logic.handleAcceptApplication({
+                                                            setAcceptingApplicationId(candidate.applicationId)
+                                                            await logic.handleAcceptApplication({
                                                                 applicationId: candidate.applicationId,
                                                                 setCompanyJobsWithCandidates,
+                                                                setCandidatesModalJob,
                                                                 setNotifications
                                                             })
+                                                            setAcceptingApplicationId((current) =>
+                                                                current === candidate.applicationId ? null : current
+                                                            )
                                                         }}
-                                                        className="flex-1 bg-green-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition flex items-center justify-center gap-1"
+                                                        disabled={acceptingApplicationId === candidate.applicationId}
+                                                        className="flex-1 bg-green-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-green-600 transition flex items-center justify-center gap-1 disabled:opacity-70 disabled:cursor-not-allowed"
                                                     >
-                                                        <Check className="h-4 w-4" />
-                                                        Aceitar
+                                                        {acceptingApplicationId === candidate.applicationId ? (
+                                                            <>
+                                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                                                Aceitando...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Check className="h-4 w-4" />
+                                                                Aceitar
+                                                            </>
+                                                        )}
                                                     </button>
                                                 )}
                                             </div>

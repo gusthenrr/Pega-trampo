@@ -20,7 +20,7 @@ export default function ResumesPage(props: any) {
     return (
         <div className="max-w-6xl mx-auto space-y-4">
             {userProfile.userType === 'company' ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3 max-w-3xl">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3 max-w-3xl mx-auto">
                     <h2 className="text-lg font-bold text-gray-900">Curriculos</h2>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -40,7 +40,7 @@ export default function ResumesPage(props: any) {
             )}
 
             {filteredResumes.length === 0 ? (
-                <div className="text-center py-12 max-w-3xl">
+                <div className="text-center py-12 max-w-3xl mx-auto">
                     <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum curriculo encontrado</h3>
                     <p className="text-gray-500 mb-4">
@@ -63,10 +63,10 @@ export default function ResumesPage(props: any) {
                     )}
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 max-w-3xl mx-auto">
                     {userProfile.userType === 'company' ? (
                         companyJobsWithCandidates.length === 0 ? (
-                            <div className="text-center py-8">
+                            <div className="text-center py-8 mx-auto">
                                 <p className="text-gray-500">Nenhuma vaga postada ainda.</p>
                             </div>
                         ) : (

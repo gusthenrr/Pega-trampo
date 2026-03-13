@@ -1,7 +1,7 @@
 ﻿import { Calendar, Clock, ChevronRight, Eye } from 'lucide-react'
 
 export default function ApplicationsPage(props: any) {
-    const { myApplications, openSessionPanel, handleViewJobDetails } = props
+    const { userProfile, myApplications, openSessionPanel, handleViewJobDetails } = props
     const sortedApplications = [...myApplications].sort((a: any, b: any) => {
         const aAccepted = ['aprovado', 'accepted'].includes(a.status?.toLowerCase())
         const bAccepted = ['aprovado', 'accepted'].includes(b.status?.toLowerCase())
@@ -17,15 +17,15 @@ export default function ApplicationsPage(props: any) {
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-6xl mx-auto px-4 pt-4 pb-2">
                 <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-5 shadow-lg max-w-md md:max-w-none">
-                    <h2 className="text-lg font-bold text-white">Minhas Candidaturas</h2>
-                    <p className="text-blue-100 text-sm mt-1">Trampos que voce ja se candidatou</p>
+                    <h2 className="text-lg font-bold text-white">{userProfile?.userType === 'company' ? 'Candidaturas nas Minhas Vagas' : 'Minhas Candidaturas'}</h2>
+                    <p className="text-blue-100 text-sm mt-1">{userProfile?.userType === 'company' ? 'Usuarios que se candidataram nas suas vagas' : 'Trampos que voce ja se candidatou'}</p>
                 </div>
             </div>
 
             <div className="max-w-6xl mx-auto p-4 space-y-3">
                 {myApplications.length === 0 ? (
                     <div className="bg-white p-4 rounded-xl border max-w-md">
-                        <p className="text-gray-700 font-medium">Voce ainda nao se candidatou em nenhum trampo.</p>
+                        <p className="text-gray-700 font-medium">{userProfile?.userType === 'company' ? 'Nenhum usuario se candidatou para suas vagas ainda.' : 'Voce ainda nao se candidatou em nenhum trampo.'}</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
