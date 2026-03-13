@@ -55,14 +55,14 @@ export default function ApplicationsPage(props: any) {
                                     <div className="p-4 flex-1 flex flex-col">
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex-1">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <p className="font-bold text-gray-900">{app.job.title.toUpperCase()}</p>
-                                                    {!isAccepted && (
-                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCancelled ? 'bg-red-100 text-red-800' : isFinished ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}> 
+                                                <p className="font-bold text-gray-900 break-words">{app.job.title.toUpperCase()}</p>
+                                                {!isAccepted && (
+                                                    <div className="mt-1 flex justify-end">
+                                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isCancelled ? 'bg-red-100 text-red-800' : isFinished ? 'bg-blue-100 text-blue-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                                             {isCancelled ? 'CANCELADO' : isFinished ? 'FINALIZADO' : 'PENDENTE'}
                                                         </span>
-                                                    )}
-                                                </div>
+                                                    </div>
+                                                )}
                                                 <p className="text-sm text-gray-600 mt-0.5">{app.job.address}</p>
                                                 <div className="flex gap-4 mt-2 text-xs text-gray-500 flex-wrap">
                                                     <span className="flex items-center gap-1">

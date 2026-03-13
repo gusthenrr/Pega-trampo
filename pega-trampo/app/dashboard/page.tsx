@@ -1837,8 +1837,9 @@ mx-auto mb-1">
                                 <div key={idx} className="relative aspect-square rounded-lg border overflow-hidden bg-gray-50 group">
                                     <img src={img} alt={`Trabalho ${idx + 1}`} className="w-full h-full object-cover" />
                                     <button
+                                        type="button"
                                         onClick={() => setUserResume(p => ({ ...p, imageJob: (p.imageJob || []).filter((_, i) => i !== idx) }))}
-                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="absolute top-1.5 right-1.5 bg-red-500 text-white rounded-full p-1.5 shadow-md opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                                         title="Remover foto"
                                     >
                                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -2762,23 +2763,23 @@ hover:bg-blue-600 transition-colors"
                                                         <User className="h-6 w-6" />
                                                     )}
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="pr-2">
-                                                            <p className="font-bold text-gray-900 truncate">{candidate.name}</p>
-                                                            <p className="text-sm text-gray-600 truncate">{candidate.category}</p>
-                                                        </div>
-                                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) ? 'bg-green-100 text-green-800' :
-                                                            ['cancelado', 'cancelled', 'canceled'].includes(candidate.status?.toLowerCase()) ? 'bg-red-100 text-red-800' :
-                                                            ['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'bg-blue-100 text-blue-800' :
-                                                                'bg-yellow-100 text-yellow-800'
-                                                            }`}>
-                                                            {['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) ? 'APROVADO' : (['cancelado', 'cancelled', 'canceled'].includes(candidate.status?.toLowerCase()) ? 'CANCELADO' : (['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'FINALIZADO' : 'PENDENTE'))}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-xs text-gray-500 mt-2 space-y-1">
-                                                        {candidate.email && <div className="flex items-center gap-1 truncate"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{candidate.email}</span></div>}
-                                                        {candidate.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3" /> {candidate.phone}</div>}
+                                                  <div className="flex-1 min-w-0">
+                                                      <div className="pr-2">
+                                                          <p className="font-bold text-gray-900 break-words">{candidate.name}</p>
+                                                          <p className="text-sm text-gray-600 truncate">{candidate.category}</p>
+                                                      </div>
+                                                      <div className="mt-1 flex justify-end">
+                                                          <span className={`text-[10px] font-bold px-2 py-1 rounded-full shrink-0 ${['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) ? 'bg-green-100 text-green-800' :
+                                                              ['cancelado', 'cancelled', 'canceled'].includes(candidate.status?.toLowerCase()) ? 'bg-red-100 text-red-800' :
+                                                              ['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'bg-blue-100 text-blue-800' :
+                                                                  'bg-yellow-100 text-yellow-800'
+                                                              }`}>
+                                                              {['aprovado', 'accepted'].includes(candidate.status?.toLowerCase()) ? 'APROVADO' : (['cancelado', 'cancelled', 'canceled'].includes(candidate.status?.toLowerCase()) ? 'CANCELADO' : (['finalizado', 'finished'].includes(candidate.status?.toLowerCase()) ? 'FINALIZADO' : 'PENDENTE'))}
+                                                          </span>
+                                                      </div>
+                                                      <div className="text-xs text-gray-500 mt-2 space-y-1">
+                                                          {candidate.email && <div className="flex items-center gap-1 truncate"><Mail className="h-3 w-3 shrink-0" /> <span className="truncate">{candidate.email}</span></div>}
+                                                          {candidate.phone && <div className="flex items-center gap-1"><Phone className="h-3 w-3" /> {candidate.phone}</div>}
                                                     </div>
                                                 </div>
                                             </div>
