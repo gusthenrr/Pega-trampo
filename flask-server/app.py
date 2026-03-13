@@ -672,6 +672,7 @@ def create_job():
     import uuid, json
     job_id = data.get("id") or str(uuid.uuid4())
     job_cep = only_digits(data.get("cep") or "")
+    job_lat, job_lng = resolve_job_coordinates(job_cep, data.get("address"), data.get("coordinates"))
 
     # Nome de exibiÃ§Ã£o (opcional, sÃ³ para mostrar no app)
     profile_rows = db.execute("SELECT company_name, full_name FROM user_profiles WHERE user_id = %s", user_id)
@@ -725,8 +726,8 @@ def create_job():
             True if data.get("isUrgent") else False,
             True if data.get("companyOnly") else False,
             True if data.get("includesFood") else False,
-            (data.get("coordinates") or {}).get("lat"),
-            (data.get("coordinates") or {}).get("lng"),
+            job_lat,
+            job_lng,
             enc(job_cep),
             company_info_json,
             data.get("startDate"),
@@ -861,6 +862,7 @@ def update_job(job_id):
     user_id = current_user_id()
     ensure_jobs_cep_column()
     job_cep = only_digits(data.get("cep") or "")
+    job_lat, job_lng = resolve_job_coordinates(job_cep, data.get("address"), data.get("coordinates"))
 
     # 1. Verificar se a vaga existe e pertence Ã  empresa
     row = db.execute("SELECT id, posted_by_user_id FROM jobs WHERE id = %s", job_id)
@@ -915,8 +917,8 @@ def update_job(job_id):
             True if data.get("isUrgent") else False,
             True if data.get("companyOnly") else False,
             True if data.get("includesFood") else False,
-            (data.get("coordinates") or {}).get("lat"),
-            (data.get("coordinates") or {}).get("lng"),
+            job_lat,
+            job_lng,
             enc(job_cep),
             company_info_json,
             data.get("startDate"),
@@ -1044,6 +1046,62 @@ import requests, re
 
 def only_digits(s: str) -> str:
     return re.sub(r"\D", "", s or "")
+
+
+def resolve_job_coordinates(job_cep=None, address=None, coordinates=None):
+    if isinstance(coordinates, dict):
+        lat = coordinates.get("lat")
+        lng = coordinates.get("lng")
+        if lat is not None and lng is not None:
+            try:
+                return float(lat), float(lng)
+            except (TypeError, ValueError):
+                pass
+
+    clean_cep = only_digits(job_cep or "")
+
+    def geocode(query):
+        if not query:
+            return None
+        try:
+            r = requests.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={"format": "json", "q": query, "limit": 1},
+                headers={"User-Agent": "PegaTrampoApp/1.0"},
+                timeout=10,
+            )
+            if r.status_code != 200:
+                return None
+            data = r.json() or []
+            if not data:
+                return None
+            return float(data[0]["lat"]), float(data[0]["lon"])
+        except Exception as e:
+            print(f"WARN: geocode failed for '{query}': {e}")
+            return None
+
+    if clean_cep:
+        try:
+            cep_resp = requests.get(f"https://brasilapi.com.br/api/cep/v1/{clean_cep}", timeout=10)
+            if cep_resp.status_code == 200:
+                cep_data = cep_resp.json() or {}
+                full_address = ", ".join([
+                    str(cep_data.get("street") or "").strip(),
+                    str(cep_data.get("neighborhood") or "").strip(),
+                    f"{str(cep_data.get('city') or '').strip()} - {str(cep_data.get('state') or '').strip()}".strip(" -"),
+                ]).strip(", ")
+                resolved = geocode(full_address) or geocode(f"{clean_cep}, Brasil")
+                if resolved:
+                    return resolved
+        except Exception as e:
+            print(f"WARN: brasilapi cep lookup failed for '{clean_cep}': {e}")
+
+    if address:
+        resolved = geocode(address)
+        if resolved:
+            return resolved
+
+    return None, None
 
 @app.get("/api/cnpj/<cnpj>")
 def lookup_cnpj(cnpj):
