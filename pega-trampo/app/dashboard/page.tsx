@@ -107,6 +107,7 @@ const buildResumeFromCandidate = (candidate: Candidate): Resume => {
             name: candidate.name,
             email: candidate.email || '',
             phone: candidate.phone || '',
+            cep: preview?.personalInfo?.cep || '',
             address: preview?.personalInfo?.address || '',
             neighborhood: preview?.personalInfo?.neighborhood || '',
             city: preview?.personalInfo?.city || '',
@@ -487,6 +488,26 @@ export default function PegaTrampoApp() {
         }
     }
 
+    const handleResumeCepBlur = async () => {
+        const cleanCep = (userResume.personalInfo.cep || '').replace(/\D/g, '')
+        if (cleanCep.length !== 8) return
+
+        const addressData = await logic.fetchAddressByCEP(cleanCep)
+        if (!addressData) return
+
+        setUserResume(prev => ({
+            ...prev,
+            personalInfo: {
+                ...prev.personalInfo,
+                cep: cleanCep,
+                address: addressData.fullAddress || prev.personalInfo.address,
+                neighborhood: addressData.neighborhood || prev.personalInfo.neighborhood,
+                city: addressData.city || prev.personalInfo.city,
+                state: addressData.state || prev.personalInfo.state,
+            }
+        }))
+    }
+
     interface MyApplication {
         applicationId: string
         status: string
@@ -572,7 +593,11 @@ export default function PegaTrampoApp() {
             name: '',
             phone: '',
             email: '',
+            cep: '',
             address: '',
+            neighborhood: '',
+            city: '',
+            state: '',
             birthDate: '',
             maritalStatus: ''
         },
@@ -1582,6 +1607,24 @@ mx-auto mb-1">
                                         personalInfo: { ...prev.personalInfo, email: e.target.value }
                                     }))}
                                     placeholder="Ex: maria@email.com"
+                                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                                <input
+                                    type="text"
+                                    value={logic.formatCEP(userResume.personalInfo.cep || '')}
+                                    onChange={(e) => setUserResume(prev => ({
+                                        ...prev,
+                                        personalInfo: {
+                                            ...prev.personalInfo,
+                                            cep: e.target.value.replace(/\D/g, '').slice(0, 8)
+                                        }
+                                    }))}
+                                    onBlur={handleResumeCepBlur}
+                                    placeholder="Ex: 01310-000"
                                     className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
@@ -3046,6 +3089,7 @@ hover:bg-blue-600 transition-colors"
         </div >
     )
 }
+
 
 
 

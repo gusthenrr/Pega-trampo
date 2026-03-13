@@ -1284,18 +1284,38 @@ def save_resume ():
              skills ,availability ,
              bio ,is_visible 
              )
-
-             # ---- Sync phone: resume → profile ----
+             # ---- Sync personal info: resume -> profile ----
         try :
             pi_data =data .get ("personalInfo")or {}
-            resume_phone =pi_data .get ("phone")
-            if resume_phone and user_id :
+            if user_id :
+                resume_phone =pi_data .get ("phone")
+                resume_cep =only_digits (pi_data .get ("cep")or "")
+                resume_address =pi_data .get ("address")
+                resume_neighborhood =pi_data .get ("neighborhood")
+                resume_city =pi_data .get ("city")
+                resume_state =pi_data .get ("state")
                 db_write (
-                "UPDATE user_profiles SET phone = %s, updated_at = CURRENT_TIMESTAMP WHERE user_id = %s",
-                enc (resume_phone ),user_id 
+                """
+                    UPDATE user_profiles
+                    SET phone = COALESCE(%s, phone),
+                        address = COALESCE(%s, address),
+                        neighborhood = COALESCE(%s, neighborhood),
+                        city = COALESCE(%s, city),
+                        state = COALESCE(%s, state),
+                        cep = COALESCE(%s, cep),
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s
+                """,
+                enc (resume_phone )if resume_phone else None,
+                enc (resume_address )if resume_address else None,
+                enc (resume_neighborhood )if resume_neighborhood else None,
+                enc (resume_city )if resume_city else None,
+                enc (resume_state )if resume_state else None,
+                enc (resume_cep )if resume_cep else None,
+                user_id 
                 )
         except Exception as sync_err :
-            print (f"Aviso: falha ao sincronizar phone no perfil: {sync_err }")
+            print (f"Aviso: falha ao sincronizar dados pessoais no perfil: {sync_err }")
 
             # ---- Sync imageJob: resume → profile ----
         try :
@@ -2877,6 +2897,8 @@ def get_user_evaluations (evaluated_id ):
 
 if __name__ =="__main__":
     app .run (host ='0.0.0.0',port =5000 ,debug =True )
+
+
 
 
 

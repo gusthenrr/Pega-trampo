@@ -539,7 +539,11 @@ export const bootstrapInitialData = async (params: {
                         name: data.profile.full_name || prev.personalInfo.name,
                         phone: data.profile.phone || prev.personalInfo.phone,
                         email: data.profile.email || prev.personalInfo.email,
+                        cep: data.profile.cep || prev.personalInfo.cep,
                         address: data.profile.address || prev.personalInfo.address,
+                        neighborhood: data.profile.neighborhood || prev.personalInfo.neighborhood,
+                        city: data.profile.city || prev.personalInfo.city,
+                        state: data.profile.state || prev.personalInfo.state,
                     },
                     professionalInfo: {
                         ...prev.professionalInfo,
