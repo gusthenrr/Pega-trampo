@@ -527,6 +527,7 @@ except Exception as _e:
 
 def ensure_postgres_runtime_schema():
     statements = [
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cep TEXT",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS image_job TEXT[]",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS rating DOUBLE PRECISION NOT NULL DEFAULT 0",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS reviews_count INTEGER NOT NULL DEFAULT 0",
