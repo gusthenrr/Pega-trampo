@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
 
@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 
 // =====================
-// Types utilitÃ¡rios
+// Types utilitários
 // =====================
 export type SetState<T> = Dispatch<SetStateAction<T>>
 
@@ -27,7 +27,8 @@ export const API_BASE = process.env.NEXT_PUBLIC_API_URL || ''
 
 let latestCnpjRequestToken = 0
 
-export const catagory_work = [
+/*
+export const legacyCatagoryWork = [
     {
         name: "Atendente/Garçom",
         icon: User,
@@ -116,6 +117,22 @@ export const catagory_work = [
         color: "bg-indigo-100 text-indigo-600",
     },
 ] as const
+*/
+
+export const catagory_work = [
+    {
+        name: "Confeitaria seca",
+        icon: Utensils,
+        description: "Ex.: bolos secos, bolo de laranja e miudezas",
+        color: "bg-amber-100 text-amber-700",
+    },
+    {
+        name: "Confeitaria fina",
+        icon: Utensils,
+        description: "Ex.: bolos confeitados e mono porção",
+        color: "bg-pink-100 text-pink-700",
+    },
+] as const
 
 const buildJobCompanyInfo = (userProfile: UserProfile): JobCompanyInfo | undefined => {
     const companyInfo = userProfile.companyInfo
@@ -170,7 +187,7 @@ export const fetchWithAuth = async (
     const res = await fetch(url, newOptions)
 
     if (res.status === 401) {
-        // Mismatch na sessÃ£o cruzada: ForÃ§ar o relog
+        // Mismatch na sessão cruzada: Forçar o relog
         if (typeof window !== 'undefined') {
             sessionStorage.clear()
             window.location.href = '/?reason=session_changed'
@@ -253,10 +270,10 @@ const getMissingResumeRequiredField = (resume: Resume): string | null => {
 }
 
 // =====================
-// Helpers (validaÃ§Ã£o / formataÃ§Ã£o)
+// Helpers (validação / formatação)
 // =====================
 
-// FunÃ§Ã£o para validar CPF com algoritmo real
+// Função para validar CPF com algoritmo real
 export const validateCPF = (cpf: string): boolean => {
     const cleanCPF = cpf.replace(/\D/g, '')
 
@@ -295,7 +312,7 @@ export const formatCEP = (cep: string): string => {
 
 
 
-// FunÃ§Ã£o para buscar dados REAIS do CNPJ via backend
+// Função para buscar dados REAIS do CNPJ via backend
 export const fetchCNPJData = async (cnpj: string) => {
     const cleanCNPJ = cnpj.replace(/\D/g, '')
 
@@ -308,7 +325,7 @@ export const fetchCNPJData = async (cnpj: string) => {
         const result = await res.json()
 
         if (!result.success) {
-            throw new Error(result.error || 'CNPJ nÃ£o encontrado')
+            throw new Error(result.error || 'CNPJ não encontrado')
         }
 
         const data = result.data
@@ -412,7 +429,7 @@ export const formatRelativeDate = (dateString: string): string => {
 
     const now = new Date()
 
-    // Compara por dia do calendÃ¡rio (ignora horas)
+    // Compara por dia do calendário (ignora horas)
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
     const diffDays = Math.round((todayStart.getTime() - dateStart.getTime()) / (1000 * 60 * 60 * 24))
@@ -420,9 +437,9 @@ export const formatRelativeDate = (dateString: string): string => {
     if (diffDays < 0) return 'Em breve'
     if (diffDays === 0) return 'Hoje'
     if (diffDays === 1) return 'Ontem'
-    if (diffDays < 7) return `${diffDays}d atrÃ¡s`
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem atrÃ¡s`
-    return `${Math.floor(diffDays / 30)} mÃªs(es) atrÃ¡s`
+    if (diffDays < 7) return `${diffDays}d atrás`
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} sem atrás`
+    return `${Math.floor(diffDays / 30)} mês(es) atrás`
 }
 
 // =====================
@@ -433,7 +450,7 @@ export const bootstrapInitialData = async (params: {
     setLoading: SetState<boolean>
     setApiError: SetState<string>
     setCompanyJobsWithCandidates: SetState<CompanyJobApplications[]>
-    setMyApplications: SetState<any[]> // mantÃ©m compatÃ­vel com seu MyApplication local
+    setMyApplications: SetState<any[]> // mantém compatível com seu MyApplication local
     setUserProfile: SetState<UserProfile>
     setUserResume: SetState<Resume>
     setResumes: SetState<Resume[]>
@@ -535,7 +552,7 @@ export const bootstrapInitialData = async (params: {
             }
         }
     } catch (e) {
-        console.error('Erro ao buscar dados do usuÃ¡rio:', e)
+        console.error('Erro ao buscar dados do usuário:', e)
     }
 
     try {
@@ -591,7 +608,7 @@ export const bootstrapInitialData = async (params: {
                     }
                 }
             } catch (e) {
-                console.error('Erro ao buscar currÃ­culos', e)
+                console.error('Erro ao buscar currículos', e)
                 setResumes([])
             }
         } else {
@@ -628,7 +645,7 @@ export const bootstrapInitialData = async (params: {
 // helpers (add)
 // -------------------------
 export const getWorkerCategoryList = (userProfile: any): string[] => {
-    // aceita vÃ¡rios formatos sem quebrar:
+    // aceita vários formatos sem quebrar:
     // - array direto: ["Padeiro", "Cozinheiro"]
     // - string JSON: '["Padeiro","Cozinheiro"]'
     // - string com separador: "Padeiro | Cozinheiro"
@@ -675,7 +692,7 @@ export const getWorkerCategoryList = (userProfile: any): string[] => {
 
 
 // -------------------------
-// Helpers de normalizaÃ§Ã£o
+// Helpers de normalização
 // -------------------------
 const normalizeText = (s: string) => {
     return (s || "")
@@ -688,7 +705,7 @@ const normalizeText = (s: string) => {
 }
 
 const slugRole = (role: string) => {
-    // transforma "Atendente/GarÃ§om" -> "atendente_garcom"
+    // transforma "Atendente/Garçom" -> "atendente_garcom"
     const n = normalizeText(role)
     return n.replace(/[\/\s-]+/g, "_")
 }
@@ -696,7 +713,7 @@ const slugRole = (role: string) => {
 // -------------------------
 // Matriz de similaridade (match fraco)
 // -------------------------
-// VocÃª pode ajustar esses pesos com o tempo.
+// Você pode ajustar esses pesos com o tempo.
 const ROLE_SIMILARITY: Record<string, Record<string, number>> = {
     padeiro: {
         confeiteiro: 0.65,
@@ -794,7 +811,7 @@ const ROLE_SIMILARITY: Record<string, Record<string, number>> = {
 
 
 // -------------------------
-// DistÃ¢ncia (Haversine)
+// Distância (Haversine)
 // -------------------------
 const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
     const toRad = (v: number) => (v * Math.PI) / 180
@@ -810,7 +827,7 @@ const haversineKm = (lat1: number, lng1: number, lat2: number, lng2: number) => 
 
 const distanceScore = (km: number) => {
     // 0km -> 1.0, 2km -> ~0.85, 5km -> ~0.65, 10km -> ~0.45, 20km -> ~0.25, 40km -> ~0.10
-    // (curva bem â€œrealâ€ pra cidade)
+    // (curva bem “real” pra cidade)
     if (!isFinite(km) || km < 0) return 0
     return Math.max(0, Math.min(1, Math.exp(-km / 12)))
 }
@@ -856,7 +873,7 @@ const computeJobRankingForProfessional = (job: any, userProfile: any) => {
         }
     }
 
-    // 2) Match por texto (tÃ­tulo/descriÃ§Ã£o) -> checa na ordem da lista
+    // 2) Match por texto (título/descrição) -> checa na ordem da lista
     const haystack = normalizeText(`${job?.title || ""} ${job?.description || ""} ${job?.category || ""}`)
 
     let textMatch = 0
@@ -870,7 +887,7 @@ const computeJobRankingForProfessional = (job: any, userProfile: any) => {
         }
     }
 
-    // se nÃ£o achou por texto, tenta pelo slug em formato "palavra palavra" (em ordem)
+    // se não achou por texto, tenta pelo slug em formato "palavra palavra" (em ordem)
     if (textMatch === 0) {
         for (const wr of workerRoles) {
             const wrText = wr.replace(/_/g, " ")
@@ -881,7 +898,7 @@ const computeJobRankingForProfessional = (job: any, userProfile: any) => {
         }
     }
 
-    // 3) DistÃ¢ncia (se tiver coords)
+    // 3) Distância (se tiver coords)
     const uLat = readCoordinate(userProfile?.lat, userProfile?.coordinates?.lat, userProfile?.latitude)
     const uLng = readCoordinate(userProfile?.lng, userProfile?.coordinates?.lng, userProfile?.longitude)
     const jLat = readCoordinate(job?.lat, job?.coordinates?.lat, job?.latitude)
@@ -917,7 +934,7 @@ const computeJobRankingForProfessional = (job: any, userProfile: any) => {
 }
 
 // -------------------------
-// SUA FUNÃ‡ÃƒO EXISTENTE (mantÃ©m assinatura)
+// SUA FUNÇÃO EXISTENTE (mantém assinatura)
 // -------------------------
 export const filterJobs = (params: {
     jobs: any[]
@@ -932,7 +949,7 @@ export const filterJobs = (params: {
     const searchLower = normalizeText(searchTerm || "")
     const selectedSlug = selectedCategory === "Todas" ? "todas" : (selectedCategory === "Recomendado" ? "recomendado" : slugRole(selectedCategory))
 
-    // 1) Filtro bÃ¡sico por busca e por data (se houver)
+    // 1) Filtro básico por busca e por data (se houver)
     const baseFiltered = jobs.filter(job => {
         const jobStatus = String(job.status || 'ativa').trim().toLowerCase()
         if (hiddenStatuses.has(jobStatus)) return false
@@ -949,7 +966,7 @@ export const filterJobs = (params: {
         return true
     })
 
-    // 2) Profissional: rank + corte + ordenaÃ§Ã£o
+    // 2) Profissional: rank + corte + ordenação
     if (userProfile?.userType === "professional") {
         const ranked = baseFiltered
             .map(job => {
@@ -965,9 +982,9 @@ export const filterJobs = (params: {
                 }
             })
             .filter(job => {
-                // "Todas" mostra tudo, inclusive jÃ¡ candidatadas
+                // "Todas" mostra tudo, inclusive já candidatadas
                 if (selectedSlug === "todas") return true
-                // Para "recomendado" e categorias especÃ­ficas, esconde as jÃ¡ candidatadas
+                // Para "recomendado" e categorias específicas, esconde as já candidatadas
                 if (job.alreadyApplied) return false
                 if (selectedSlug === "recomendado") return job._score >= 18
                 return slugRole(job.category) === selectedSlug
@@ -1002,7 +1019,7 @@ export const filterJobs = (params: {
         return ranked
     }
 
-    // 3) Empresa (mantÃ©m comportamento simples)
+    // 3) Empresa (mantém comportamento simples)
     const finalFiltered = baseFiltered.filter(job => {
         if (selectedSlug === "todas" || selectedSlug === "recomendado") return true
         return slugRole(job.category) === selectedSlug
@@ -1113,7 +1130,7 @@ export const handleCPFChange = (params: {
     setUserProfile({ ...userProfile, cpf: formattedCPF })
 
     if (formattedCPF.length === 14) {
-        if (!validateCPF(formattedCPF)) setCpfError('CPF invÃ¡lido. Verifique os nÃºmeros digitados.')
+        if (!validateCPF(formattedCPF)) setCpfError('CPF inválido. Verifique os números digitados.')
         else setCpfError('')
     } else setCpfError('')
 }
@@ -1218,7 +1235,7 @@ export const handleApplyToJob = async (params: {
         const successNotification: Notification = {
             id: Date.now().toString(),
             title: 'Candidatura Enviada!',
-            message: `VocÃª se candidatou para: ${job.title}`,
+            message: `Você se candidatou para: ${job.title}`,
             type: 'message',
             timestamp: new Date().toLocaleTimeString(),
             read: false,
@@ -1226,7 +1243,7 @@ export const handleApplyToJob = async (params: {
         setNotifications(prev => [successNotification, ...prev])
     } catch (error) {
         console.error('Erro ao aplicar:', error)
-        alert('Erro de conexÃ£o ao tentar se candidatar.')
+        alert('Erro de conexão ao tentar se candidatar.')
     }
 }
 
@@ -1302,7 +1319,7 @@ export const handlePublishJob = async (params: {
         }
         setJobs(prev => [createdJob, ...prev])
 
-        // MantÃ©m sincronizado com backend sem bloquear atualizaÃ§Ã£o visual imediata.
+        // Mantém sincronizado com backend sem bloquear atualização visual imediata.
         fetchWithAuth(`${API_BASE}/api/jobs`)
             .then(async (jobsRes) => {
                 if (!jobsRes.ok) return
@@ -1310,7 +1327,7 @@ export const handlePublishJob = async (params: {
                 setJobs(jobsData)
             })
             .catch((syncErr) => {
-                console.error('Erro ao sincronizar vagas apÃ³s publicaÃ§Ã£o:', syncErr)
+                console.error('Erro ao sincronizar vagas após publicação:', syncErr)
             })
 
         setShowJobPostForm(false)
@@ -1318,7 +1335,7 @@ export const handlePublishJob = async (params: {
 
     } catch (e) {
         console.error("Erro ao publicar:", e)
-        alert('Erro de conexÃ£o ao publicar vaga.')
+        alert('Erro de conexão ao publicar vaga.')
     }
 }
 
@@ -1376,7 +1393,7 @@ export const handleUpdateJob = async (params: {
 
     } catch (e) {
         console.error("Erro ao atualizar:", e)
-        alert('Erro de conexÃ£o ao atualizar vaga.')
+        alert('Erro de conexão ao atualizar vaga.')
     }
 }
 
@@ -1386,7 +1403,7 @@ export const handleDeleteJob = async (params: {
 }) => {
     const { jobId, setJobs } = params
 
-    if (!confirm('Tem certeza que deseja excluir esta vaga? Esta aÃ§Ã£o nÃ£o pode ser desfeita.')) {
+    if (!confirm('Tem certeza que deseja excluir esta vaga? Esta ação não pode ser desfeita.')) {
         return
     }
 
@@ -1406,11 +1423,11 @@ export const handleDeleteJob = async (params: {
 
         // Remove da lista local
         setJobs(prev => prev.filter(j => j.id !== jobId))
-        alert('Vaga excluÃ­da com sucesso!')
+        alert('Vaga excluída com sucesso!')
 
     } catch (e) {
         console.error("Erro ao excluir:", e)
-        alert('Erro de conexÃ£o ao excluir vaga.')
+        alert('Erro de conexão ao excluir vaga.')
     }
 }
 
@@ -1459,7 +1476,7 @@ export const handleSaveResume = async (params: {
     const realUserId = userProfile?.id
 
     if (!realUserId) {
-        alert("Erro: UsuÃ¡rio nÃ£o autenticado.")
+        alert("Erro: Usuário não autenticado.")
         return
     }
 
@@ -1481,7 +1498,7 @@ export const handleSaveResume = async (params: {
         const data = await res.json()
 
         if (!res.ok || !data.success) {
-            alert(data.error || 'Erro ao salvar currÃ­culo')
+            alert(data.error || 'Erro ao salvar currículo')
             return
         }
 
@@ -1502,8 +1519,8 @@ export const handleSaveResume = async (params: {
 
         const successNotification: Notification = {
             id: Date.now().toString(),
-            title: 'CurrÃ­culo Salvo!',
-            message: 'Seu currÃ­culo foi salvo com sucesso.',
+            title: 'Currículo Salvo!',
+            message: 'Seu currículo foi salvo com sucesso.',
             type: 'message',
             timestamp: new Date().toLocaleTimeString(),
             read: false,
@@ -1512,8 +1529,8 @@ export const handleSaveResume = async (params: {
         setNotifications(prev => [successNotification, ...prev])
 
     } catch (error) {
-        console.error("Erro ao salvar currÃ­culo:", error)
-        alert('Erro de conexÃ£o ao salvar currÃ­culo.')
+        console.error("Erro ao salvar currículo:", error)
+        alert('Erro de conexão ao salvar currículo.')
     }
 }
 
@@ -1545,7 +1562,7 @@ export const handleDeleteResume = async (params: {
 }) => {
     const { resumeId, setResumes } = params
 
-    if (!confirm('Tem certeza que deseja excluir este currÃ­culo?')) {
+    if (!confirm('Tem certeza que deseja excluir este currículo?')) {
         return
     }
 
@@ -1556,16 +1573,16 @@ export const handleDeleteResume = async (params: {
 
         if (!res.ok) {
             const data = await res.json()
-            alert(data.error || 'Erro ao excluir currÃ­culo')
+            alert(data.error || 'Erro ao excluir currículo')
             return
         }
 
         setResumes(prev => prev.filter(r => r.id !== resumeId))
-        alert('CurrÃ­culo excluÃ­do com sucesso!')
+        alert('Currículo excluído com sucesso!')
 
     } catch (e) {
-        console.error("Erro ao excluir currÃ­culo:", e)
-        alert('Erro de conexÃ£o ao excluir currÃ­culo.')
+        console.error("Erro ao excluir currículo:", e)
+        alert('Erro de conexão ao excluir currículo.')
     }
 }
 
@@ -1630,7 +1647,7 @@ export const handleAcceptApplication = async (params: {
         const successNotification: Notification = {
             id: Date.now().toString(),
             title: 'Candidatura Aprovada!',
-            message: 'O candidato foi notificado sobre a aprovaÃ§Ã£o.',
+            message: 'O candidato foi notificado sobre a aprovação.',
             type: 'message',
             timestamp: new Date().toLocaleTimeString(),
             read: false,
@@ -1640,7 +1657,7 @@ export const handleAcceptApplication = async (params: {
 
     } catch (e) {
         console.error("Erro ao aceitar candidatura:", e)
-        showToastMessage('Erro de conexÃ£o ao aceitar candidatura.')
+        showToastMessage('Erro de conexão ao aceitar candidatura.')
         return false
     }
 }
@@ -1650,16 +1667,16 @@ export const normalizeBRPhoneToWa = (raw?: string | null): string | null => {
     const digits = String(raw).replace(/\D/g, '')
     if (!digits) return null
 
-    // jÃ¡ estÃ¡ com DDI 55
+    // já está com DDI 55
     if (digits.startsWith('55') && digits.length >= 12) return digits
 
-    // se veio com 0 na frente (tipo 0DDDNÃºmero)
+    // se veio com 0 na frente (tipo 0DDDNúmero)
     const noZero = digits.startsWith('0') ? digits.slice(1) : digits
 
-    // nÃºmero BR comum (10/11 dÃ­gitos sem DDI)
+    // número BR comum (10/11 dígitos sem DDI)
     if (noZero.length === 10 || noZero.length === 11) return `55${noZero}`
 
-    // qualquer outro formato: tenta usar como estÃ¡
+    // qualquer outro formato: tenta usar como está
     return noZero.length >= 10 ? noZero : null
 }
 
@@ -1667,11 +1684,11 @@ export const handleCallPerson = (params: { resume: Resume }) => {
     const { resume } = params
     const wa = normalizeBRPhoneToWa(resume.personalInfo.phone)
     if (!wa) {
-        alert('NÃºmero de WhatsApp invÃ¡lido ou nÃ£o cadastrado.')
+        alert('Número de WhatsApp inválido ou não cadastrado.')
         return
     }
     const message = encodeURIComponent(
-        `OlÃ¡ ${resume.personalInfo.name}! Vi seu currÃ­culo no PegaTrampo e gostaria de conversar sobre uma oportunidade de trabalho.`,
+        `Olá ${resume.personalInfo.name}! Vi seu currículo no PegaTrampo e gostaria de conversar sobre uma oportunidade de trabalho.`,
     )
     window.open(`https://wa.me/${wa}?text=${message}`, '_blank')
 }
@@ -1695,7 +1712,7 @@ export const handleSaveProfile = async (params: {
                 age--;
             }
             if (age < 18) {
-                alert('VocÃª precisa ter pelo menos 18 anos de idade.');
+                alert('Você precisa ter pelo menos 18 anos de idade.');
                 setLoading(false);
                 return;
             }
@@ -1703,7 +1720,7 @@ export const handleSaveProfile = async (params: {
 
         const realUserId = userProfile?.id
         if (!realUserId) {
-            throw new Error('UsuÃ¡rio nÃ£o autenticado. FaÃ§a login novamente.')
+            throw new Error('Usuário não autenticado. Faça login novamente.')
         }
 
         // Map frontend UserProfile fields to the backend's expected field names
@@ -1793,11 +1810,11 @@ export const handleNotificationClick = async ({
         setShowNotifications(false)
 
         // Navigate to the applications tab to see the accepted proposal
-        // The API sends "VocÃª foi chamado para a proposta X", meaning it's an application status update.
+        // The API sends "Você foi chamado para a proposta X", meaning it's an application status update.
         setActiveTab('applications')
 
     } catch (error) {
-        console.error('Erro ao marcar notificaÃ§Ã£o como lida:', error)
+        console.error('Erro ao marcar notificação como lida:', error)
     }
 }
 
@@ -1826,11 +1843,11 @@ export const submitEvaluation = async (params: {
 
         const data = await res.json()
         if (!res.ok) {
-            throw new Error(data.error || 'Erro ao enviar avaliaÃ§Ã£o')
+            throw new Error(data.error || 'Erro ao enviar avaliação')
         }
         return data
     } catch (error: any) {
-        console.error('Erro ao enviar avaliaÃ§Ã£o:', error)
+        console.error('Erro ao enviar avaliação:', error)
         throw error
     }
 }

@@ -332,7 +332,7 @@ export type CNPJApiData = {
     status?: string
     cnaeDescription?: string
     address?: CNPJAddress
-    businessType?: string // vamos â€œchutarâ€ depois
+    businessType?: string // vamos “chutar” depois
 }
 
 

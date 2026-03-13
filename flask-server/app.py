@@ -71,18 +71,18 @@ def validate_cookie_architecture():
     site_host = origin_host(FRONTEND_SITE_URL)
 
     if is_prod and COOKIE_SECURE is not True:
-        raise RuntimeError("ProduÃ§Ã£o requer JWT_COOKIE_SECURE=1 para cookie HttpOnly com HTTPS.")
+        raise RuntimeError("Produção requer JWT_COOKIE_SECURE=1 para cookie HttpOnly com HTTPS.")
 
     if is_prod and COOKIE_SAMESITE.lower() != "none":
-        raise RuntimeError("ProduÃ§Ã£o requer JWT_COOKIE_SAMESITE=None para fluxo cross-site.")
+        raise RuntimeError("Produção requer JWT_COOKIE_SAMESITE=None para fluxo cross-site.")
 
     if COOKIE_NAME.startswith("__Host-"):
         if COOKIE_DOMAIN is not None:
-            raise RuntimeError("Cookie com prefixo __Host- nÃ£o pode definir Domain.")
+            raise RuntimeError("Cookie com prefixo __Host- não pode definir Domain.")
 
     if is_prod and api_host and site_host and api_host != "same-site" and api_host != site_host:
         app.logger.warning(
-            "NEXT_PUBLIC_API_URL (%s) e FRONTEND_SITE_URL (%s) estÃ£o em domÃ­nios diferentes. "
+            "NEXT_PUBLIC_API_URL (%s) e FRONTEND_SITE_URL (%s) estão em domínios diferentes. "
             "Priorize reverse proxy/subpath (ex: NEXT_PUBLIC_API_URL=/api) para first-party cookie.",
             FRONTEND_PUBLIC_API_URL,
             FRONTEND_SITE_URL,
@@ -92,9 +92,9 @@ def validate_cookie_architecture():
 validate_cookie_architecture()
 
 # Se tentar usar __Host- sem Secure, o browser pode ignorar.
-# EntÃ£o: em dev, use cookie_name=token e secure=0
+# Então: em dev, use cookie_name=token e secure=0
 if COOKIE_NAME.startswith("__Host-") and not COOKIE_SECURE:
-    # vocÃª pode ou dar erro, ou trocar automaticamente:
+    # você pode ou dar erro, ou trocar automaticamente:
     # raise RuntimeError("__Host- exige JWT_COOKIE_SECURE=1 (HTTPS).")
     COOKIE_NAME = "token"
 
@@ -103,7 +103,7 @@ app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
 app.config["JWT_ACCESS_COOKIE_NAME"] = COOKIE_NAME
 app.config["JWT_COOKIE_SECURE"] = COOKIE_SECURE
 app.config["JWT_COOKIE_SAMESITE"] = COOKIE_SAMESITE
-app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # como vocÃª jÃ¡ usa
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # como você já usa
 
 jwt = JWTManager(app)
 
@@ -202,7 +202,7 @@ from flask_jwt_extended.exceptions import NoAuthorizationError
 
 @app.before_request
 def check_jwt_globally():
-    # âœ… Se JWT estiver desligado no .env, nÃ£o bloqueia nada
+    # ✅ Se JWT estiver desligado no .env, não bloqueia nada
     if not JWT_ENABLED:
         return
 
@@ -219,9 +219,9 @@ def check_jwt_globally():
                     if not jwt_user_id:
                         jwt_user_id = current_user_id()
                     if str(jwt_user_id) != str(client_user_id):
-                        return jsonify({"success": False, "error": "SessÃ£o cruzada divergente. FaÃ§a login novamente.", "session_mismatch": True}), 401
+                        return jsonify({"success": False, "error": "Sessão cruzada divergente. Faça login novamente.", "session_mismatch": True}), 401
             except Exception as e:
-                return jsonify({"success": False, "error": "Token expirado ou invÃ¡lido", "msg": str(e)}), 401
+                return jsonify({"success": False, "error": "Token expirado ou inválido", "msg": str(e)}), 401
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
@@ -258,7 +258,7 @@ def current_user_id():
     if identity is None:
         return None
 
-    # aceita identity como int ou string numÃ©rica
+    # aceita identity como int ou string numérica
     try:
         return int(identity)
     except (TypeError, ValueError):
@@ -281,7 +281,7 @@ def set_auth_cookie(resp, jwt_value: str):
 def clear_legacy_cookies(resp):
     # apaga qualquer 'token' residual (host-only)
     resp.set_cookie("token", "", max_age=0, path="/", secure=True, samesite="None")
-    # apaga variaÃ§Ãµes com Domain que podem ter ficado
+    # apaga variações com Domain que podem ter ficado
     for d in [".nossopoint-backend-flask-server.com", "app.nossopoint-backend-flask-server.com"]:
         resp.set_cookie("token", "", max_age=0, path="/", domain=d, secure=True, samesite="None")
     return resp
@@ -307,16 +307,16 @@ def cookie_architecture_check():
             "jwt_cookie_samesite": COOKIE_SAMESITE,
             "jwt_cookie_domain": COOKIE_DOMAIN,
             "https_required": True,
-            "proxy_set_cookie_rewrite_check": "validar no ingress/cdn: Set-Cookie nÃ£o deve ser reescrito",
-            "safari_fallback": "considerar OAuth/PKCE + token de sessÃ£o first-party, sem depender de third-party cookie",
+            "proxy_set_cookie_rewrite_check": "validar no ingress/cdn: Set-Cookie não deve ser reescrito",
+            "safari_fallback": "considerar OAuth/PKCE + token de sessão first-party, sem depender de third-party cookie",
         }
     )
 
 def db_write(query, *args):
     """
     Wrapper para INSERT/UPDATE/DELETE no PostgreSQL via CS50.
-    O CS50 tenta ler linhas do resultado, mas essas queries nÃ£o retornam linhas no Postgres.
-    Captura o erro e retorna None (a escrita jÃ¡ foi commitada com sucesso).
+    O CS50 tenta ler linhas do resultado, mas essas queries não retornam linhas no Postgres.
+    Captura o erro e retorna None (a escrita já foi commitada com sucesso).
     """
     try:
         return db.execute(query, *args)
@@ -335,7 +335,7 @@ def enc(value):
     return fernet.encrypt(s.encode("utf-8")).decode("utf-8")
 
 def dec(value):
-    """Tenta descriptografar; se nÃ£o for token Fernet vÃ¡lido, retorna como estÃ¡."""
+    """Tenta descriptografar; se não for token Fernet válido, retorna como está."""
     if value is None:
         return None
     s = str(value)
@@ -706,7 +706,7 @@ def create_job():
     job_cep = only_digits(data.get("cep") or "")
     job_lat, job_lng = resolve_job_coordinates(job_cep, data.get("address"), data.get("coordinates"))
 
-    # Nome de exibiÃ§Ã£o (opcional, sÃ³ para mostrar no app)
+    # Nome de exibição (opcional, só para mostrar no app)
     profile_rows = db.execute("SELECT company_name, full_name FROM user_profiles WHERE user_id = %s", user_id)
     posted_by = "Empresa"
     if profile_rows:
@@ -788,7 +788,7 @@ def get_jobs():
         if user_rows and user_rows[0].get("type") in ["empresa", "company"]:
             user_type = "company"
 
-    # Se for empresa, fetch vagas dela. Se profissional, fetch o feed normal (escondendo jÃ¡ aplicadas se logado)
+    # Se for empresa, fetch vagas dela. Se profissional, fetch o feed normal (escondendo já aplicadas se logado)
     user_id = identity if user_type == "company" else None
     candidate_id = identity if user_type == "professional" else None
 
@@ -903,14 +903,14 @@ def update_job(job_id):
     job_cep = only_digits(data.get("cep") or "")
     job_lat, job_lng = resolve_job_coordinates(job_cep, data.get("address"), data.get("coordinates"))
 
-    # 1. Verificar se a vaga existe e pertence Ã  empresa
+    # 1. Verificar se a vaga existe e pertence à empresa
     row = db.execute("SELECT id, posted_by_user_id FROM jobs WHERE id = %s", job_id)
     if not row:
-        return api_error("Vaga nÃ£o encontrada", 404)
+        return api_error("Vaga não encontrada", 404)
     
     job = row[0]
     if str(job["posted_by_user_id"]) != str(user_id):
-        return api_error("VocÃª nÃ£o tem permissÃ£o para editar esta vaga", 403)
+        return api_error("Você não tem permissão para editar esta vaga", 403)
 
     # 2. Atualizar dados
     import json
@@ -973,26 +973,26 @@ def update_job(job_id):
 def delete_job(job_id):
     user_id = current_user_id()
 
-    # 1. Verificar se a vaga existe e pertence Ã  empresa
+    # 1. Verificar se a vaga existe e pertence à empresa
     row = db.execute("SELECT id, posted_by_user_id FROM jobs WHERE id = %s", job_id)
     if not row:
-        return api_error("Vaga nÃ£o encontrada", 404)
+        return api_error("Vaga não encontrada", 404)
     
     job = row[0]
     if str(job["posted_by_user_id"]) != str(user_id):
-        return api_error("VocÃª nÃ£o tem permissÃ£o para excluir esta vaga", 403)
+        return api_error("Você não tem permissão para excluir esta vaga", 403)
 
     try:
         # Opcional: Remover candidaturas antes%s Ou deixar constraints tratarem (se houver CASCADE)%s
-        # Meu schema tem FOREIGN KEY, mas nÃ£o vi ON DELETE CASCADE explÃ­cito no CREATE TABLE do step 7.
+        # Meu schema tem FOREIGN KEY, mas não vi ON DELETE CASCADE explícito no CREATE TABLE do step 7.
         # Melhor excluir candidaturas primeiro para evitar erro de FK, ou adicionar CASCADE.
         # Verificando schema no step 7: FOREIGN KEY(job_id) REFERENCES jobs(id). Sem CASCADE.
-        # EntÃ£o preciso deletar applications primeiro.
+        # Então preciso deletar applications primeiro.
         
         db_write("DELETE FROM job_applications WHERE job_id = %s", job_id)
         db_write("DELETE FROM jobs WHERE id = %s", job_id)
         
-        return api_ok(message="Vaga excluÃ­da com sucesso")
+        return api_ok(message="Vaga excluída com sucesso")
     except Exception as e:
         print(f"Erro ao excluir vaga: {e}")
         return api_error("Erro ao excluir vaga", 500)
@@ -1146,19 +1146,19 @@ def resolve_job_coordinates(job_cep=None, address=None, coordinates=None):
 def lookup_cnpj(cnpj):
     cnpj = only_digits(cnpj)
     if len(cnpj) != 14:
-        return jsonify({"success": False, "error": "CNPJ invÃ¡lido"}), 400
+        return jsonify({"success": False, "error": "CNPJ inválido"}), 400
 
     try:
         r = requests.get(f"https://brasilapi.com.br/api/cnpj/v1/{cnpj}", timeout=10)
     except requests.exceptions.RequestException as e:
         app.logger.error(f"Erro de rede ao consultar BrasilAPI ({cnpj}): {e}")
-        return jsonify({"success": False, "error": "ServiÃ§o de validaÃ§Ã£o de CNPJ indisponÃ­vel. Tente novamente mais tarde."}), 503
+        return jsonify({"success": False, "error": "Serviço de validação de CNPJ indisponível. Tente novamente mais tarde."}), 503
 
     if r.status_code != 200:
-        return jsonify({"success": False, "error": "NÃ£o foi possÃ­vel consultar o CNPJ"}), 400
+        return jsonify({"success": False, "error": "Não foi possível consultar o CNPJ"}), 400
 
     data = r.json()
-    # vocÃª mapeia o que quer mandar pro front:
+    # você mapeia o que quer mandar pro front:
     payload = {
         "company_name": data.get("razao_social"),
         "trade_name": data.get("nome_fantasia"),
@@ -1189,7 +1189,7 @@ def hash_code(user_id: str, code: str) -> str:
     return hmac.new(key, msg, hashlib.sha256).hexdigest()
 
 def gen_code():
-    # 6 dÃ­gitos com zero Ã  esquerda, seguro (secrets)
+    # 6 dígitos com zero à esquerda, seguro (secrets)
     return f"{secrets.randbelow(1_000_000):06d}"
 
 def get_verification_serializer():
@@ -1217,18 +1217,18 @@ def request_email_verification():
         user_id = decode_user_id(user_id_raw)
         
     if not user_id:
-        return jsonify({"success": False, "error": "NÃ£o autorizado ou token expirado"}), 401
+        return jsonify({"success": False, "error": "Não autorizado ou token expirado"}), 401
 
     try:
         row = db.execute("SELECT id, email, email_verified, email_verification_sent_at FROM usuarios WHERE id = %s", user_id)
         if not row:
-            return jsonify({"success": False, "error": "UsuÃ¡rio nÃ£o encontrado"}), 404
+            return jsonify({"success": False, "error": "Usuário não encontrado"}), 404
 
         u = row[0]
         sent_at = u.get("email_verification_sent_at")
         if sent_at:
             last = datetime.fromisoformat(sent_at)
-            # ComparaÃ§Ã£o segura fazendo ambos naive ou aware
+            # Comparação segura fazendo ambos naive ou aware
             now_utc = datetime.now(timezone.utc)
             if last.tzinfo is None:
                 last = last.replace(tzinfo=timezone.utc)
@@ -1277,7 +1277,7 @@ def verify_email():
         user_id = decode_user_id(user_id_raw)
         
     if not user_id or len(code) != 6:
-        return jsonify({"success": False, "error": "SessÃ£o invÃ¡lida ou dados incorretos"}), 400
+        return jsonify({"success": False, "error": "Sessão inválida ou dados incorretos"}), 400
 
     row = db.execute("""
         SELECT email_verified, email_verification_code_hash, email_verification_expires_at,
@@ -1287,32 +1287,32 @@ def verify_email():
     """, user_id)
 
     if not row:
-        return jsonify({"success": False, "error": "UsuÃ¡rio nÃ£o encontrado"}), 404
+        return jsonify({"success": False, "error": "Usuário não encontrado"}), 404
 
     u = row[0]
     if u["email_verified"]:
         return jsonify({"success": True, "already_verified": True})
 
     if int(u["attempts"]) >= 5:
-        return jsonify({"success": False, "error": "Muitas tentativas. Reenvie o cÃ³digo."}), 429
+        return jsonify({"success": False, "error": "Muitas tentativas. Reenvie o código."}), 429
 
     expires_at = u["email_verification_expires_at"]
     if not expires_at:
-        return jsonify({"success": False, "error": "CÃ³digo expirado. Reenvie."}), 400
+        return jsonify({"success": False, "error": "Código expirado. Reenvie."}), 400
 
     expires_dt = datetime.fromisoformat(expires_at)
     now = datetime.utcnow()
     
-    # Tornar ambos ingÃªnuos (naive) para comparaÃ§Ã£o correta
+    # Tornar ambos ingênuos (naive) para comparação correta
     expires_dt = expires_dt.replace(tzinfo=None)
     now = now.replace(tzinfo=None)
     
     if expires_dt < now:
-        return jsonify({"success": False, "error": "CÃ³digo expirado. Reenvie."}), 400
+        return jsonify({"success": False, "error": "Código expirado. Reenvie."}), 400
 
     expected = u["email_verification_code_hash"]
     if not expected:
-        return jsonify({"success": False, "error": "Sem cÃ³digo ativo. Reenvie."}), 400
+        return jsonify({"success": False, "error": "Sem código ativo. Reenvie."}), 400
 
     got = hash_code(user_id, code)
     if not hmac.compare_digest(got, expected):
@@ -1321,7 +1321,7 @@ def verify_email():
                SET email_verification_attempts = COALESCE(email_verification_attempts,0) + 1
              WHERE id = %s
         """, user_id)
-        return jsonify({"success": False, "error": "CÃ³digo incorreto"}), 400
+        return jsonify({"success": False, "error": "Código incorreto"}), 400
 
     db_write("""
         UPDATE usuarios
@@ -1337,24 +1337,24 @@ def verify_email():
 
 def send_verification_email_brevo(to_email: str, code: str, ttl_min: int):
     if not BREVO_API_KEY:
-        print(f"\n=========================================\n[MOCK EMAIL] Para: {to_email}\n[MOCK EMAIL] CÃ³digo de VerificaÃ§Ã£o: {code}\n=========================================\n")
+        print(f"\n=========================================\n[MOCK EMAIL] Para: {to_email}\n[MOCK EMAIL] Código de Verificação: {code}\n=========================================\n")
         return
 
     payload = {
         "sender": {"name": EMAIL_FROM_NAME, "email": EMAIL_FROM},
         "to": [{"email": to_email}],
-        "subject": "Seu cÃ³digo de verificaÃ§Ã£o",
+        "subject": "Seu código de verificação",
         "htmlContent": f"""
           <div style="font-family:Arial,sans-serif">
-            <h2>VerificaÃ§Ã£o de e-mail</h2>
-            <p>Seu cÃ³digo Ã©:</p>
+            <h2>Verificação de e-mail</h2>
+            <p>Seu código é:</p>
             <div style="font-size:28px;font-weight:700;letter-spacing:4px">{code}</div>
             <p>Expira em {ttl_min} minutos.</p>
           </div>
         """,
     }
 
-    # Sandbox: nÃ£o entrega de verdade
+    # Sandbox: não entrega de verdade
     if BREVO_SANDBOX:
         payload["headers"] = {"X-Sib-Sandbox": "drop"}
 
@@ -1368,9 +1368,9 @@ def send_verification_email_brevo(to_email: str, code: str, ttl_min: int):
         raise RuntimeError(f"Brevo falhou ({r.status_code}): {r.text}")
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ──────────────────────────────────────────────
 # PASSWORD RESET (Esqueci minha senha)
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ──────────────────────────────────────────────
 
 PASSWORD_RESET_TTL_MIN = 30
 PASSWORD_RESET_COOLDOWN_SEC = 60
@@ -1383,14 +1383,14 @@ def _hash_reset_token(token: str) -> str:
 @app.post("/api/auth/forgot-password")
 def forgot_password():
     """
-    Sempre retorna 200 â€” nunca revela se o e-mail existe ou se hÃ¡ cooldown.
+    Sempre retorna 200 — nunca revela se o e-mail existe ou se há cooldown.
     """
     GENERIC_OK = jsonify({"success": True})
 
     data = request.json or {}
     email = norm_email(data.get("email"))
     if not email:
-        return GENERIC_OK  # Sem e-mail â†’ 200 silencioso
+        return GENERIC_OK  # Sem e-mail → 200 silencioso
 
     try:
         rows = db.execute(
@@ -1398,7 +1398,7 @@ def forgot_password():
             email,
         )
         if not rows:
-            return GENERIC_OK  # E-mail nÃ£o cadastrado â†’ 200 silencioso
+            return GENERIC_OK  # E-mail não cadastrado → 200 silencioso
 
         user = rows[0]
         user_id = user["id"]
@@ -1411,7 +1411,7 @@ def forgot_password():
             if last.tzinfo is None:
                 last = last.replace(tzinfo=timezone.utc)
             if (now_utc - last).total_seconds() < PASSWORD_RESET_COOLDOWN_SEC:
-                return GENERIC_OK  # Dentro do cooldown â†’ 200 silencioso
+                return GENERIC_OK  # Dentro do cooldown → 200 silencioso
 
         # Gerar token
         raw_token = secrets.token_urlsafe(32)
@@ -1451,10 +1451,10 @@ def reset_password():
     new_password = data.get("password") or ""
 
     if not raw_token:
-        return api_error("Token Ã© obrigatÃ³rio", 400)
+        return api_error("Token é obrigatório", 400)
 
     if len(new_password) < 8:
-        return api_error("A senha deve ter no mÃ­nimo 8 caracteres", 400)
+        return api_error("A senha deve ter no mínimo 8 caracteres", 400)
 
     token_hash = _hash_reset_token(raw_token)
 
@@ -1465,25 +1465,25 @@ def reset_password():
     """, token_hash)
 
     if not rows:
-        return api_error("Token invÃ¡lido ou expirado", 400)
+        return api_error("Token inválido ou expirado", 400)
 
     user = rows[0]
 
-    # JÃ¡ usado?
+    # Já usado?
     if user.get("password_reset_used_at"):
-        return api_error("Token invÃ¡lido ou expirado", 400)
+        return api_error("Token inválido ou expirado", 400)
 
     # Expirado?
     expires_at = user.get("password_reset_expires_at")
     if not expires_at:
-        return api_error("Token invÃ¡lido ou expirado", 400)
+        return api_error("Token inválido ou expirado", 400)
 
     expires_dt = datetime.fromisoformat(str(expires_at)).replace(tzinfo=None)
     now = datetime.utcnow()
     if expires_dt < now:
-        return api_error("Token invÃ¡lido ou expirado", 400)
+        return api_error("Token inválido ou expirado", 400)
 
-    # Trocar senha + invalidar sessÃµes
+    # Trocar senha + invalidar sessões
     new_hash = generate_password_hash(new_password)
     now_iso = now.isoformat(timespec="seconds")
 
@@ -1504,19 +1504,19 @@ def send_password_reset_email_brevo(to_email: str, reset_link: str):
     if not BREVO_API_KEY:
         print(f"\n=========================================\n"
               f"[MOCK EMAIL] Para: {to_email}\n"
-              f"[MOCK EMAIL] Link de redefiniÃ§Ã£o: {reset_link}\n"
+              f"[MOCK EMAIL] Link de redefinição: {reset_link}\n"
               f"=========================================\n")
         return
 
     payload = {
         "sender": {"name": EMAIL_FROM_NAME, "email": EMAIL_FROM},
         "to": [{"email": to_email}],
-        "subject": "RedefiniÃ§Ã£o de senha â€” Pega Trampo",
+        "subject": "Redefinição de senha — Pega Trampo",
         "htmlContent": f"""
           <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto">
-            <h2 style="color:#333">RedefiniÃ§Ã£o de senha</h2>
-            <p>VocÃª solicitou a redefiniÃ§Ã£o da sua senha no Pega Trampo.</p>
-            <p>Clique no botÃ£o abaixo para criar uma nova senha:</p>
+            <h2 style="color:#333">Redefinição de senha</h2>
+            <p>Você solicitou a redefinição da sua senha no Pega Trampo.</p>
+            <p>Clique no botão abaixo para criar uma nova senha:</p>
             <div style="text-align:center;margin:24px 0">
               <a href="{reset_link}"
                  style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff;text-decoration:none;border-radius:12px;font-weight:bold;font-size:16px">
@@ -1524,7 +1524,7 @@ def send_password_reset_email_brevo(to_email: str, reset_link: str):
               </a>
             </div>
             <p style="color:#666;font-size:13px">Este link expira em {PASSWORD_RESET_TTL_MIN} minutos.</p>
-            <p style="color:#666;font-size:13px">Se vocÃª nÃ£o solicitou, ignore este e-mail.</p>
+            <p style="color:#666;font-size:13px">Se você não solicitou, ignore este e-mail.</p>
           </div>
         """,
     }
@@ -1558,9 +1558,9 @@ def save_resume():
             today_date = datetime.now()
             age = today_date.year - bdate.year - ((today_date.month, today_date.day) < (bdate.month, bdate.day))
             if age < 18:
-                return api_error("VocÃª precisa ter pelo menos 18 anos de idade.", 400)
+                return api_error("Você precisa ter pelo menos 18 anos de idade.", 400)
         except ValueError:
-            return api_error("Formato de data de nascimento invÃ¡lido. Use AAAA-MM-DD.", 400)
+            return api_error("Formato de data de nascimento inválido. Use AAAA-MM-DD.", 400)
 
     # Serialize JSON fields
     personal_info = json.dumps(data.get("personalInfo") or {}, ensure_ascii=False)
@@ -1581,7 +1581,7 @@ def save_resume():
 
              if row[0]["user_id"] != user_id:
 
-                 return api_error("NÃ£o autorizado a editar este currÃ­culo", 403)
+                 return api_error("Não autorizado a editar este currículo", 403)
 
              db_write("""
                 UPDATE resumes
@@ -1629,7 +1629,7 @@ def save_resume():
                 bio, is_visible
             )
 
-        # ---- Sync phone: resume â†’ profile ----
+        # ---- Sync phone: resume → profile ----
         try:
             pi_data = data.get("personalInfo") or {}
             resume_phone = pi_data.get("phone")
@@ -1641,7 +1641,7 @@ def save_resume():
         except Exception as sync_err:
             print(f"Aviso: falha ao sincronizar phone no perfil: {sync_err}")
 
-        # ---- Sync imageJob: resume â†’ profile ----
+        # ---- Sync imageJob: resume → profile ----
         try:
             image_job_raw = data.get("imageJob")
             if image_job_raw is not None and user_id:
@@ -1726,8 +1726,8 @@ def save_resume():
         return api_ok(resume_id=resume_id, resume=saved_resume)
 
     except Exception as e:
-        print(f"Erro ao salvar currÃ­culo: {e}")
-        return api_error(f"Erro ao salvar currÃ­culo: {str(e)}", 500)
+        print(f"Erro ao salvar currículo: {e}")
+        return api_error(f"Erro ao salvar currículo: {str(e)}", 500)
 
 
 @app.route("/api/resumes/<resume_id>", methods=["DELETE"])
@@ -1737,14 +1737,14 @@ def delete_resume(resume_id):
         # Ownership check
         row = db.execute("SELECT user_id FROM resumes WHERE id = %s", resume_id)
         if not row:
-            return api_error("CurrÃ­culo nÃ£o encontrado", 404)
+            return api_error("Currículo não encontrado", 404)
         if row[0]["user_id"] != user_id:
-            return api_error("NÃ£o autorizado a excluir este currÃ­culo", 403)
+            return api_error("Não autorizado a excluir este currículo", 403)
 
         db_write("DELETE FROM resumes WHERE id = %s", resume_id)
-        return api_ok(message="CurrÃ­culo excluÃ­do")
+        return api_ok(message="Currículo excluído")
     except Exception as e:
-        print(f"Erro ao excluir currÃ­culo: {e}")
+        print(f"Erro ao excluir currículo: {e}")
         return api_error(str(e), 500)
 
 
@@ -1772,13 +1772,13 @@ def get_resumes():
     print("get_resumes")
     user_id = current_user_id()
     print(user_id)
-    # Verifica o tipo do usuÃ¡rio para decidir o que retornar
+    # Verifica o tipo do usuário para decidir o que retornar
     user_rows = db.execute("SELECT type FROM usuarios WHERE id = %s", user_id)
     user_type = user_rows[0]["type"] if user_rows else "professional"
     requested_ids = [part.strip() for part in (request.args.get("user_ids") or "").split(",") if part.strip()]
     
     if user_type in ("empresa", "company"):
-        # Empresa vÃª TODOS os currÃ­culos visÃ­veis dos profissionais
+        # Empresa vê TODOS os currículos visíveis dos profissionais
         if requested_ids:
             placeholders = ", ".join(["%s"] * len(requested_ids))
             rows = db.execute(f"""
@@ -1798,7 +1798,7 @@ def get_resumes():
                 WHERE r.is_visible = true
             """)
     else:
-        # Profissional vÃª apenas o prÃ³prio currÃ­culo
+        # Profissional vê apenas o próprio currículo
         rows = db.execute("""
             SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job,
                    up.address as up_address, up.neighborhood as up_neighborhood, up.city as up_city, up.state as up_state
@@ -1899,7 +1899,7 @@ def save_user_profile():
     tx_started = False
 
     try:
-        # ====== USUÃRIO (admin da empresa) ======
+        # ====== USUÁRIO (admin da empresa) ======
         username = norm_username(data.get("username"))
         password = data.get("password") or ""
         user_email = norm_email(data.get("email"))
@@ -1911,7 +1911,7 @@ def save_user_profile():
 
         user_type = "empresa"
         
-        # Tenta usar JWT se o usuÃ¡rio jÃ¡ estÃ¡ logado (ediÃ§Ã£o de perfil)
+        # Tenta usar JWT se o usuário já está logado (edição de perfil)
         user_id = None
         if not JWT_ENABLED:
             user_id = DEV_USER_ID
@@ -1920,22 +1920,22 @@ def save_user_profile():
                 verify_jwt_in_request()
                 user_id = current_user_id()
             except:
-                pass  # Sem JWT = cadastro novo (vai criar usuÃ¡rio abaixo)
+                pass  # Sem JWT = cadastro novo (vai criar usuário abaixo)
 
-        # ====== cria usuÃ¡rio se nÃ£o veio user_id ======
+        # ====== cria usuário se não veio user_id ======
         if not user_id:
             if not username:
-                return api_error("username Ã© obrigatÃ³rio", 400)
+                return api_error("username é obrigatório", 400)
             if len(username) < 3 or re.search(r"\s", username):
-                return api_error("username invÃ¡lido (mÃ­n. 3 caracteres e sem espaÃ§os)", 400)
+                return api_error("username inválido (mín. 3 caracteres e sem espaços)", 400)
 
             if not password:
-                return api_error("password Ã© obrigatÃ³rio", 400)
+                return api_error("password é obrigatório", 400)
             if len(password) < 8:
-                return api_error("password invÃ¡lido (mÃ­n. 8 caracteres)", 400)
+                return api_error("password inválido (mín. 8 caracteres)", 400)
 
             if not user_email:
-                return api_error("email Ã© obrigatÃ³rio", 400)
+                return api_error("email é obrigatório", 400)
 
             # checagem simples de duplicidade (ideal: UNIQUE no banco)
             existing_users = db.execute(
@@ -1943,12 +1943,12 @@ def save_user_profile():
                 username, user_email
             )
             if existing_users:
-                # Se hÃ¡ algum jÃ¡ verificado, bloqueia
+                # Se há algum já verificado, bloqueia
                 verified = [u for u in existing_users if u.get("email_verified")]
                 if verified:
-                    return api_error("username ou email jÃ¡ cadastrado", 409)
+                    return api_error("username ou email já cadastrado", 409)
                 else:
-                    # Todos sÃ£o nÃ£o-verificados (abandonados). Limpa para recadastro:
+                    # Todos são não-verificados (abandonados). Limpa para recadastro:
                     for u in existing_users:
                         uid = u["id"]
                         db_write("DELETE FROM user_profiles WHERE user_id = %s", uid)
@@ -1982,11 +1982,11 @@ def save_user_profile():
                 today_date = datetime.now()
                 age = today_date.year - bdate.year - ((today_date.month, today_date.day) < (bdate.month, bdate.day))
                 if age < 18:
-                    raise ApiTxError("VocÃª precisa ter pelo menos 18 anos de idade.", 400)
+                    raise ApiTxError("Você precisa ter pelo menos 18 anos de idade.", 400)
             except ValueError:
-                raise ApiTxError("Formato de data de nascimento invÃ¡lido. Use AAAA-MM-DD.", 400)
+                raise ApiTxError("Formato de data de nascimento inválido. Use AAAA-MM-DD.", 400)
 
-        # ====== PERFIL (seu cÃ³digo, padronizado) ======
+        # ====== PERFIL (seu código, padronizado) ======
         def to_pg_text_array(items):
             if not items:
                 return None
@@ -1998,9 +1998,9 @@ def save_user_profile():
         image_job_val = to_pg_text_array(final_paths) if final_paths else None
 
         payload = {
-            "cnpj": enc(cnpj_digits(data.get("cnpj"))),  # <- salva sÃ³ dÃ­gitos (sem mudar front)
+            "cnpj": enc(cnpj_digits(data.get("cnpj"))),  # <- salva só dígitos (sem mudar front)
             "company_name": enc(data.get("company_name")),
-            "company_email": company_email,  # sem criptografia, como vocÃª queria
+            "company_email": company_email,  # sem criptografia, como você queria
             "business_type": enc(data.get("business_type")),
             "company_description": enc(data.get("company_description")),
 
@@ -2079,7 +2079,7 @@ def save_user_profile():
             payload["address"], payload["number"], payload["complement"], payload["neighborhood"], payload["city"], payload["state"], payload["cep"], payload["lat"], payload["lng"], payload["birth_date"], payload["imagem_profile"], payload["image_job"]
         )
 
-        # ---- Sync phone: profile â†’ resume ----
+        # ---- Sync phone: profile → resume ----
         raw_phone = data.get("phone")
         if raw_phone and user_id:
             import json as _json
@@ -2112,8 +2112,8 @@ def save_user_profile():
                 db.execute("ROLLBACK")
             except Exception:
                 pass
-        # loga no servidor, mas nÃ£o vaza detalhes pro cliente
-        # (se quiser, aqui vocÃª faz print/ logger.exception)
+        # loga no servidor, mas não vaza detalhes pro cliente
+        # (se quiser, aqui você faz print/ logger.exception)
         print(f"Erro interno no save_user_profile: {e}")
         return api_error("Erro interno ao salvar cadastro", 500)
 
@@ -2142,7 +2142,7 @@ def register_user():
             if raw is None:
                 return []
 
-            # jÃ¡ Ã© lista
+            # já é lista
             if isinstance(raw, list):
                 items = [str(x).strip() for x in raw]
             else:
@@ -2183,7 +2183,7 @@ def register_user():
             safe = [str(x).replace("\\", "\\\\").replace('"', '\\"') for x in items]
             return "{" + ",".join(f'"{x}"' for x in safe) + "}"
 
-        # ====== USUÃRIO ======
+        # ====== USUÁRIO ======
         username = norm_username(data.get("username"))
         password = (data.get("password") or "")
 
@@ -2195,7 +2195,7 @@ def register_user():
         user_type = (data.get("userType") or data.get("type") or "professional")
         user_type = str(user_type).strip().lower()
 
-        # ====== PERFIL (FUNCIONÃRIO) ======
+        # ====== PERFIL (FUNCIONÁRIO) ======
         full_name = (data.get("full_name") or data.get("name") or "").strip()
         cpf = only_digits(data.get("cpf") or "")
         phone_raw = (data.get("phone") or "").strip()
@@ -2219,25 +2219,25 @@ def register_user():
         imagem_profile = data.get("imagem_profile")
         image_job_raw = data.get("image_job")
 
-        # ====== VALIDAÃ‡Ã•ES ======
+        # ====== VALIDAÇÕES ======
         if not username:
-            return api_error("username Ã© obrigatÃ³rio", 400)
+            return api_error("username é obrigatório", 400)
         if len(username) < 3 or re.search(r"\s", username):
-            return api_error("username invÃ¡lido (mÃ­n. 3 caracteres e sem espaÃ§os)", 400)
+            return api_error("username inválido (mín. 3 caracteres e sem espaços)", 400)
 
         if not password:
-            return api_error("password Ã© obrigatÃ³rio", 400)
+            return api_error("password é obrigatório", 400)
         if len(password) < 6:
-            return api_error("password invÃ¡lido (mÃ­n. 6 caracteres)", 400)
+            return api_error("password inválido (mín. 6 caracteres)", 400)
 
         if not user_email:
-            return api_error("email Ã© obrigatÃ³rio", 400)
+            return api_error("email é obrigatório", 400)
 
         if not full_name:
-            return api_error("Nome completo Ã© obrigatÃ³rio", 400)
+            return api_error("Nome completo é obrigatório", 400)
 
         if not cpf or len(cpf) != 11:
-            return api_error("CPF invÃ¡lido", 400)
+            return api_error("CPF inválido", 400)
 
         if user_type == "professional" and len(cep) != 8:
             return api_error("CEP invalido", 400)
@@ -2248,7 +2248,7 @@ def register_user():
         if not categories:
             return api_error("Selecione pelo menos 1 categoria", 400)
         if len(categories) > 3:
-            return api_error("Selecione no mÃ¡ximo 3 categorias", 400)
+            return api_error("Selecione no máximo 3 categorias", 400)
 
         # ====== DUPLICIDADE ======
         existing_users = db.execute(
@@ -2258,7 +2258,7 @@ def register_user():
         if existing_users:
             verified = [u for u in existing_users if u.get("email_verified")]
             if verified:
-                return api_error("username ou email jÃ¡ cadastrado", 409)
+                return api_error("username ou email já cadastrado", 409)
             else:
                 for u in existing_users:
                     uid = u["id"]
@@ -2266,7 +2266,7 @@ def register_user():
                     db_write("DELETE FROM resumes WHERE user_id = %s", uid)
                     db_write("DELETE FROM usuarios WHERE id = %s", uid)
 
-        # ====== CRIA USUÃRIO ======
+        # ====== CRIA USUÁRIO ======
         senha_hash = generate_password_hash(password)
         db.execute("BEGIN")
         tx_started = True
@@ -2314,7 +2314,7 @@ def register_user():
             "image_job": to_pg_text_array(image_job_raw[:6]) if image_job_raw and isinstance(image_job_raw, list) else None,
         }
 
-        # IMPORTANTE: incluir worker_category no INSERT tambÃ©m
+        # IMPORTANTE: incluir worker_category no INSERT também
         db_write(
             """
             INSERT INTO user_profiles (
@@ -2369,7 +2369,7 @@ def register_user():
             payload["image_job"]
         )
 
-        # ---- Sync phone: profile â†’ resume (igual ao user-profile) ----
+        # ---- Sync phone: profile → resume (igual ao user-profile) ----
         raw_phone = data.get("phone")
         if raw_phone and user_id:
             import json as _json
@@ -2383,11 +2383,11 @@ def register_user():
                         _json.dumps(pi, ensure_ascii=False), rr["id"]
                     )
                 except Exception as sync_err:
-                    print(f"Aviso: falha ao sincronizar phone no currÃ­culo: {sync_err}")
+                    print(f"Aviso: falha ao sincronizar phone no currículo: {sync_err}")
 
         db.execute("COMMIT")
         tx_started = False
-        # Faz auto-login na API apÃ³s registro para suportar current_user_id direto
+        # Faz auto-login na API após registro para suportar current_user_id direto
         jwt_token = gerar_token(user_id)
         resp = jsonify({"success": True, "token": sign_user_id(user_id), "user_id": sign_user_id(user_id), "message": "Cadastro realizado com sucesso!"})
         if JWT_ENABLED:
@@ -2416,18 +2416,18 @@ def login():
     password = data.get("password")
 
     if not email or not password:
-        return api_error("Email e senha sÃ£o obrigatÃ³rios", 400)
+        return api_error("Email e senha são obrigatórios", 400)
 
-    # 1. Buscar usuÃ¡rio
+    # 1. Buscar usuário
     rows = db.execute("SELECT * FROM usuarios WHERE email = %s", email)
     if not rows:
-        return api_error("Email ou senha invÃ¡lidos", 401)
+        return api_error("Email ou senha inválidos", 401)
     
     user = rows[0]
 
     # 2. Verificar senha
     if not check_password_hash(user["senha_hash"], password):
-        return api_error("Email ou senha invÃ¡lidos", 401)
+        return api_error("Email ou senha inválidos", 401)
 
     # 3. Buscar perfil para determinar tipo
     profile_rows = db.execute("SELECT * FROM user_profiles WHERE user_id = %s", user["id"])
@@ -2448,7 +2448,7 @@ def login():
     if profile_rows:
         profile = profile_rows[0]
         
-        # Descriptografar campos necessÃ¡rios
+        # Descriptografar campos necessários
         try:
             if profile.get("cnpj"):
                 decrypted_cnpj = fernet.decrypt(profile["cnpj"].encode()).decode()
@@ -2471,7 +2471,7 @@ def login():
                
         except Exception as e:
             print(f"Erro ao descriptografar dados do login: {e}")
-            # Em caso de erro de criptografia, mantÃ©m o login mas com dados limitados
+            # Em caso de erro de criptografia, mantém o login mas com dados limitados
             pass
 
     resp = jsonify({
@@ -2499,38 +2499,38 @@ def apply_to_job(job_id):
     user_id = current_user_id()
     
     if not user_id:
-        return api_error("NÃ£o autorizado", 401)
+        return api_error("Não autorizado", 401)
         
-    # Validar se o usuÃ¡rio Ã© empresa. Empresa nÃ£o pode se candidatar.
+    # Validar se o usuário é empresa. Empresa não pode se candidatar.
     user_data = db.execute("SELECT type FROM usuarios WHERE id = %s", user_id)
     if not user_data or user_data[0]["type"] in ["empresa", "company"]:
-        return api_error("Apenas contas de profissional podem se candidatar Ã s vagas", 403)
+        return api_error("Apenas contas de profissional podem se candidatar às vagas", 403)
         
     print(f"user_id: {user_id}")
 
-    # Buscar dados para a notificaÃ§Ã£o (Empresa e vaga) E validar se vaga existe primeiro
+    # Buscar dados para a notificação (Empresa e vaga) E validar se vaga existe primeiro
     company_id = None
     job_title = "vaga"
     job_info = db.execute("SELECT posted_by_user_id, title FROM jobs WHERE id = %s", job_id)
     
     if not job_info:
-        return api_error("Vaga nÃ£o encontrada", 404)
+        return api_error("Vaga não encontrada", 404)
         
     company_id = job_info[0]["posted_by_user_id"]
     job_title = job_info[0]["title"]
     
-    # Validar se nÃ£o estÃ¡ se candidatando Ã  prÃ³pria vaga
+    # Validar se não está se candidatando à própria vaga
     if company_id == user_id:
-        return api_error("VocÃª nÃ£o pode se candidatar Ã  prÃ³pria vaga", 409)
+        return api_error("Você não pode se candidatar à própria vaga", 409)
 
     # --- 1. BUSCA DE DADOS (LEITURA) ---
-    # Verifica se jÃ¡ existe candidatura
+    # Verifica se já existe candidatura
     existing = db.execute(
         "SELECT id FROM job_applications WHERE job_id = %s AND candidate_id = %s",
         job_id, user_id
     )
     if existing:
-        return api_error("VocÃª jÃ¡ se candidatou para esta vaga", 409)
+        return api_error("Você já se candidatou para esta vaga", 409)
 
     # Busca o resume_id do candidato
     resume_id = None
@@ -2551,7 +2551,7 @@ def apply_to_job(job_id):
         if user_info:
             candidate_name = user_info[0]["username"]
 
-    # --- 2. OPERAÃ‡Ã•ES DE ESCRITA ---
+    # --- 2. OPERAÇÕES DE ESCRITA ---
     import uuid
     application_id = str(uuid.uuid4())
 
@@ -2562,7 +2562,7 @@ def apply_to_job(job_id):
             application_id, job_id, user_id, resume_id
         )
 
-        # Inserir notificaÃ§Ã£o se tiver empresa
+        # Inserir notificação se tiver empresa
         if company_id:
             message = f"{candidate_name} se candidatou a vaga de {job_title}."
             db_write(
@@ -2579,7 +2579,7 @@ def apply_to_job(job_id):
 def get_notifications():
     user_id = current_user_id()
     try:
-        # Busca notificaÃ§Ãµes mais recentes
+        # Busca notificações mais recentes
         rows = db.execute("SELECT * FROM notifications WHERE user_id = %s ORDER BY created_at DESC", user_id)
         
         notifications = []
@@ -2595,23 +2595,23 @@ def get_notifications():
             
         return api_ok(notifications=notifications)
     except Exception as e:
-        print(f"Erro ao buscar notificaÃ§Ãµes: {e}")
-        return api_error("Erro ao buscar notificaÃ§Ãµes", 500)
+        print(f"Erro ao buscar notificações: {e}")
+        return api_error("Erro ao buscar notificações", 500)
 
 @app.route("/api/notifications/<int:notification_id>/read", methods=["PUT"])
 def mark_notification_read(notification_id):
     user_id = current_user_id()
     try:
-        # Verifica se pertence ao usuÃ¡rio
+        # Verifica se pertence ao usuário
         existing = db.execute("SELECT id FROM notifications WHERE id = %s AND user_id = %s", notification_id, user_id)
         if not existing:
-            return api_error("NotificaÃ§Ã£o nÃ£o encontrada", 404)
+            return api_error("Notificação não encontrada", 404)
             
         db_write("UPDATE notifications SET visto = TRUE WHERE id = %s", notification_id)
         return api_ok()
     except Exception as e:
-        print(f"Erro ao marcar notificaÃ§Ã£o como lida: {e}")
-        return api_error("Erro ao marcar notificaÃ§Ã£o como lida", 500)
+        print(f"Erro ao marcar notificação como lida: {e}")
+        return api_error("Erro ao marcar notificação como lida", 500)
 
 @app.route("/api/company/applications", methods=["GET"])
 def get_company_applications():
@@ -2619,7 +2619,7 @@ def get_company_applications():
     company_user_id = current_user_id()
 
     try:
-        # Buscar vagas publicadas por esta empresa pelo user_id (confiÃ¡vel)
+        # Buscar vagas publicadas por esta empresa pelo user_id (confiável)
         my_jobs = db.execute("SELECT * FROM jobs WHERE posted_by_user_id = %s", company_user_id)
         
         results = []
@@ -2648,14 +2648,14 @@ def get_company_applications():
                 FROM job_applications ja
                 JOIN usuarios u ON ja.candidate_id = u.id
                 LEFT JOIN user_profiles up ON u.id = up.user_id
-                LEFT JOIN resumes r ON u.id = r.user_id -- Pega o currÃ­culo do candidato
+                LEFT JOIN resumes r ON u.id = r.user_id -- Pega o currículo do candidato
                 WHERE ja.job_id = %s
             """, job_id)
             
             candidates = []
             for app in applications:
                 # Decrypt profile info
-                c_name = "AnÃ´nimo"
+                c_name = "Anônimo"
                 c_phone = ""
                 
                 # Nome: tenta full_name (profile), fallback para username (usuario)
@@ -2743,17 +2743,17 @@ def get_company_applications():
 def accept_application(app_id):
     company_user_id = current_user_id()
     if not company_user_id:
-        return api_error("NÃ£o autorizado", 401)
+        return api_error("Não autorizado", 401)
 
     try:
         app_rows = db.execute("SELECT job_id, candidate_id, status FROM job_applications WHERE id = %s", app_id)
         if not app_rows:
-            return api_error("Candidatura nÃ£o encontrada", 404)
+            return api_error("Candidatura não encontrada", 404)
 
         app_row = app_rows[0]
         current_status = str(app_row.get("status") or "").strip().lower()
         if current_status in CLOSED_APPLICATION_STATUSES:
-            return api_error("Essa candidatura jÃ¡ foi encerrada e nÃ£o pode ser aprovada.", 400)
+            return api_error("Essa candidatura já foi encerrada e não pode ser aprovada.", 400)
 
         job_id = app_row["job_id"]
         candidate_id = app_row["candidate_id"]
@@ -2763,7 +2763,7 @@ def accept_application(app_id):
             job_id,
         )
         if not job_rows or str(job_rows[0]["posted_by_user_id"]) != str(company_user_id):
-            return api_error("PermissÃ£o negada ou vaga nÃ£o encontrada", 403)
+            return api_error("Permissão negada ou vaga não encontrada", 403)
 
         accepted_job_row = dict(job_rows[0])
         job_title = accepted_job_row["title"]
@@ -2776,7 +2776,7 @@ def accept_application(app_id):
             accepted_job_row,
         )
 
-        message = f"VocÃª foi chamado para a proposta {job_title}"
+        message = f"Você foi chamado para a proposta {job_title}"
         db_write(
             "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (%s, 'application_status', %s, %s)",
             candidate_id, message, job_id
@@ -2814,7 +2814,7 @@ def get_session(application_id):
     """Returns current session status + signed photo URLs."""
     user_id = current_user_id()
     if not user_id:
-        return api_error("NÃ£o autorizado", 401)
+        return api_error("Não autorizado", 401)
     try:
         rows = db.execute(
             """
@@ -2855,8 +2855,8 @@ def get_session(application_id):
             "validatedAt": str(s["validated_at"]) if s.get("validated_at") else None,
         })
     except Exception as e:
-        print(f"Erro ao buscar sessÃ£o: {e}")
-        return api_error("Erro ao buscar sessÃ£o", 500)
+        print(f"Erro ao buscar sessão: {e}")
+        return api_error("Erro ao buscar sessão", 500)
 
 
 @app.route("/api/sessions/checkin", methods=["POST"])
@@ -2864,7 +2864,7 @@ def session_checkin():
     """Candidate uploads check-in photo."""
     user_id = current_user_id()
     if not user_id:
-        return api_error("NÃ£o autorizado", 401)
+        return api_error("Não autorizado", 401)
         
     data = request.get_json(silent=True) or {}
     
@@ -2883,7 +2883,7 @@ def session_checkin():
             photo_b64 = f"data:{mime};base64," + base64.b64encode(photo_bytes).decode('utf-8')
     
     if not application_id or not photo_b64:
-        return api_error("application_id e photo sÃ£o obrigatÃ³rios", 400)
+        return api_error("application_id e photo são obrigatórios", 400)
     
     # Process Base64
     try:
@@ -2894,21 +2894,21 @@ def session_checkin():
         
         MAX_SIZE = 50 * 1024 * 1024
         if len(photo_bytes) > MAX_SIZE:
-            return api_error("Foto muito grande. MÃ¡ximo 50MB.", 400)
+            return api_error("Foto muito grande. Máximo 50MB.", 400)
             
         allowed = {"image/jpeg", "image/png", "image/webp"}
         if mime not in allowed:
-            return api_error("Formato nÃ£o permitido. Use JPG, PNG ou WebP.", 400)
+            return api_error("Formato não permitido. Use JPG, PNG ou WebP.", 400)
             
         rows = db.execute(
             "SELECT * FROM job_sessions WHERE application_id = %s AND candidate_id = %s",
             application_id, user_id
         )
         if not rows:
-            return api_error("SessÃ£o nÃ£o encontrada", 404)
+            return api_error("Sessão não encontrada", 404)
         s = rows[0]
         if s["status"] != "accepted":
-            return api_error(f"Check-in nÃ£o permitido no status atual: {s['status']}", 409)
+            return api_error(f"Check-in não permitido no status atual: {s['status']}", 409)
             
         path = build_session_photo_path(s["company_id"], s["job_id"], application_id, "checkin", mime)
         upload_session_photo(photo_bytes, path, mime)
@@ -2935,7 +2935,7 @@ def session_checkout():
     """Candidate uploads check-out photo."""
     user_id = current_user_id()
     if not user_id:
-        return api_error("NÃ£o autorizado", 401)
+        return api_error("Não autorizado", 401)
         
     data = request.get_json(silent=True) or {}
     
@@ -2952,7 +2952,7 @@ def session_checkout():
             photo_b64 = f"data:{mime};base64," + base64.b64encode(photo_bytes).decode('utf-8')
             
     if not application_id or not photo_b64:
-        return api_error("application_id e photo sÃ£o obrigatÃ³rios", 400)
+        return api_error("application_id e photo são obrigatórios", 400)
 
     try:
         header, encoded = photo_b64.split(",", 1)
@@ -2962,21 +2962,21 @@ def session_checkout():
 
         MAX_SIZE = 50 * 1024 * 1024
         if len(photo_bytes) > MAX_SIZE:
-            return api_error("Foto muito grande. MÃ¡ximo 50MB.", 400)
+            return api_error("Foto muito grande. Máximo 50MB.", 400)
 
         allowed = {"image/jpeg", "image/png", "image/webp"}
         if mime not in allowed:
-            return api_error("Formato nÃ£o permitido. Use JPG, PNG ou WebP.", 400)
+            return api_error("Formato não permitido. Use JPG, PNG ou WebP.", 400)
             
         rows = db.execute(
             "SELECT * FROM job_sessions WHERE application_id = %s AND candidate_id = %s",
             application_id, user_id
         )
         if not rows:
-            return api_error("SessÃ£o nÃ£o encontrada", 404)
+            return api_error("Sessão não encontrada", 404)
         s = rows[0]
         if s["status"] != "checked_in":
-            return api_error(f"Check-out nÃ£o permitido no status atual: {s['status']}", 409)
+            return api_error(f"Check-out não permitido no status atual: {s['status']}", 409)
 
         path = build_session_photo_path(s["company_id"], s["job_id"], application_id, "checkout", mime)
         upload_session_photo(photo_bytes, path, mime)
@@ -3003,7 +3003,7 @@ def validate_session(session_id):
     """Company validates or rejects completed work."""
     user_id = current_user_id()
     if not user_id:
-        return api_error("NÃƒÂ£o autorizado", 401)
+        return api_error("NÃ£o autorizado", 401)
     try:
         data = request.get_json(silent=True) or {}
         completed = data.get("completed")
@@ -3015,10 +3015,10 @@ def validate_session(session_id):
             session_id, user_id
         )
         if not rows:
-            return api_error("SessÃƒÂ£o nÃƒÂ£o encontrada", 404)
+            return api_error("SessÃ£o nÃ£o encontrada", 404)
         s = rows[0]
         if s["status"] != "checked_out":
-            return api_error(f"SÃƒÂ³ ÃƒÂ© possÃƒÂ­vel validar apÃƒÂ³s o check-out. Status atual: {s['status']}", 409)
+            return api_error(f"SÃ³ Ã© possÃ­vel validar apÃ³s o check-out. Status atual: {s['status']}", 409)
 
         now = datetime.now(timezone.utc).isoformat()
         if completed:
@@ -3031,10 +3031,10 @@ def validate_session(session_id):
             db_write(
                 "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (%s, 'session_validated', %s, %s)",
                 s["candidate_id"],
-                "Seu serviÃƒÂ§o foi validado pela empresa! Ã¢Å“â€¦",
+                "Seu serviÃ§o foi validado pela empresa! âœ…",
                 s["job_id"]
             )
-            return api_ok(message="ServiÃƒÂ§o validado com sucesso!", status="validated")
+            return api_ok(message="ServiÃ§o validado com sucesso!", status="validated")
 
         db_write("""
             UPDATE job_sessions SET validated_at = NULL, status = 'cancelled'
@@ -3045,13 +3045,13 @@ def validate_session(session_id):
         db_write(
             "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (%s, 'session_cancelled', %s, %s)",
             s["candidate_id"],
-            "A empresa informou que o serviÃƒÂ§o nÃƒÂ£o foi concluÃƒÂ­do.",
+            "A empresa informou que o serviÃ§o nÃ£o foi concluÃ­do.",
             s["job_id"]
         )
-        return api_ok(message="ServiÃƒÂ§o marcado como nÃƒÂ£o concluÃƒÂ­do.", status="cancelled")
+        return api_ok(message="ServiÃ§o marcado como nÃ£o concluÃ­do.", status="cancelled")
     except Exception as e:
-        print(f"Erro ao validar sessÃƒÂ£o: {e}")
-        return api_error("Erro ao validar sessÃƒÂ£o", 500)
+        print(f"Erro ao validar sessÃ£o: {e}")
+        return api_error("Erro ao validar sessÃ£o", 500)
 @app.route("/api/get_dados", methods=["GET"])
 def get_dados():
     user_id = current_user_id()
@@ -3121,7 +3121,7 @@ def get_dados():
             raw_company_email = p.get("company_email")
             profile_data["company_email"] = dec(raw_company_email)
             profile_data["number"] = p.get("number")
-            # localizaÃ§Ã£o (lat/lng) vÃ£o em texto plano
+            # localização (lat/lng) vão em texto plano
             profile_data["lat"] = p.get("lat")
             profile_data["lng"] = p.get("lng")
             profile_data["imagem_profile"] = get_signed_url(p.get("imagem_profile")) or p.get("imagem_profile")
@@ -3209,7 +3209,7 @@ def get_dados():
 def submit_evaluation():
     user_id = current_user_id()
     if not user_id:
-        return api_error("NÃ£o autorizado", 401)
+        return api_error("Não autorizado", 401)
 
     data = request.json or {}
     evaluated_id = data.get("evaluated_id")
@@ -3218,37 +3218,37 @@ def submit_evaluation():
     comment = (data.get("comment") or "").strip()
 
     if not evaluated_id or not job_id or rating is None:
-        return api_error("Campos obrigatÃ³rios: evaluated_id, job_id, rating.", 400)
+        return api_error("Campos obrigatórios: evaluated_id, job_id, rating.", 400)
 
     try:
         evaluated_id = int(evaluated_id)
     except (TypeError, ValueError):
-        return api_error("evaluated_id invÃ¡lido.", 400)
+        return api_error("evaluated_id inválido.", 400)
 
     try:
         rating = int(rating)
         if rating < 1 or rating > 5:
             return api_error("A nota (rating) deve ser entre 1 e 5.", 400)
     except (TypeError, ValueError):
-        return api_error("A nota (rating) deve ser um nÃºmero inteiro.", 400)
+        return api_error("A nota (rating) deve ser um número inteiro.", 400)
 
     if evaluated_id == user_id:
-        return api_error("VocÃª nÃ£o pode avaliar a si mesmo.", 400)
+        return api_error("Você não pode avaliar a si mesmo.", 400)
 
     if len(comment) > 1000:
-        return api_error("O comentÃ¡rio pode ter no mÃ¡ximo 1000 caracteres.", 400)
+        return api_error("O comentário pode ter no máximo 1000 caracteres.", 400)
 
     evaluator_rows = db.execute("SELECT type FROM usuarios WHERE id = %s", user_id)
     evaluated_rows = db.execute("SELECT type FROM usuarios WHERE id = %s", evaluated_id)
     if not evaluator_rows or not evaluated_rows:
-        return api_error("UsuÃ¡rio da avaliaÃ§Ã£o nÃ£o encontrado.", 404)
+        return api_error("Usuário da avaliação não encontrado.", 404)
 
     evaluator_type = normalize_account_type(evaluator_rows[0].get("type"))
     evaluated_type = normalize_account_type(evaluated_rows[0].get("type"))
     if evaluator_type != "company":
         return api_error("Apenas empresas podem avaliar candidatos.", 403)
     if evaluated_type != "professional":
-        return api_error("A avaliaÃ§Ã£o deve ser enviada para um candidato profissional.", 400)
+        return api_error("A avaliação deve ser enviada para um candidato profissional.", 400)
 
     relation_rows = db.execute(
         """
@@ -3269,7 +3269,7 @@ def submit_evaluation():
         evaluated_id, job_id, user_id,
     )
     if not relation_rows or not relation_rows[0].get("application_id"):
-        return api_error("VocÃª sÃ³ pode avaliar candidatos vinculados a uma vaga da sua empresa.", 403)
+        return api_error("Você só pode avaliar candidatos vinculados a uma vaga da sua empresa.", 403)
 
     relation = relation_rows[0]
     terminal_session_statuses = {"validated", "finished", "finalized", "cancelled", "canceled"}
@@ -3277,7 +3277,7 @@ def submit_evaluation():
     session_status = str(relation.get("session_status") or "").strip().lower()
     application_status = str(relation.get("application_status") or "").strip().lower()
     if session_status not in terminal_session_statuses and application_status not in terminal_application_statuses:
-        return api_error("A avaliaÃ§Ã£o sÃ³ pode ser enviada apÃ³s a conclusÃ£o ou cancelamento do serviÃ§o.", 409)
+        return api_error("A avaliação só pode ser enviada após a conclusão ou cancelamento do serviço.", 409)
 
     try:
         db.execute("BEGIN")
@@ -3291,7 +3291,7 @@ def submit_evaluation():
         stats = recalculate_user_profile_rating(evaluated_id)
         db.execute("COMMIT")
         return api_ok(
-            message="AvaliaÃ§Ã£o enviada com sucesso!",
+            message="Avaliação enviada com sucesso!",
             averageRating=stats["averageRating"],
             reviewsCount=stats["reviewsCount"],
         )
@@ -3301,9 +3301,9 @@ def submit_evaluation():
         except Exception:
             pass
         if "duplicate key" in str(e).lower() or "idx_user_evaluations_unique_review" in str(e):
-            return api_error("VocÃª jÃ¡ avaliou este candidato para este serviÃ§o.", 409)
-        print(f"Erro ao salvar avaliaÃ§Ã£o: {e}")
-        return api_error("Erro ao processar a avaliaÃ§Ã£o.", 500)
+            return api_error("Você já avaliou este candidato para este serviço.", 409)
+        print(f"Erro ao salvar avaliação: {e}")
+        return api_error("Erro ao processar a avaliação.", 500)
 
 
 @app.route("/api/users/<evaluated_id>/evaluations", methods=["GET"])
@@ -3312,7 +3312,7 @@ def get_user_evaluations(evaluated_id):
         try:
             evaluated_user_id = int(evaluated_id)
         except (TypeError, ValueError):
-            return api_error("UsuÃ¡rio invÃ¡lido.", 400)
+            return api_error("Usuário inválido.", 400)
 
         rows = db.execute(
             """
@@ -3381,8 +3381,8 @@ def get_user_evaluations(evaluated_id):
             reviewsCount=reviews_count,
         )
     except Exception as e:
-        print(f"Erro ao buscar avaliaÃ§Ãµes: {e}")
-        return api_error("Erro ao buscar avaliaÃ§Ãµes", 500)
+        print(f"Erro ao buscar avaliações: {e}")
+        return api_error("Erro ao buscar avaliações", 500)
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)

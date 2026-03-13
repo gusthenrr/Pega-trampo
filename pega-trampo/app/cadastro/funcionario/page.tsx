@@ -8,7 +8,8 @@ import * as logic from "../../dashboard/pegaTrampo.logic"
 const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
 const REGISTER_ENDPOINT = "/api/register"
 
-const workerCategories = [
+/*
+const legacyWorkerCategories = [
     { name: "Padeiro", icon: Utensils, description: "Pães, massas, fermentação" },
     { name: "Confeiteiro", icon: Utensils, description: "Doces, bolos, sobremesas" },
     { name: "Cozinheiro", icon: Utensils, description: "Culinária, eventos, restaurantes" },
@@ -23,6 +24,20 @@ const workerCategories = [
     { name: "Repostior/Estoquista", icon: Utensils, description: "Repostior/Estoquista" },
     { name: "Ajudande geral", icon: Utensils, description: "Ajudande geral" },
     { name: "Motoboy/Entregador", icon: Utensils, description: "Motoboy/Entregador" },
+] as const
+*/
+
+const workerCategories = [
+    {
+        name: "Confeitaria seca",
+        icon: Utensils,
+        description: "Ex.: bolos secos, bolo de laranja e miudezas",
+    },
+    {
+        name: "Confeitaria fina",
+        icon: Utensils,
+        description: "Ex.: bolos confeitados e mono porção",
+    },
 ] as const
 
 type Step = 1 | 2 | 3

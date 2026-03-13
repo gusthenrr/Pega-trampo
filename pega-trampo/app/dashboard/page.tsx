@@ -129,7 +129,7 @@ const emptyCandidateEvaluations: CandidateEvaluationsPayload = {
     evaluations: [],
 }
 
-// FunÃ§Ã£o para formatar data relativa 
+// Função para formatar data relativa 
 
 export default function PegaTrampoApp() {
     const [currentStep, setCurrentStep] = useState('welcome')
@@ -156,7 +156,7 @@ export default function PegaTrampoApp() {
     const [showSupport, setShowSupport] = useState(false)
     const [showHeader, setShowHeader] = useState(true)
 
-    // LÃ³gica para esconder/mostrar header no scroll
+    // Lógica para esconder/mostrar header no scroll
     useEffect(() => {
         let lastScrollY = window.scrollY
         const handleScroll = () => {
@@ -174,7 +174,7 @@ export default function PegaTrampoApp() {
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
-    // Restaura o estado da UI ao recarregar a pÃ¡gina
+    // Restaura o estado da UI ao recarregar a página
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const savedTab = sessionStorage.getItem('pt_activeTab')
@@ -312,7 +312,7 @@ export default function PegaTrampoApp() {
                 location: `${addressData.city}, ${addressData.state}`
             }));
 
-            // Jï¿½ tenta pegar coordenadas
+            // Já tenta pegar coordenadas
             const coords = await logic.fetchCoordinates(addressData.fullAddress);
             if (coords) {
                 setNewJobPost(prev => ({ ...prev, coordinates: coords }));
@@ -434,7 +434,7 @@ export default function PegaTrampoApp() {
     // Data Fetching Effect REMOVED (Redundant with logic.bootstrapInitialData)
 
 
-    // ========= WRAPPERS (mesmos nomes, zero lï¿½gica aqui) =========
+    // ========= WRAPPERS (mesmos nomes, zero lógica aqui) =========
 
     // useEffect 1 (bootstrap)
     useEffect(() => {
@@ -451,7 +451,7 @@ export default function PegaTrampoApp() {
     }, [])
 
     useEffect(() => {
-        // Carrega notificaï¿½ï¿½es independente das outras infos se jï¿½ logado
+        // Carrega notificações independente das outras infos se já logado
         const fetchNotifications = async () => {
             try {
                 const res = await logic.fetchWithAuth(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/notifications`)
@@ -462,7 +462,7 @@ export default function PegaTrampoApp() {
                     }
                 }
             } catch (err) {
-                console.error("Erro ao buscar notificaÃ§Ãµes", err)
+                console.error("Erro ao buscar notificações", err)
             }
         }
         fetchNotifications()
@@ -484,7 +484,7 @@ export default function PegaTrampoApp() {
         return `${n} ${n === 1 ? "mes" : "meses"}`
     }
 
-    // estados sï¿½ pra controlar o input/select (UI)
+    // estados só pra controlar o input/select (UI)
     const [durationQty, setDurationQty] = useState<number>(1)
     const [durationUnit, setDurationUnit] = useState<DurationUnit>("dia")
 
@@ -833,11 +833,11 @@ export default function PegaTrampoApp() {
     const handleContactCompanyWhatsapp = (job: Job) => {
         const wa = getCompanyWhatsappNumber(job)
         if (!wa) {
-            alert('WhatsApp indisponÃ­vel. Cadastre o nÃºmero da empresa em companyInfo.whatsapp ou companyInfo.phone.')
+            alert('WhatsApp indisponível. Cadastre o número da empresa em companyInfo.whatsapp ou companyInfo.phone.')
             return
         }
 
-        const text = `OlÃ¡! Vi a vaga "${job.title}" no PegaTrampo e quero mais detalhes.`
+        const text = `Olá! Vi a vaga "${job.title}" no PegaTrampo e quero mais detalhes.`
         const url = `https://wa.me/${wa}?text=${encodeURIComponent(text)}`
         window.open(url, '_blank')
     }
@@ -857,7 +857,7 @@ export default function PegaTrampoApp() {
 hover:bg-white/20 rounded-full transition-all">
                             <ArrowLeft className="h-5 w-5 text-white" />
                         </button>
-                        <h1 className="text-lg font-bold text-white">CurrÃ­culo Completo</h1>
+                        <h1 className="text-lg font-bold text-white">Currículo Completo</h1>
                         <div className="w-10"></div>
                     </div>
                 </div>
@@ -897,10 +897,10 @@ mb-3">{selectedResume.professionalInfo.category}</p>
                         <div className="flex items-center justify-center space-x-2 text-gray-600 mb-4">
                             <Clock className="h-4 w-4" />
                             <span className="text-sm">{selectedResume.professionalInfo.experience} de
-                                experiÃªncia</span>
+                                experiência</span>
                         </div>
 
-                        {/* Botï¿½o de Chamar em DESTAQUE */}
+                        {/* Botão de Chamar em DESTAQUE */}
                         <button
                             onClick={() => handleCallPerson(selectedResume)}
                             className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 
@@ -917,7 +917,7 @@ shadow-lg flex items-center justify-center space-x-3 transform hover:scale-105"
                     {/* Trabalhos ja feitos */}
                     {selectedResume.imageJob && selectedResume.imageJob.length > 0 && (
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5 mb-4">
-                            <h3 className="text-lg font-bold text-gray-900 mb-4">Trabalhos jÃ¡ feitos:</h3>
+                            <h3 className="text-lg font-bold text-gray-900 mb-4">Trabalhos já feitos:</h3>
                             <div className="grid grid-cols-3 gap-2">
                                 {selectedResume.imageJob.map((imgUrl, index) => (
                                     <div key={index} className="aspect-square bg-gray-100 overflow-hidden cursor-pointer rounded-lg border shadow-sm group" onClick={() => setEnlargedPhoto(imgUrl)}>
@@ -955,7 +955,7 @@ text-gray-900">{selectedResume.personalInfo.email}</p>
                             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                                 <MapPin className="h-5 w-5 text-gray-600" />
                                 <div>
-                                    <p className="text-xs text-gray-600">EndereÃ§o</p>
+                                    <p className="text-xs text-gray-600">Endereço</p>
                                     <p className="font-semibold 
 text-gray-900">{selectedResumeAddress}</p>
                                 </div>
@@ -963,7 +963,7 @@ text-gray-900">{selectedResumeAddress}</p>
                         </div>
                     </div>
 
-                    {/* Informaï¿½ï¿½es Profissionais */}
+                    {/* Informações Profissionais */}
 
 
                     <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
@@ -972,7 +972,7 @@ text-gray-900">{selectedResumeAddress}</p>
 justify-center">
                                 <Briefcase className="h-5 w-5 text-purple-600" />
                             </div>
-                            <h3 className="text-lg font-bold text-gray-900">InformaÃ§Ãµes Profissionais</h3>
+                            <h3 className="text-lg font-bold text-gray-900">Informações Profissionais</h3>
                         </div>
                         <div className="space-y-3">
                             <div>
@@ -987,7 +987,7 @@ rounded-full text-xs font-medium">
                                 </div>
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600 mb-1">HorÃ¡rio de Trabalho</p>
+                                <p className="text-sm text-gray-600 mb-1">Horário de Trabalho</p>
                                 <p className="font-medium 
 text-gray-900">{selectedResume.professionalInfo.workSchedule}</p>
                             </div>
@@ -995,7 +995,7 @@ text-gray-900">{selectedResume.professionalInfo.workSchedule}</p>
                         </div>
                     </div>
 
-                    {/* Experiï¿½ncia Profissional */}
+                    {/* Experiência Profissional */}
                     {selectedResume.workExperience && selectedResume.workExperience.length > 0 && (
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
                             <div className="flex items-center space-x-2 mb-4">
@@ -1003,7 +1003,7 @@ text-gray-900">{selectedResume.professionalInfo.workSchedule}</p>
 justify-center">
                                     <Award className="h-5 w-5 text-green-600" />
                                 </div>
-                                <h3 className="text-lg font-bold text-gray-900">ExperiÃªncia Profissional</h3>
+                                <h3 className="text-lg font-bold text-gray-900">Experiência Profissional</h3>
                             </div>
                             <div className="space-y-4">
                                 {selectedResume.workExperience.map((exp, index) => (
@@ -1064,7 +1064,7 @@ justify-center">
                             </div>
                         </div>
                     )}
-                    {/* Botï¿½o fixo no final */}
+                    {/* Botão fixo no final */}
                     <div className="sticky bottom-0 bg-white border-t p-4 -mx-4">
                         <button
                             onClick={() => handleCallPerson(selectedResume)}
@@ -1127,7 +1127,7 @@ shadow-lg flex items-center justify-center space-x-3"
                 </div>
 
                 <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-4">
-                    {/* Tï¿½tulo + chips */}
+                    {/* Título + chips */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-4">
                         <div className="flex items-start justify-between gap-3">
                             <h2 className="text-xl font-bold text-gray-900 leading-snug">
@@ -1142,7 +1142,7 @@ shadow-lg flex items-center justify-center space-x-3"
                                 )}
                                 {selectedJob.includesFood && (
                                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                                        ALIMENTAÃ‡ÃƒO
+                                        ALIMENTAÇÃO
                                     </span>
                                 )}
                             </div>
@@ -1180,7 +1180,7 @@ shadow-lg flex items-center justify-center space-x-3"
                                         : selectedJob.paymentType === 'daily'
                                             ? '/dia'
                                             : selectedJob.paymentType === 'monthly'
-                                                ? '/mÃªs'
+                                                ? '/mês'
                                                 : ' (projeto)'}
                                 </span>
                             </div>
@@ -1188,7 +1188,7 @@ shadow-lg flex items-center justify-center space-x-3"
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2 text-gray-700">
                                     <Calendar className="h-4 w-4 text-gray-400" />
-                                    <span>InÃ­cio</span>
+                                    <span>Início</span>
                                 </div>
                                 <span className="font-medium text-gray-900 text-right">
                                     {selectedJob.startDate
@@ -1200,7 +1200,7 @@ shadow-lg flex items-center justify-center space-x-3"
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2 text-gray-700">
                                     <Clock className="h-4 w-4 text-gray-400" />
-                                    <span>HorÃ¡rio de inÃ­cio</span>
+                                    <span>Horário de início</span>
                                 </div>
                                 <span className="font-medium text-gray-900 text-right">
                                     {selectedJob.startTime || 'A combinar'}
@@ -1210,7 +1210,7 @@ shadow-lg flex items-center justify-center space-x-3"
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2 text-gray-700">
                                     <Calendar className="h-4 w-4 text-gray-400" />
-                                    <span>DuraÃ§Ã£o</span>
+                                    <span>Duração</span>
                                 </div>
                                 <span className="font-medium text-gray-900 text-right">
                                     {selectedJob.duration || 'A combinar'}
@@ -1220,7 +1220,7 @@ shadow-lg flex items-center justify-center space-x-3"
                             <div className="flex items-start justify-between gap-3">
                                 <div className="flex items-center gap-2 text-gray-700">
                                     <Clock className="h-4 w-4 text-gray-400" />
-                                    <span>Carga horÃ¡ria</span>
+                                    <span>Carga horária</span>
                                 </div>
                                 <span className="font-medium text-gray-900 text-right">
                                     {selectedJob.workHours ? selectedJob.workHours : 'A combinar'}
@@ -1232,15 +1232,15 @@ shadow-lg flex items-center justify-center space-x-3"
 
                     {/* Descrio completa */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                        <h3 className="font-bold text-gray-900 mb-2">DescriÃ§Ã£o</h3>
+                        <h3 className="font-bold text-gray-900 mb-2">Descrição</h3>
                         <p className="text-gray-700 text-sm leading-relaxed">
-                            {selectedJob.description || 'Sem descriÃ§Ã£o.'}
+                            {selectedJob.description || 'Sem descrição.'}
                         </p>
                     </div>
 
-                    {/* LocalizaÃ§Ã£o + trajetos */}
+                    {/* Localização + trajetos */}
                     <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                        <h3 className="font-bold text-gray-900 mb-3">LocalizaÃ§Ã£o</h3>
+                        <h3 className="font-bold text-gray-900 mb-3">Localização</h3>
 
                         <div className="bg-gray-100 rounded-xl p-4 text-sm text-gray-700">
                             <div className="flex items-start gap-2">
@@ -1260,7 +1260,7 @@ shadow-lg flex items-center justify-center space-x-3"
                     </div>
                 </div>
 
-                {/* CTA fixo (as 2 aï¿½ï¿½es principais) */}
+                {/* CTA fixo (as 2 ações principais) */}
                 <div className="sticky bottom-0 bg-white border-t p-4">
                     <div className="max-w-md mx-auto flex gap-3">
                         {!myApplications.some(app => app.job.id === selectedJob.id) ? (
@@ -1275,7 +1275,7 @@ shadow-lg flex items-center justify-center space-x-3"
                                     className="flex-1 bg-blue-400 text-white py-3 rounded-xl font-bold hover:bg-blue-500 transition-colors flex items-center justify-center gap-2"
                                 >
                                     <FileText className="h-5 w-5" />
-                                    <span>Criar CurrÃ­culo</span>
+                                    <span>Criar Currículo</span>
                                 </button>
                             ) : (
                                 <button
@@ -1292,7 +1292,7 @@ shadow-lg flex items-center justify-center space-x-3"
                         ) : (
                             <div className="flex-1 bg-green-50 text-green-700 border border-green-200 py-3 rounded-xl font-bold flex items-center justify-center gap-2">
                                 <Check className="h-5 w-5" />
-                                <span>JÃ¡ candidatado</span>
+                                <span>Já candidatado</span>
                             </div>
                         )}
 
@@ -1311,7 +1311,7 @@ shadow-lg flex items-center justify-center space-x-3"
                     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
                         <div className="bg-white rounded-2xl max-w-md w-full p-6">
                             <div className="text-center mb-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-2">Escolha o app de navegaÃ§Ã£o</h2>
+                                <h2 className="text-xl font-bold text-gray-900 mb-2">Escolha o app de navegação</h2>
                                 <p className="text-gray-600 text-sm">Selecione como deseja ver o trajeto para:</p>
                                 <p className="text-gray-900 font-medium">{selectedJob.address}</p>
                             </div>
@@ -1329,7 +1329,7 @@ shadow-lg flex items-center justify-center space-x-3"
                                     </div>
                                     <div className="flex-1 text-left">
                                         <h3 className="font-bold text-gray-900">Google Maps</h3>
-                                        <p className="text-gray-600 text-sm">NavegaÃ§Ã£o completa com trÃ¢nsito</p>
+                                        <p className="text-gray-600 text-sm">Navegação completa com trânsito</p>
                                     </div>
                                     <ExternalLink className="h-4 w-4 text-gray-400" />
                                 </button>
@@ -1384,7 +1384,7 @@ shadow-lg flex items-center justify-center space-x-3"
 
 
 
-    // Formulï¿½rio de Cadastro de Currï¿½culo - Passo 1: Informaï¿½ï¿½es Pessoais MELHORADO 
+    // Formulário de Cadastro de Currículo - Passo 1: Informações Pessoais MELHORADO 
     if (showResumeForm && resumeStep === 1) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col pt-[70px]">
@@ -1453,7 +1453,7 @@ mx-auto mb-1">
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">EndereÃ§o Completo</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Endereço Completo</label>
                                 <input
                                     type="text"
                                     value={userResume.personalInfo.address}
@@ -1461,7 +1461,7 @@ mx-auto mb-1">
                                         ...prev,
                                         personalInfo: { ...prev.personalInfo, address: e.target.value }
                                     }))}
-                                    placeholder="Ex: Rua das Flores, 123 - Centro, SÃ£o Paulo"
+                                    placeholder="Ex: Rua das Flores, 123 - Centro, São Paulo"
                                     className="w-full p-4 border-2 border-gray-200 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
@@ -1495,7 +1495,7 @@ mx-auto mb-1">
                                         <option value="solteiro">Solteiro(a)</option>
                                         <option value="casado">Casado(a)</option>
                                         <option value="divorciado">Divorciado(a)</option>
-                                        <option value="viuvo">ViÃºvo(a)</option>
+                                        <option value="viuvo">Viúvo(a)</option>
                                     </select>
                                 </div>
                             </div>
@@ -1566,7 +1566,7 @@ hover:bg-blue-600 transition-colors"
         )
     }
 
-    // Formulï¿½rio de Cadastro de Currï¿½culo - Passo 2: Experiï¿½ncia Profissional NOVO 
+    // Formulário de Cadastro de Currículo - Passo 2: Experiência Profissional NOVO 
     if (showResumeForm && resumeStep === 2) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col pt-[70px]">
@@ -1588,9 +1588,9 @@ mx-auto mb-1">
                 </div>
 
                 <div className="flex-1 max-w-md mx-auto w-full p-4 space-y-6">
-                    {/* Experiï¿½ncia Profissional */}
+                    {/* Experiência Profissional */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                        <h2 className="text-xl font-bold text-blue-600 mb-4">ExperiÃªncia Profissional</h2>
+                        <h2 className="text-xl font-bold text-blue-600 mb-4">Experiência Profissional</h2>
 
                         <div className="space-y-4">
                             <div>
@@ -1598,7 +1598,7 @@ mx-auto mb-1">
                                 <input
                                     type="text"
                                     value={userResume.workExperience[0]?.company || ''}
-                                    placeholder="Ex: Padaria PÃ£o Quente"
+                                    placeholder="Ex: Padaria Pão Quente"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newExperience = [...userResume.workExperience]
@@ -1611,11 +1611,11 @@ mx-auto mb-1">
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Cargo/FunÃ§Ã£o</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Cargo/Função</label>
                                 <input
                                     type="text"
                                     value={userResume.workExperience[0]?.position || ''}
-                                    placeholder="Ex: Atendente de balcÃ£o"
+                                    placeholder="Ex: Atendente de balcão"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newExperience = [...userResume.workExperience]
@@ -1629,7 +1629,7 @@ mx-auto mb-1">
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Data de inÃ­cio</label>
+                                    <label className="block text-sm text-gray-600 mb-1">Data de início</label>
                                     <input
                                         type="month"
                                         value={userResume.workExperience[0]?.startDate || ''}
@@ -1644,7 +1644,7 @@ mx-auto mb-1">
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Data de saÃ­da</label>
+                                    <label className="block text-sm text-gray-600 mb-1">Data de saída</label>
                                     <input
                                         type="month"
                                         value={userResume.workExperience[0]?.endDate || ''}
@@ -1681,11 +1681,11 @@ mx-auto mb-1">
                             </label>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">DescriÃ§Ã£o das Atividades</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição das Atividades</label>
                                 <textarea
                                     rows={3}
                                     value={userResume.workExperience[0]?.description || ''}
-                                    placeholder="Ex: Atendimento ao cliente, organizaÃ§Ã£o do balcÃ£o e reposiÃ§Ã£o de produtos"
+                                    placeholder="Ex: Atendimento ao cliente, organização do balcão e reposição de produtos"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newExperience = [...userResume.workExperience]
@@ -1714,7 +1714,7 @@ mx-auto mb-1">
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">NÃ­vel de Escolaridade</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nível de Escolaridade</label>
                                 <select
                                     value={userResume.education[0]?.level || ''}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
@@ -1734,21 +1734,21 @@ mx-auto mb-1">
                                         setUserResume(prev => ({ ...prev, education: newEducation }))
                                     }}
                                 >
-                                    <option value="">Selecione o nÃ­vel</option>
+                                    <option value="">Selecione o nível</option>
                                     <option value="fundamental">Ensino Fundamental</option>
-                                    <option value="medio">Ensino MÃ©dio</option>
-                                    <option value="tecnico">TÃ©cnico</option>
+                                    <option value="medio">Ensino Médio</option>
+                                    <option value="tecnico">Técnico</option>
                                     <option value="superior">Superior</option>
-                                    <option value="pos">PÃ³s-graduaÃ§Ã£o</option>
+                                    <option value="pos">Pós-graduação</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">InstituiÃ§Ã£o de Ensino</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Instituição de Ensino</label>
                                 <input
                                     type="text"
                                     value={userResume.education[0]?.institution || ''}
-                                    placeholder="Ex: SENAI SÃ£o Paulo"
+                                    placeholder="Ex: SENAI São Paulo"
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                     onChange={(e) => {
                                         const newEducation = [...userResume.education]
@@ -1789,7 +1789,7 @@ mx-auto mb-1">
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ano de ConclusÃ£o</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ano de Conclusão</label>
                                     <input
                                         type="number"
                                         value={userResume.education[0]?.year || ''}
@@ -1810,10 +1810,10 @@ mx-auto mb-1">
                         </div>
                     </div>
 
-                    {/* SEÃ‡ÃƒO PORTFÃ“LIO (atÃ© 6 fotos) no currÃ­culo */}
+                    {/* SEÇÃO PORTFÓLIO (até 6 fotos) no currículo */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mt-6">
                         <label className="block text-sm font-medium text-gray-900 mb-1">Fotos do seu trabalho (Opcional)</label>
-                        <p className="text-xs text-gray-500 mb-3">Adicione atÃ© 6 fotos para mostrar seu trabalho (portfÃ³lio).</p>
+                        <p className="text-xs text-gray-500 mb-3">Adicione até 6 fotos para mostrar seu trabalho (portfólio).</p>
 
                         <div className="grid grid-cols-3 gap-3 mb-2">
                             {(userResume.imageJob || []).map((img, idx) => (
@@ -1878,7 +1878,7 @@ mx-auto mb-1">
     }
 
 
-    // Formulï¿½rio de Publicaï¿½ï¿½o de Trabalho (Empresas) - MELHORADO COM HORAS DIRETAS 
+    // Formulário de Publicação de Trabalho (Empresas) - MELHORADO COM HORAS DIRETAS 
     if (showJobPostForm && userProfile.userType === 'company') {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -1903,7 +1903,7 @@ hover:bg-gray-100 rounded-full">
                     <div className="space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                TÃ­tulo da Proposta *
+                                Título da Proposta *
                             </label>
                             <input
                                 type="text"
@@ -1913,24 +1913,24 @@ hover:bg-gray-100 rounded-full">
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                             />
                             <p className="text-gray-500 text-xs mt-1">
-                                O tÃ­tulo aparecerÃ¡ em MAIÃšSCULO nas propostas
+                                O título aparecerá em MAIÚSCULO nas propostas
                             </p>
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                DescriÃ§Ã£o *
+                                Descrição *
                             </label>
                             <textarea
                                 rows={4}
                                 value={newJobPost.description}
                                 onChange={(e) => setNewJobPost({ ...newJobPost, description: e.target.value })}
-                                placeholder="Descreva tarefas, horÃ¡rio, local e requisitos da proposta"
+                                placeholder="Descreva tarefas, horário, local e requisitos da proposta"
                                 maxLength={70}
                                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                             />
                             <p className="text-gray-500 text-xs mt-1">
-                                MÃ¡ximo 70 caracteres ({newJobPost.description.length}/70)
+                                Máximo 70 caracteres ({newJobPost.description.length}/70)
                             </p>
                         </div>
 
@@ -1963,7 +1963,7 @@ hover:bg-gray-100 rounded-full">
                                     <option value="hourly">Por Hora</option>
                                     <option value="daily">Por Dia</option>
                                     <option value="project">Por Projeto</option>
-                                    <option value="monthly">Por MÃªs</option>
+                                    <option value="monthly">Por Mês</option>
                                 </select>
                             </div>
                             <div>
@@ -2004,7 +2004,7 @@ hover:bg-gray-100 rounded-full">
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                EndereÃ§o Completo *
+                                Endereço Completo *
                             </label>
                             <input
                                 type="text"
@@ -2017,8 +2017,8 @@ hover:bg-gray-100 rounded-full">
 
                         {/* MELHORADA: Seo de Horas com entrada direta */}
                         <div className="bg-blue-50 p-4 rounded-lg">
-                            <h3 className="font-medium text-blue-900 mb-3">InformaÃ§Ãµes de HorÃ¡rio e
-                                DuraÃ§Ã£o</h3>
+                            <h3 className="font-medium text-blue-900 mb-3">Informações de Horário e
+                                Duração</h3>
 
                             <div className="space-y-4">
                                 <div>
@@ -2039,7 +2039,7 @@ hover:bg-gray-100 rounded-full">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            PerÃ­odo do Dia *
+                                            Período do Dia *
                                         </label>
                                         <select
                                             value={newJobPost.period}
@@ -2047,19 +2047,19 @@ hover:bg-gray-100 rounded-full">
                                             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                         >
                                             <option value="">Selecione</option>
-                                            <option value="ManhÃ£">ManhÃ£</option>
+                                            <option value="Manhã">Manhã</option>
                                             <option value="Tarde">Tarde</option>
                                             <option value="Noite">Noite</option>
                                             <option value="Integral">Integral</option>
-                                            <option value="ManhÃ£/Tarde">ManhÃ£/Tarde</option>
+                                            <option value="Manhã/Tarde">Manhã/Tarde</option>
                                         </select>
                                         <p className="text-gray-600 text-xs mt-1">
-                                            Em que perÃ­odo do dia
+                                            Em que período do dia
                                         </p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            DuraÃ§Ã£o da Vaga *
+                                            Duração da Vaga *
                                         </label>
                                         <div className="flex gap-2">
                                             <input
@@ -2077,12 +2077,12 @@ hover:bg-gray-100 rounded-full">
                                             >
                                                 <option value="dia">dia(s)</option>
                                                 <option value="semana">semana(s)</option>
-                                                <option value="mes">mÃªs(es)</option>
+                                                <option value="mes">mês(es)</option>
                                             </select>
                                         </div>
 
                                         <p className="text-gray-600 text-xs mt-1">
-                                            Por quanto tempo (serÃ¡ salvo como: <span className="font-medium">{formatDuration(durationQty, durationUnit)}</span>)
+                                            Por quanto tempo (será salvo como: <span className="font-medium">{formatDuration(durationQty, durationUnit)}</span>)
                                         </p>
 
                                         <p className="text-gray-600 text-xs mt-1">
@@ -2093,29 +2093,29 @@ hover:bg-gray-100 rounded-full">
                             </div>
                         </div>
 
-                        {/* Data e Hora de InÃ­cio */}
+                        {/* Data e Hora de Início */}
                         <div className="space-y-3">
-                            <h3 className="font-semibold text-gray-900">Data e Hora de InÃ­cio</h3>
+                            <h3 className="font-semibold text-gray-900">Data e Hora de Início</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de inÃ­cio</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de início</label>
                                     <input
                                         type="date"
                                         value={newJobPost.startDate || ''}
                                         onChange={(e) => setNewJobPost({ ...newJobPost, startDate: e.target.value })}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 focus:ring-blue-500 focus:border-transparent"
                                     />
-                                    <p className="text-gray-600 text-xs mt-1">Quando o trabalho comeÃ§a</p>
+                                    <p className="text-gray-600 text-xs mt-1">Quando o trabalho começa</p>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hora de inÃ­cio</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hora de início</label>
                                     <input
                                         type="time"
                                         value={newJobPost.startTime || ''}
                                         onChange={(e) => setNewJobPost({ ...newJobPost, startTime: e.target.value })}
                                         className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 focus:ring-blue-500 focus:border-transparent"
                                     />
-                                    <p className="text-gray-600 text-xs mt-1">HorÃ¡rio para se apresentar</p>
+                                    <p className="text-gray-600 text-xs mt-1">Horário para se apresentar</p>
                                 </div>
                             </div>
                         </div>
@@ -2142,7 +2142,7 @@ hover:bg-gray-100 rounded-full">
                                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                 />
                                 <span className="text-sm font-medium text-gray-700">Inclui
-                                    alimentaÃ§Ã£o</span>
+                                    alimentação</span>
                             </label>
                         </div>
                     </div>
@@ -2155,7 +2155,7 @@ hover:bg-gray-100 rounded-full">
                             className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold 
 hover:bg-blue-600 transition-colors"
                         >
-                            {editingJobId ? 'Salvar AlteraÃ§Ãµes' : 'Publicar Proposta'}
+                            {editingJobId ? 'Salvar Alterações' : 'Publicar Proposta'}
                         </button>
                     </div>
                 </div>
@@ -2163,7 +2163,7 @@ hover:bg-blue-600 transition-colors"
         )
     }
 
-    // Tela de Perfil Completo com Sistema de Avaliaï¿½ï¿½o - REMOVIDO PEGACOINS 
+    // Tela de Perfil Completo com Sistema de Avaliação - REMOVIDO PEGACOINS 
     if (showProfile) {
         return (
             <ProfilePage
@@ -2308,7 +2308,7 @@ hover:bg-blue-600 transition-colors"
                                 <ArrowLeft className="h-5 w-5" />
                             </button>
                             <div>
-                                <h2 className="font-bold text-lg">Controle do ServiÃ§o</h2>
+                                <h2 className="font-bold text-lg">Controle do Serviço</h2>
                                 <p className="text-blue-100 text-xs">Acompanhe sua jornada de trabalho</p>
                             </div>
                         </div>
@@ -2320,16 +2320,16 @@ hover:bg-blue-600 transition-colors"
                                 <>
                                     {/* Timeline */}
                                     <div className="bg-white rounded-2xl shadow-md p-5 mb-4">
-                                        <h3 className="font-bold text-gray-800 mb-6 text-sm uppercase tracking-wide">Progresso do ServiÃ§o</h3>
+                                        <h3 className="font-bold text-gray-800 mb-6 text-sm uppercase tracking-wide">Progresso do Serviço</h3>
                                         <div className="relative">
                                             {/* Vertical line */}
                                             <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gray-200" />
 
                                             {[ 
-                                                { key: 'accepted', label: 'Aceito pela empresa', icon: 'ðŸŽ‰', doneStatuses: ['accepted','checked_in','checked_out','validated'] },
-                                                { key: 'checked_in', label: 'Check-in feito', icon: 'ðŸ“', doneStatuses: ['checked_in','checked_out','validated'] },
-                                                { key: 'checked_out', label: 'Check-out feito', icon: 'ðŸ', doneStatuses: ['checked_out','validated'] },
-                                                { key: 'validated', label: 'Validado pela empresa', icon: 'â­', doneStatuses: ['validated'] },
+                                                { key: 'accepted', label: 'Aceito pela empresa', icon: '🎉', doneStatuses: ['accepted','checked_in','checked_out','validated'] },
+                                                { key: 'checked_in', label: 'Check-in feito', icon: '📍', doneStatuses: ['checked_in','checked_out','validated'] },
+                                                { key: 'checked_out', label: 'Check-out feito', icon: '🏁', doneStatuses: ['checked_out','validated'] },
+                                                { key: 'validated', label: 'Validado pela empresa', icon: '⭐', doneStatuses: ['validated'] },
                                             ].map((step, idx) => {
                                                 const done = activeSession ? step.doneStatuses.includes(activeSession.status) : false
                                                 const isCurrent = activeSession?.status === step.key
@@ -2343,13 +2343,13 @@ hover:bg-blue-600 transition-colors"
                                                         <div className="pt-1.5">
                                                             <p className={`font-semibold text-sm ${done ? 'text-green-700' : isCurrent ? 'text-blue-700' : 'text-gray-400'}`}>{step.label}</p>
                                                             {step.key === 'checked_in' && activeSession?.checkinAt && (
-                                                                <p className="text-xs text-gray-400 mt-0.5">Ã s {new Date(activeSession.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                                <p className="text-xs text-gray-400 mt-0.5">às {new Date(activeSession.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                                                             )}
                                                             {step.key === 'checked_out' && activeSession?.checkoutAt && (
-                                                                <p className="text-xs text-gray-400 mt-0.5">Ã s {new Date(activeSession.checkoutAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                                <p className="text-xs text-gray-400 mt-0.5">às {new Date(activeSession.checkoutAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                                                             )}
                                                             {step.key === 'validated' && activeSession?.validatedAt && (
-                                                                <p className="text-xs text-gray-400 mt-0.5">Ã s {new Date(activeSession.validatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                                <p className="text-xs text-gray-400 mt-0.5">às {new Date(activeSession.validatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -2365,13 +2365,13 @@ hover:bg-blue-600 transition-colors"
                                             <div className="grid grid-cols-2 gap-3">
                                                 {activeSession?.checkinPhotoUrl && (
                                                     <div>
-                                                        <p className="text-xs text-gray-500 mb-1 font-medium">ðŸ“ Check-in</p>
+                                                        <p className="text-xs text-gray-500 mb-1 font-medium">📍 Check-in</p>
                                                         <img src={activeSession.checkinPhotoUrl} onClick={() => setEnlargedPhoto(activeSession.checkinPhotoUrl!)} className="w-full h-28 object-cover rounded-xl cursor-pointer shadow" alt="Check-in" />
                                                     </div>
                                                 )}
                                                 {activeSession?.checkoutPhotoUrl && (
                                                     <div>
-                                                        <p className="text-xs text-gray-500 mb-1 font-medium">ðŸ Check-out</p>
+                                                        <p className="text-xs text-gray-500 mb-1 font-medium">🏁 Check-out</p>
                                                         <img src={activeSession.checkoutPhotoUrl} onClick={() => setEnlargedPhoto(activeSession.checkoutPhotoUrl!)} className="w-full h-28 object-cover rounded-xl cursor-pointer shadow" alt="Check-out" />
                                                     </div>
                                                 )}
@@ -2383,12 +2383,12 @@ hover:bg-blue-600 transition-colors"
                                         {activeSession && ['accepted', 'checked_in'].includes(activeSession.status) && (
                                             <div className="bg-white rounded-2xl shadow-md p-5">
                                                 <h3 className="font-bold text-gray-800 mb-1 text-sm uppercase tracking-wide">
-                                                    {activeSession.status === 'accepted' ? 'ðŸ“ Fazer Check-in' : 'ðŸ Fazer Check-out'}
+                                                    {activeSession.status === 'accepted' ? '📍 Fazer Check-in' : '🏁 Fazer Check-out'}
                                                 </h3>
                                                 <p className="text-xs text-gray-500 mb-4">
                                                     {activeSession.status === 'accepted'
                                                         ? 'Tire uma foto ao chegar no local de trabalho'
-                                                        : 'Tire uma foto ao concluir o serviÃ§o'}
+                                                        : 'Tire uma foto ao concluir o serviço'}
                                                 </p>
 
                                                 {/* Preview */}
@@ -2402,7 +2402,7 @@ hover:bg-blue-600 transition-colors"
                                                 ) : (
                                                     <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-blue-300 rounded-xl bg-blue-50 cursor-pointer hover:bg-blue-100 transition">
                                                         <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleSessionPhotoSelect} />
-                                                        <div className="text-4xl mb-2">ðŸ“·</div>
+                                                        <div className="text-4xl mb-2">📷</div>
                                                         <p className="text-blue-600 font-semibold text-sm">Toque para tirar foto</p>
                                                         <p className="text-gray-400 text-xs mt-1">ou escolha da galeria</p>
                                                     </label>
@@ -2414,7 +2414,7 @@ hover:bg-blue-600 transition-colors"
                                                         disabled={sessionLoading}
                                                         className="w-full mt-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-purple-200 hover:opacity-90 transition disabled:opacity-50"
                                                     >
-                                                        {sessionLoading ? 'Enviando...' : activeSession.status === 'accepted' ? 'âœ… Confirmar Check-in' : 'âœ… Confirmar Check-out'}
+                                                        {sessionLoading ? 'Enviando...' : activeSession.status === 'accepted' ? '✅ Confirmar Check-in' : '✅ Confirmar Check-out'}
                                                     </button>
                                                 )}
                                             </div>
@@ -2422,22 +2422,22 @@ hover:bg-blue-600 transition-colors"
 
                                         {activeSession?.status === 'checked_out' && (
                                             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
-                                                <p className="text-2xl mb-2">â³</p>
-                                                <p className="font-bold text-amber-800">Aguardando validaÃ§Ã£o</p>
-                                                <p className="text-amber-600 text-sm mt-1">A empresa vai confirmar seu serviÃ§o em breve</p>
+                                                <p className="text-2xl mb-2">⏳</p>
+                                                <p className="font-bold text-amber-800">Aguardando validação</p>
+                                                <p className="text-amber-600 text-sm mt-1">A empresa vai confirmar seu serviço em breve</p>
                                             </div>
                                         )}
 
                                         {activeSession?.status === 'validated' && (
                                             <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center">
-                                                <p className="text-4xl mb-2">ðŸŽ‰</p>
-                                                <p className="font-bold text-green-800 text-lg">ServiÃ§o Validado!</p>
-                                                <p className="text-green-600 text-sm mt-1">A empresa confirmou que vocÃª realizou o trabalho</p>
+                                                <p className="text-4xl mb-2">🎉</p>
+                                                <p className="font-bold text-green-800 text-lg">Serviço Validado!</p>
+                                                <p className="text-green-600 text-sm mt-1">A empresa confirmou que você realizou o trabalho</p>
                                             </div>
                                         )}
                                         {activeSession?.status === 'cancelled' && (
                                             <div className="bg-red-50 border border-red-200 rounded-2xl p-5 text-center">
-                                                <p className="text-4xl mb-2">âŒ</p>
+                                                <p className="text-4xl mb-2">❌</p>
                                                 <p className="font-bold text-red-800 text-lg">Servico nao concluido</p>
                                                 <p className="text-red-600 text-sm mt-1">A empresa informou que o trabalho nao foi concluido.</p>
                                             </div>
@@ -2469,19 +2469,19 @@ hover:bg-blue-600 transition-colors"
                                 companySessionView.session.status === 'checked_in' ? 'bg-blue-100 text-blue-700' :
                                 'bg-gray-100 text-gray-700'
                             }`}>
-                                {companySessionView.session.status === 'validated' ? 'âœ… ServiÃ§o Validado' :
-                                 companySessionView.session.status === 'cancelled' ? 'âŒ Servico nao concluido' :
-                                 companySessionView.session.status === 'checked_out' ? 'â³ Aguardando sua validaÃ§Ã£o' :
-                                 companySessionView.session.status === 'checked_in' ? 'ðŸ”µ Candidato no local' :
-                                 'ðŸŸ¡ Aguardando chegada'}
+                                {companySessionView.session.status === 'validated' ? '✅ Serviço Validado' :
+                                 companySessionView.session.status === 'cancelled' ? '❌ Servico nao concluido' :
+                                 companySessionView.session.status === 'checked_out' ? '⏳ Aguardando sua validação' :
+                                 companySessionView.session.status === 'checked_in' ? '🔵 Candidato no local' :
+                                 '🟡 Aguardando chegada'}
                             </div>
 
                             {/* Photos */}
                             <div className="bg-white rounded-2xl shadow-md p-5">
-                                <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wide">Fotos de ComprovaÃ§Ã£o</h3>
+                                <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wide">Fotos de Comprovação</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <p className="text-xs font-semibold text-gray-500 mb-2">ðŸ“ Check-in</p>
+                                        <p className="text-xs font-semibold text-gray-500 mb-2">📍 Check-in</p>
                                         {companySessionView.session.checkinPhotoUrl ? (
                                             <img src={companySessionView.session.checkinPhotoUrl} onClick={() => setEnlargedPhoto(companySessionView!.session.checkinPhotoUrl!)} className="w-full h-32 object-cover rounded-xl cursor-pointer shadow hover:opacity-90 transition" alt="Check-in" />
                                         ) : (
@@ -2490,7 +2490,7 @@ hover:bg-blue-600 transition-colors"
                                         {companySessionView.session.checkinAt && <p className="text-xs text-gray-400 mt-1 text-center">{new Date(companySessionView.session.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
                                     </div>
                                     <div>
-                                        <p className="text-xs font-semibold text-gray-500 mb-2">ðŸ Check-out</p>
+                                        <p className="text-xs font-semibold text-gray-500 mb-2">🏁 Check-out</p>
                                         {companySessionView.session.checkoutPhotoUrl ? (
                                             <img src={companySessionView.session.checkoutPhotoUrl} onClick={() => setEnlargedPhoto(companySessionView!.session.checkoutPhotoUrl!)} className="w-full h-32 object-cover rounded-xl cursor-pointer shadow hover:opacity-90 transition" alt="Check-out" />
                                         ) : (
@@ -2509,14 +2509,14 @@ hover:bg-blue-600 transition-colors"
                                         disabled={sessionLoading}
                                         className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-green-200 hover:opacity-90 transition disabled:opacity-50"
                                     >
-                                        {sessionLoading ? 'Validando...' : 'âœ… Validar ServiÃ§o'}
+                                        {sessionLoading ? 'Validando...' : '✅ Validar Serviço'}
                                     </button>
                                     <button
                                         onClick={() => handleValidateSession(companySessionView.session.id, false)}
                                         disabled={sessionLoading}
                                         className="w-full bg-gradient-to-r from-red-500 to-rose-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-red-200 hover:opacity-90 transition disabled:opacity-50"
                                     >
-                                        {sessionLoading ? 'Validando...' : 'âŒ Nao Concluiu'}
+                                        {sessionLoading ? 'Validando...' : '❌ Nao Concluiu'}
                                     </button>
                                 </div>
                             )}
@@ -2526,7 +2526,7 @@ hover:bg-blue-600 transition-colors"
                                     onClick={() => openEvaluationModalForSession(companySessionView.session, companySessionView.candidateName)}
                                     className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 hover:opacity-90 transition"
                                 >
-                                    â­ Avaliar Candidato
+                                    ⭐ Avaliar Candidato
                                 </button>
                             )}
 
@@ -2608,7 +2608,7 @@ hover:bg-blue-600 transition-colors"
                             <FileText className="h-6 w-6" />
                         </div>
                         <span className={`absolute -bottom-1 text-[10px] font-bold transition-all duration-300 text-center w-full ${activeTab === 'resumes' && !showProfile && !showSupport ? 'text-purple-700 opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100'}`}>
-                            CurrÃ­culo
+                            Currículo
                         </span>
                     </button>
                     <div style={{ flexGrow: 2 }}></div>
@@ -2676,7 +2676,7 @@ hover:bg-blue-600 transition-colors"
                                     </div>
                                     <span className="text-lg">Sair</span>
                                 </button>
-                                <p className="text-center text-gray-400 text-xs mt-4">VersÃ£o 1.0.0</p>
+                                <p className="text-center text-gray-400 text-xs mt-4">Versão 1.0.0</p>
                             </div>
                         </div>
                     </div>
@@ -2790,7 +2790,7 @@ hover:bg-blue-600 transition-colors"
                                                                         setCompanySessionView({ session: d.session, candidateName: candidate.name });
                                                                         setCandidatesModalJob(null);
                                                                     } else {
-                                                                        alert('SessÃ£o nÃ£o encontrada para este candidato.');
+                                                                        alert('Sessão não encontrada para este candidato.');
                                                                     }
                                                                 }
                                                             } catch(e) { console.error(e); }
@@ -2798,7 +2798,7 @@ hover:bg-blue-600 transition-colors"
                                                         }}
                                                         className="flex-1 bg-purple-50 text-purple-700 py-2 rounded-lg text-sm font-semibold hover:bg-purple-100 transition flex items-center justify-center gap-1"
                                                     >
-                                                        <span>ðŸŽ¯</span> Ver Controle
+                                                        <span>🎯</span> Ver Controle
                                                     </button>
                                                 )}
                                                 {(!candidate.status || candidate.status === 'pendente' || candidate.status === 'pending') && (
@@ -2842,7 +2842,7 @@ hover:bg-blue-600 transition-colors"
                 </div>
             )}
 
-            {/* Modal de AvaliaÃ§Ã£o */}
+            {/* Modal de Avaliação */}
             {showEvaluationModal && evaluationData && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col p-6 space-y-6">
