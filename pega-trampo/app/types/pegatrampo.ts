@@ -208,6 +208,9 @@ export interface ResumePersonalInfo {
     phone: string
     email: string
     address: string
+    neighborhood?: string
+    city?: string
+    state?: string
     birthDate: string
     maritalStatus: string
     profilePhoto?: string

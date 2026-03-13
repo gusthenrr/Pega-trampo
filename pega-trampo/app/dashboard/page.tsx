@@ -205,6 +205,17 @@ export default function PegaTrampoApp() {
     const resumeSaveLockedRef = useRef(false)
     const [showResumeDetails, setShowResumeDetails] = useState(false)
     const [selectedResume, setSelectedResume] = useState<Resume | null>(null)
+    const selectedResumeAddress = (() => {
+        const parts = [
+            selectedResume?.personalInfo?.address,
+            selectedResume?.personalInfo?.neighborhood,
+            selectedResume?.personalInfo?.city && selectedResume?.personalInfo?.state
+                ? `${selectedResume.personalInfo.city} - ${selectedResume.personalInfo.state}`
+                : selectedResume?.personalInfo?.city || selectedResume?.personalInfo?.state,
+        ].filter((value): value is string => Boolean(value && value.trim()))
+
+        return parts.length > 0 ? parts.join(', ') : 'Endereco nao informado'
+    })()
     const initialJobPostState: CompanyJobPost = {
         title: '',
         description: '',
@@ -877,7 +888,7 @@ text-gray-900">{selectedResume.personalInfo.email}</p>
                                 <div>
                                     <p className="text-xs text-gray-600">EndereÃ§o</p>
                                     <p className="font-semibold 
-text-gray-900">{selectedResume.personalInfo.address}</p>
+text-gray-900">{selectedResumeAddress}</p>
                                 </div>
                             </div>
                         </div>

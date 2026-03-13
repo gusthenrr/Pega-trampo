@@ -1412,7 +1412,8 @@ def get_resumes ():
         if requested_ids :
             placeholders =", ".join (["%s"]*len (requested_ids ))
             rows =db .execute (f"""
-                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job
+                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job,
+                       up.address as up_address, up.neighborhood as up_neighborhood, up.city as up_city, up.state as up_state
                 FROM resumes r
                 LEFT JOIN user_profiles up ON r.user_id = up.user_id
                 WHERE r.is_visible = true
@@ -1420,7 +1421,8 @@ def get_resumes ():
             """,*requested_ids )
         else :
             rows =db .execute ("""
-                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job
+                SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job,
+                       up.address as up_address, up.neighborhood as up_neighborhood, up.city as up_city, up.state as up_state
                 FROM resumes r 
                 LEFT JOIN user_profiles up ON r.user_id = up.user_id
                 WHERE r.is_visible = true
@@ -1428,7 +1430,8 @@ def get_resumes ():
     else :
     # Profissional vê apenas o próprio currículo
         rows =db .execute ("""
-            SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job
+            SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job,
+                   up.address as up_address, up.neighborhood as up_neighborhood, up.city as up_city, up.state as up_state
             FROM resumes r 
             LEFT JOIN user_profiles up ON r.user_id = up.user_id
             WHERE r.user_id = %s
@@ -1457,10 +1460,30 @@ def get_resumes ():
         up_phone =item .pop ("up_phone",None )
         up_imagem_profile =item .pop ("up_imagem_profile",None )
         up_image_job =item .pop ("up_image_job",None )
+        up_address =item .pop ("up_address",None )
+        up_neighborhood =item .pop ("up_neighborhood",None )
+        up_city =item .pop ("up_city",None )
+        up_state =item .pop ("up_state",None )
         real_phone =""
         if up_phone :
             try :real_phone =fernet .decrypt (up_phone .encode ()).decode ()
             except :real_phone =up_phone 
+        real_address =""
+        real_neighborhood =""
+        real_city =""
+        real_state =""
+        if up_address :
+            try :real_address =fernet .decrypt (up_address .encode ()).decode ()
+            except :real_address =up_address
+        if up_neighborhood :
+            try :real_neighborhood =fernet .decrypt (up_neighborhood .encode ()).decode ()
+            except :real_neighborhood =up_neighborhood
+        if up_city :
+            try :real_city =fernet .decrypt (up_city .encode ()).decode ()
+            except :real_city =up_city
+        if up_state :
+            try :real_state =fernet .decrypt (up_state .encode ()).decode ()
+            except :real_state =up_state
 
         if up_imagem_profile :
             item ["profilePhoto"]=up_imagem_profile 
@@ -1493,6 +1516,10 @@ def get_resumes ():
         if not item .get ("personalInfo"):
             item ["personalInfo"]={}
         item ["personalInfo"]["phone"]=real_phone 
+        item ["personalInfo"]["address"]=item ["personalInfo"].get ("address")or real_address
+        item ["personalInfo"]["neighborhood"]=item ["personalInfo"].get ("neighborhood")or real_neighborhood
+        item ["personalInfo"]["city"]=item ["personalInfo"].get ("city")or real_city
+        item ["personalInfo"]["state"]=item ["personalInfo"].get ("state")or real_state
 
     return jsonify (results )
 
