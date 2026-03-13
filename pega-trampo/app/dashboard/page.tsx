@@ -867,7 +867,7 @@ export default function PegaTrampoApp() {
                     const updatedSession: JobSession = {
                         ...companySessionView.session,
                         status: nextStatus,
-                        evaluationSubmitted: nextStatus === 'validated' ? false : companySessionView.session.evaluationSubmitted,
+                        evaluationSubmitted: ['validated', 'cancelled'].includes(nextStatus) ? false : companySessionView.session.evaluationSubmitted,
                     }
                     setCompanySessionView(prev => prev ? { ...prev, session: updatedSession } : null)
                     const appsRes = await logic.fetchWithAuth(`${logic.API_BASE}/api/company/applications`)
@@ -877,7 +877,7 @@ export default function PegaTrampoApp() {
                             setCompanyJobsWithCandidates(appsData.jobs)
                         }
                     }
-                    if (nextStatus === 'validated') {
+                    if (nextStatus === 'validated' || nextStatus === 'cancelled') {
                         openEvaluationModalForSession(updatedSession, companySessionView.candidateName)
                     }
                 }
@@ -2699,7 +2699,7 @@ hover:bg-blue-600 transition-colors"
                                 </div>
                             )}
 
-                            {companySessionView.session.status === 'validated' && !companySessionView.session.evaluationSubmitted && (
+                            {['validated', 'cancelled'].includes(companySessionView.session.status) && !companySessionView.session.evaluationSubmitted && (
                                 <button
                                     onClick={() => openEvaluationModalForSession(companySessionView.session, companySessionView.candidateName)}
                                     className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 hover:opacity-90 transition"
@@ -2708,7 +2708,7 @@ hover:bg-blue-600 transition-colors"
                                 </button>
                             )}
 
-                            {companySessionView.session.status === 'validated' && companySessionView.session.evaluationSubmitted && (
+                            {['validated', 'cancelled'].includes(companySessionView.session.status) && companySessionView.session.evaluationSubmitted && (
                                 <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-5 text-center">
                                     <p className="text-lg font-bold text-green-800">Avaliacao enviada</p>
                                     <p className="text-sm text-green-600 mt-1">O feedback deste candidato ja foi registrado pela sua empresa.</p>
