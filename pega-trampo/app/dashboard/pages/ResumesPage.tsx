@@ -18,7 +18,7 @@ export default function ResumesPage(props: any) {
     } = props
 
     return (
-        <div className="max-w-6xl mx-auto space-y-4">
+        <div className="max-w-6xl mx-auto space-y-4 px-4 sm:px-0">
             {userProfile.userType === 'company' ? (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3 max-w-3xl mx-auto">
                     <h2 className="text-lg font-bold text-gray-900">Curriculos</h2>
@@ -34,8 +34,8 @@ export default function ResumesPage(props: any) {
                     </div>
                 </div>
             ) : (
-                <div className="flex items-center justify-between lg:px-1">
-                    <h2 className="text-lg font-bold text-gray-900">Meu Curriculo</h2>
+                <div className="flex items-center justify-between pt-4 lg:px-1">
+                    <h2 className="text-2xl font-bold text-gray-900">Meu Curriculo</h2>
                 </div>
             )}
 
