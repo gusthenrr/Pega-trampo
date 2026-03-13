@@ -17,6 +17,23 @@ export default function ResumesPage(props: any) {
         handleDeleteResume,
     } = props
 
+    const getResumeExperiencePreview = (resume: any) => {
+        const directExperience = String(resume?.professionalInfo?.experience || '').trim()
+        if (directExperience) return directExperience
+
+        const firstWorkExperience = Array.isArray(resume?.workExperience) ? resume.workExperience[0] : null
+        if (!firstWorkExperience) return 'Experiencia nao informada'
+
+        const position = String(firstWorkExperience.position || '').trim()
+        const company = String(firstWorkExperience.company || '').trim()
+
+        if (position && company) return `${position} - ${company}`
+        if (position) return position
+        if (company) return company
+
+        return 'Experiencia nao informada'
+    }
+
     return (
         <div className="max-w-6xl mx-auto space-y-4 px-4 sm:px-0">
             {userProfile.userType === 'company' ? (
@@ -131,7 +148,7 @@ export default function ResumesPage(props: any) {
                                                 <div className="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3 text-sm text-gray-600">
                                                     <div className="flex items-center gap-2">
                                                         <Briefcase className="h-4 w-4 text-gray-400" />
-                                                        <span>{resume.professionalInfo.experience || 'Experiencia nao informada'}</span>
+                                                        <span>{getResumeExperiencePreview(resume)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <Mail className="h-4 w-4 text-gray-400" />
