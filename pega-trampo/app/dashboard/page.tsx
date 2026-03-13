@@ -295,6 +295,156 @@ export default function PegaTrampoApp() {
     const [evaluationRating, setEvaluationRating] = useState(0)
     const [evaluationSubmitting, setEvaluationSubmitting] = useState(false)
     const [candidateEvaluationsData, setCandidateEvaluationsData] = useState<CandidateEvaluationsPayload>(emptyCandidateEvaluations)
+    const overlayHistorySkipPushRef = useRef(false)
+    const previousOverlayKeyRef = useRef<string | null>(null)
+    const closeTopOverlayRef = useRef<() => boolean>(() => false)
+
+    const activeOverlayKey = (() => {
+        if (enlargedPhoto) return 'enlarged-photo'
+        if (showEvaluationModal) return 'evaluation-modal'
+        if (companySessionView) return 'company-session-view'
+        if (sessionApplicationId) return 'candidate-session-view'
+        if (candidatesModalJob) return 'candidates-modal'
+        if (openAgenda) return 'agenda'
+        if (showMenu) return 'menu'
+        if (showNotifications) return 'notifications'
+        if (showRouteModal) return 'route-modal'
+        if (showResumeDetails) return 'resume-details'
+        if (showJobDetails) return 'job-details'
+        if (showResumeForm) return `resume-form-step-${resumeStep}`
+        if (showJobPostForm) return 'job-post-form'
+        if (showSupport) return 'support'
+        if (showProfile) return 'profile'
+        if (showChat) return 'chat'
+        if (showPostModal) return 'post-modal'
+        if (showCategorySelection) return 'category-selection'
+        if (showCompanyRegistration) return 'company-registration'
+        return null
+    })()
+
+    closeTopOverlayRef.current = () => {
+        if (enlargedPhoto) {
+            setEnlargedPhoto(null)
+            return true
+        }
+        if (showEvaluationModal) {
+            setShowEvaluationModal(false)
+            return true
+        }
+        if (companySessionView) {
+            setCompanySessionView(null)
+            return true
+        }
+        if (sessionApplicationId) {
+            setSessionApplicationId(null)
+            setActiveSession(null)
+            setSessionPhotoPreview(null)
+            setSessionPhotoFile(null)
+            return true
+        }
+        if (candidatesModalJob) {
+            setCandidatesModalJob(null)
+            return true
+        }
+        if (openAgenda) {
+            setOpenAgenda(false)
+            return true
+        }
+        if (showMenu) {
+            setShowMenu(false)
+            return true
+        }
+        if (showNotifications) {
+            setShowNotifications(false)
+            return true
+        }
+        if (showRouteModal) {
+            setShowRouteModal(false)
+            return true
+        }
+        if (showResumeDetails) {
+            setShowResumeDetails(false)
+            setSelectedResume(null)
+            return true
+        }
+        if (showJobDetails) {
+            setShowJobDetails(false)
+            setSelectedJob(null)
+            return true
+        }
+        if (showResumeForm) {
+            setShowResumeForm(false)
+            return true
+        }
+        if (showJobPostForm) {
+            setShowJobPostForm(false)
+            return true
+        }
+        if (showSupport) {
+            setShowSupport(false)
+            return true
+        }
+        if (showProfile) {
+            setShowProfile(false)
+            return true
+        }
+        if (showChat) {
+            setShowChat(false)
+            setSelectedJobForChat(null)
+            return true
+        }
+        if (showPostModal) {
+            setShowPostModal(false)
+            return true
+        }
+        if (showCategorySelection) {
+            setShowCategorySelection(false)
+            return true
+        }
+        if (showCompanyRegistration) {
+            setShowCompanyRegistration(false)
+            return true
+        }
+        return false
+    }
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+
+        const previousOverlayKey = previousOverlayKeyRef.current
+
+        if (overlayHistorySkipPushRef.current) {
+            overlayHistorySkipPushRef.current = false
+            previousOverlayKeyRef.current = activeOverlayKey
+            return
+        }
+
+        if (activeOverlayKey && activeOverlayKey !== previousOverlayKey) {
+            window.history.pushState(
+                {
+                    ...(window.history.state || {}),
+                    pegaTrampoOverlay: activeOverlayKey,
+                },
+                '',
+            )
+        }
+
+        previousOverlayKeyRef.current = activeOverlayKey
+    }, [activeOverlayKey])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+
+        const handlePopState = () => {
+            const closedOverlay = closeTopOverlayRef.current()
+            if (closedOverlay) {
+                overlayHistorySkipPushRef.current = true
+            }
+        }
+
+        window.addEventListener('popstate', handlePopState)
+        return () => window.removeEventListener('popstate', handlePopState)
+    }, [])
 
     const handleLogout = async () => {
         if (!confirm('Tem certeza que deseja sair da sua conta?')) return
