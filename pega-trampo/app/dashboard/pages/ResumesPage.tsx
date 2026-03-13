@@ -1,5 +1,6 @@
 ﻿import { Search, FileText, ChevronRight, User, Briefcase, Mail, Edit, Trash2 } from 'lucide-react'
 
+import * as logic from '../pegaTrampo.logic'
 export default function ResumesPage(props: any) {
     const {
         userProfile,
@@ -139,7 +140,9 @@ export default function ResumesPage(props: any) {
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div>
                                                         <h3 className="font-bold text-gray-900 text-lg lg:text-xl">{resume.personalInfo.name}</h3>
-                                                        <p className="text-sm lg:text-base text-gray-600">{resume.professionalInfo.category || 'Categoria nao informada'}</p>
+                                                        <p className="text-sm lg:text-base text-gray-600">
+                                                            {logic.getWorkerCategoryLabel({ workerCategory: (resume as any).workerCategory || resume.professionalInfo.category })}
+                                                        </p>
                                                     </div>
                                                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${resume.isVisible ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
                                                         {resume.isVisible ? 'Visivel' : 'Oculto'}

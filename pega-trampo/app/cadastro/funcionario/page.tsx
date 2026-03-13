@@ -184,6 +184,8 @@ export default function CadastroPage() {
         form.phone.trim().length >= 8 &&
         onlyDigits(form.cep).length === 8 &&
         hasResolvedCoordinates &&
+        form.imagemProfile.trim().length > 0 &&
+        form.imageJob.length > 0 &&
         form.username.trim().length >= 3 &&
         !/\s/.test(form.username.trim())
 
@@ -276,7 +278,7 @@ export default function CadastroPage() {
         setSuccessMsg("")
 
         if (!canSubmit) {
-            setErrorMsg("Preencha os dados corretamente (CPF, telefone, CEP valido e username) antes de finalizar.")
+            setErrorMsg("Preencha os dados corretamente, incluindo foto de perfil e pelo menos 1 foto do seu trabalho, antes de finalizar.")
             return
         }
 
@@ -528,7 +530,7 @@ export default function CadastroPage() {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
                         <h2 className="text-xl font-bold text-gray-900 mb-1">Seus dados</h2>
                         <p className="text-gray-600 text-sm mb-5">
-                            Categoria: <span className="font-semibold">{form.category}</span>
+                            Categoria: <span className="font-semibold">{form.category.join(', ') || '—'}</span>
                         </p>
 
                         <div className="flex flex-col items-center mb-6">
@@ -541,7 +543,7 @@ export default function CadastroPage() {
                             </div>
                             <label className="mt-2 text-sm text-blue-600 font-medium cursor-pointer flex items-center justify-center space-x-1 hover:text-blue-700">
                                 <User className="h-4 w-4" />
-                                <span>Adicionar Foto de Perfil</span>
+                                <span>Adicionar Foto de Perfil *</span>
                                 <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                                     if (e.target.files && e.target.files[0]) {
                                         const file = e.target.files[0];
@@ -553,6 +555,7 @@ export default function CadastroPage() {
                                     }
                                 }} />
                             </label>
+                            {!form.imagemProfile ? <p className="mt-2 text-xs text-red-600">A foto de perfil e obrigatoria.</p> : null}
                         </div>
 
                         <div className="space-y-4">
@@ -626,8 +629,8 @@ export default function CadastroPage() {
                             </div>
 
                             <div className="border-t border-gray-100 pt-4 mt-2">
-                                <label className="block text-sm font-medium text-gray-900 mb-1">Fotos do seu trabalho (Opcional)</label>
-                                <p className="text-xs text-gray-500 mb-3">Adicione até 6 fotos para mostrar seu trabalho (portfólio).</p>
+                                <label className="block text-sm font-medium text-gray-900 mb-1">Fotos do seu trabalho *</label>
+                                <p className="text-xs text-gray-500 mb-3">Adicione pelo menos 1 e até 6 fotos para mostrar seu trabalho (portfólio).</p>
                                 
                                 <div className="grid grid-cols-3 gap-3 mb-2">
                                     {form.imageJob.map((img, idx) => (
@@ -670,6 +673,7 @@ export default function CadastroPage() {
                                         </label>
                                     )}
                                 </div>
+                                {form.imageJob.length === 0 ? <p className="text-xs text-red-600">Envie pelo menos 1 foto do seu trabalho.</p> : null}
                                 <p className="text-[10px] text-gray-400 text-right">{form.imageJob.length}/6 adicionadas</p>
                             </div>
 
@@ -695,7 +699,7 @@ export default function CadastroPage() {
 
             <div className="bg-white border-t p-4">
                 <div className="max-w-md mx-auto text-xs text-gray-500">
-                    Categoria: <span className="font-semibold text-gray-700">{form.category || "—"}</span>
+                    Categoria: <span className="font-semibold text-gray-700">{form.category.join(', ') || "—"}</span>
                 </div>
             </div>
         </div>

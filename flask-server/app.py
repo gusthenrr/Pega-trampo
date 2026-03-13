@@ -1797,6 +1797,7 @@ def get_resumes():
             placeholders = ", ".join(["%s"] * len(requested_ids))
             rows = db.execute(f"""
                 SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job,
+                       up.worker_category as up_worker_category,
                        up.address as up_address, up.neighborhood as up_neighborhood, up.city as up_city, up.state as up_state
                 FROM resumes r
                 LEFT JOIN user_profiles up ON r.user_id = up.user_id
@@ -1806,6 +1807,7 @@ def get_resumes():
         else:
             rows = db.execute("""
                 SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job,
+                       up.worker_category as up_worker_category,
                        up.address as up_address, up.neighborhood as up_neighborhood, up.city as up_city, up.state as up_state
                 FROM resumes r 
                 LEFT JOIN user_profiles up ON r.user_id = up.user_id
@@ -1815,6 +1817,7 @@ def get_resumes():
         # Profissional vê apenas o próprio currículo
         rows = db.execute("""
             SELECT r.*, up.phone as up_phone, up.imagem_profile as up_imagem_profile, up.image_job as up_image_job,
+                   up.worker_category as up_worker_category,
                    up.address as up_address, up.neighborhood as up_neighborhood, up.city as up_city, up.state as up_state
             FROM resumes r 
             LEFT JOIN user_profiles up ON r.user_id = up.user_id
@@ -1838,12 +1841,47 @@ def get_resumes():
             return next(csv.reader([inner]))
         return [s]
 
+    def normalize_worker_categories(raw):
+        if raw is None:
+            return []
+
+        if isinstance(raw, list):
+            items = [str(x).strip() for x in raw]
+        else:
+            s = str(raw).strip()
+            if not s:
+                return []
+
+            if s.startswith("{") and s.endswith("}"):
+                inner = s[1:-1].strip()
+                if not inner:
+                    return []
+                items = [x.strip().strip('"') for x in inner.split(",")]
+            elif s.startswith("["):
+                try:
+                    parsed = json.loads(s)
+                    items = [str(x).strip() for x in parsed] if isinstance(parsed, list) else [s]
+                except Exception:
+                    items = [s]
+            else:
+                items = [x.strip() for x in re.split(r"[|,]", s)]
+
+        seen = set()
+        out = []
+        for it in items:
+            if not it or it in seen:
+                continue
+            seen.add(it)
+            out.append(it)
+        return out
+
     for r in rows:
         item = dict(r)
         
         up_phone = item.pop("up_phone", None)
         up_imagem_profile = item.pop("up_imagem_profile", None)
         up_image_job = item.pop("up_image_job", None)
+        up_worker_category = item.pop("up_worker_category", None)
         up_address = item.pop("up_address", None)
         up_neighborhood = item.pop("up_neighborhood", None)
         up_city = item.pop("up_city", None)
@@ -1893,7 +1931,14 @@ def get_resumes():
         item["createdAt"] = item.pop("created_at", None)
         item["updatedAt"] = item.pop("updated_at", None)
         item["isVisible"] = bool(item.pop("is_visible", 0))
-        
+
+        normalized_categories = normalize_worker_categories(up_worker_category)
+        item["workerCategory"] = normalized_categories
+        if not item.get("professionalInfo"):
+            item["professionalInfo"] = {}
+        if normalized_categories:
+            item["professionalInfo"]["category"] = ", ".join(normalized_categories)
+
         results.append(item)
         
         # Override phone with the fresh one from user_profiles if available (or clear if None)
@@ -2263,6 +2308,10 @@ def register_user():
             return api_error("Selecione pelo menos 1 categoria", 400)
         if len(categories) > 3:
             return api_error("Selecione no máximo 3 categorias", 400)
+        if user_type == "professional" and not imagem_profile:
+            return api_error("Foto de perfil é obrigatória", 400)
+        if user_type == "professional" and (not isinstance(image_job_raw, list) or len(image_job_raw) == 0):
+            return api_error("Envie pelo menos 1 foto do seu trabalho", 400)
 
         # ====== DUPLICIDADE ======
         existing_users = db.execute(

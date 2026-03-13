@@ -1119,7 +1119,7 @@ mb-1">{selectedResume.personalInfo.name}</h2>
                             </div>
                         )}
                         <p className="text-lg text-blue-600 font-semibold 
-mb-3">{selectedResume.professionalInfo.category}</p>
+mb-3">{logic.getWorkerCategoryLabel({ workerCategory: (selectedResume as any).workerCategory || selectedResume.professionalInfo.category })}</p>
                         <div className="flex items-center justify-center space-x-2 text-gray-600 mb-4">
                             <Clock className="h-4 w-4" />
                             <span className="text-sm">{selectedResume.professionalInfo.experience} de

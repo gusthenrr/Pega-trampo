@@ -554,7 +554,7 @@ export const bootstrapInitialData = async (params: {
                     professionalInfo: {
                         ...prev.professionalInfo,
                         category:
-                            (Array.isArray(data.profile.worker_category) ? data.profile.worker_category[0] : '') ||
+                            getWorkerCategoryLabel({ workerCategory: data.profile.worker_category }, '') ||
                             data.profile.business_type ||
                             prev.professionalInfo.category,
                     },
@@ -718,6 +718,11 @@ export const getWorkerCategoryList = (userProfile: any): string[] => {
     }
 
     return []
+}
+
+export const getWorkerCategoryLabel = (userProfile: any, fallback = 'Nao informado'): string => {
+    const categories = getWorkerCategoryList(userProfile)
+    return categories.length > 0 ? categories.join(', ') : fallback
 }
 
 
@@ -1069,10 +1074,14 @@ export const filterResumes = (params: {
 
     return resumes.filter(resume => {
         const searchLower = (resumeSearchTerm || '').toLowerCase()
+        const categoryText = getWorkerCategoryLabel(
+            { workerCategory: (resume as any).workerCategory || resume.professionalInfo.category },
+            '',
+        ).toLowerCase()
 
         const matchSearch =
             resume.personalInfo.name.toLowerCase().includes(searchLower) ||
-            resume.professionalInfo.category.toLowerCase().includes(searchLower) ||
+            categoryText.includes(searchLower) ||
             resume.professionalInfo.experience.toLowerCase().includes(searchLower)
 
         if (userProfile.userType === 'professional') {
