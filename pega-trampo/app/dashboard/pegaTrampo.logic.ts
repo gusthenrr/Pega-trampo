@@ -951,14 +951,19 @@ export const filterJobs = (params: {
                     return isNaN(parsed) ? 0 : parsed;
                 };
 
-                // prioridade absoluta para match exato de categoria
+                const sameCategory = slugRole(a.category || "") === slugRole(b.category || "")
+
+                // com categoria igual, a menor distancia sempre vem primeiro
+                if (sameCategory && a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
+
+                // entre categorias diferentes, mantem a relevancia por categoria
                 if (b._exactRoleMatch !== a._exactRoleMatch) return Number(b._exactRoleMatch) - Number(a._exactRoleMatch)
-                // depois, a menor distancia sempre vem primeiro
-                if (a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
-                // criterios secundarios so entram depois da distancia
                 if (b._roleMatch !== a._roleMatch) return b._roleMatch - a._roleMatch
-                if (b._textMatch !== a._textMatch) return b._textMatch - a._textMatch
+
+                // se ainda empatar, usa distancia antes dos demais criterios
+                if (a._distanceKm !== b._distanceKm) return a._distanceKm - b._distanceKm
                 if (b._urgentBoost !== a._urgentBoost) return b._urgentBoost - a._urgentBoost
+                if (b._textMatch !== a._textMatch) return b._textMatch - a._textMatch
                 if (b._score !== a._score) return b._score - a._score
                 // fallback por created_at/posted_at se existir
                 const da = getTimeSafe(a.created_at || a.postedAt);
