@@ -141,6 +141,19 @@ const buildResumeFromCandidate = (candidate: Candidate): Resume => {
     }
 }
 
+const formatSessionTimestamp = (value?: string | null) => {
+    if (!value) return ''
+    const parsed = new Date(value)
+    if (Number.isNaN(parsed.getTime())) return ''
+    return parsed.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    })
+}
+
 const emptyCandidateEvaluations: CandidateEvaluationsPayload = {
     averageRating: 0,
     reviewsCount: 0,
@@ -2533,13 +2546,13 @@ hover:bg-gray-100 rounded-full">
                                                         <div className="pt-1.5">
                                                             <p className={`font-semibold text-sm ${done ? 'text-green-700' : isCurrent ? 'text-blue-700' : 'text-gray-400'}`}>{step.label}</p>
                                                             {step.key === 'checked_in' && activeSession?.checkinAt && (
-                                                                <p className="text-xs text-gray-400 mt-0.5">às {new Date(activeSession.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                                <p className="text-xs text-gray-400 mt-0.5">{formatSessionTimestamp(activeSession.checkinAt)}</p>
                                                             )}
                                                             {step.key === 'checked_out' && activeSession?.checkoutAt && (
-                                                                <p className="text-xs text-gray-400 mt-0.5">às {new Date(activeSession.checkoutAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                                <p className="text-xs text-gray-400 mt-0.5">{formatSessionTimestamp(activeSession.checkoutAt)}</p>
                                                             )}
                                                             {step.key === 'validated' && activeSession?.validatedAt && (
-                                                                <p className="text-xs text-gray-400 mt-0.5">às {new Date(activeSession.validatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                                                <p className="text-xs text-gray-400 mt-0.5">{formatSessionTimestamp(activeSession.validatedAt)}</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -2677,7 +2690,7 @@ hover:bg-gray-100 rounded-full">
                                         ) : (
                                             <div className="w-full h-32 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Aguardando</div>
                                         )}
-                                        {companySessionView.session.checkinAt && <p className="text-xs text-gray-400 mt-1 text-center">{new Date(companySessionView.session.checkinAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
+                                        {companySessionView.session.checkinAt && <p className="text-xs text-gray-400 mt-1 text-center">{formatSessionTimestamp(companySessionView.session.checkinAt)}</p>}
                                     </div>
                                     <div>
                                         <p className="text-xs font-semibold text-gray-500 mb-2">🏁 Check-out</p>
@@ -2686,7 +2699,7 @@ hover:bg-gray-100 rounded-full">
                                         ) : (
                                             <div className="w-full h-32 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Aguardando</div>
                                         )}
-                                        {companySessionView.session.checkoutAt && <p className="text-xs text-gray-400 mt-1 text-center">{new Date(companySessionView.session.checkoutAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
+                                        {companySessionView.session.checkoutAt && <p className="text-xs text-gray-400 mt-1 text-center">{formatSessionTimestamp(companySessionView.session.checkoutAt)}</p>}
                                     </div>
                                 </div>
                             </div>
@@ -3101,6 +3114,8 @@ hover:bg-gray-100 rounded-full">
         </div >
     )
 }
+
+
 
 
 
