@@ -521,13 +521,13 @@ export default function CompanySignupPage() {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Nome de usuário *</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Username *</label>
                             <div className="relative">
                                 <input
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="Digite seu nome de usuário"
+                                    placeholder="Digite seu username"
                                     className="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black placeholder:text-gray-700"
                                 />
                                 <div className="absolute left-3 top-1/2 -translate-y-1/2">
