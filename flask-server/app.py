@@ -544,6 +544,13 @@ def ensure_postgres_runtime_schema():
 
 ensure_postgres_runtime_schema()
 
+
+def ensure_jobs_cep_column():
+    try:
+        db_write("ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cep TEXT")
+    except Exception as schema_err:
+        print(f"WARN: ensure jobs.cep failed: {schema_err}")
+
 # ---- Supabase Storage helpers ----
 def upload_session_photo(file_bytes: bytes, path: str, content_type: str) -> str:
     """Uploads to Supabase Storage and returns the storage path."""
@@ -660,6 +667,7 @@ def process_portfolio_images(image_list, user_id):
 def create_job():
     data = request.json or {}
     user_id = current_user_id()
+    ensure_jobs_cep_column()
 
     import uuid, json
     job_id = data.get("id") or str(uuid.uuid4())
@@ -729,6 +737,7 @@ def create_job():
 @app.route("/api/jobs", methods=["GET"])
 def get_jobs():
     print("get_jobs")
+    ensure_jobs_cep_column()
 
     identity = current_user_id()
     user_type = "professional"
@@ -846,6 +855,7 @@ def get_jobs():
 def update_job(job_id):
     data = request.json or {}
     user_id = current_user_id()
+    ensure_jobs_cep_column()
 
     # 1. Verificar se a vaga existe e pertence Ã  empresa
     row = db.execute("SELECT id, posted_by_user_id FROM jobs WHERE id = %s", job_id)
