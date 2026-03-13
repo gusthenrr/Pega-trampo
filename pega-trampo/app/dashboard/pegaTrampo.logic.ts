@@ -379,6 +379,30 @@ export const fetchCoordinates = async (address: string) => {
     }
 }
 
+const resolveJobCoordinates = async (jobPost: CompanyJobPost) => {
+    if (jobPost.coordinates?.lat !== undefined && jobPost.coordinates?.lng !== undefined) {
+        return jobPost.coordinates
+    }
+
+    const cleanCEP = (jobPost.cep || '').replace(/\D/g, '')
+    if (cleanCEP.length === 8) {
+        const addressData = await fetchAddressByCEP(cleanCEP)
+        if (addressData) {
+            const cepCoords =
+                await fetchCoordinates(addressData.fullAddress) ||
+                await fetchCoordinates(`${cleanCEP}, Brasil`)
+            if (cepCoords) return cepCoords
+        }
+    }
+
+    if (jobPost.address) {
+        const addressCoords = await fetchCoordinates(jobPost.address)
+        if (addressCoords) return addressCoords
+    }
+
+    return undefined
+}
+
 
 
 export const formatRelativeDate = (dateString: string): string => {
@@ -1217,12 +1241,7 @@ export const handlePublishJob = async (params: {
 
 
 
-    // Tenta geocoding se nÃ£o tiver coordenadas mas tiver endereÃ§o
-    let finalCoordinates = newJobPost.coordinates
-    if (!finalCoordinates && newJobPost.address) {
-        const coords = await fetchCoordinates(newJobPost.address)
-        if (coords) finalCoordinates = coords
-    }
+    const finalCoordinates = await resolveJobCoordinates(newJobPost)
 
     // Payload final
     const companyInfo = buildJobCompanyInfo(userProfile)
@@ -1316,12 +1335,7 @@ export const handleUpdateJob = async (params: {
 
 
 
-    // Tenta geocoding se nÃ£o tiver coordenadas mas tiver endereÃ§o
-    let finalCoordinates = updatedJobPost.coordinates
-    if (!finalCoordinates && updatedJobPost.address) {
-        const coords = await fetchCoordinates(updatedJobPost.address)
-        if (coords) finalCoordinates = coords
-    }
+    const finalCoordinates = await resolveJobCoordinates(updatedJobPost)
 
     // Payload final
     const companyInfo = buildJobCompanyInfo(userProfile)
