@@ -1271,6 +1271,7 @@ export const handlePublishJob = async (params: {
             views: 0,
             companyOnly: false,
             includesFood: !!newJobPost.includesFood,
+            cep: newJobPost.cep || '',
             companyInfo,
             coordinates: finalCoordinates,
             startDate: newJobPost.startDate,

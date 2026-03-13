@@ -685,7 +685,7 @@ def create_job():
             posted_by, posted_by_user_id, posted_at,
             period, duration, is_urgent,
             company_only, includes_food,
-            lat, lng, company_info_json,
+            lat, lng, cep, company_info_json,
             start_date, start_time
         ) VALUES (
             %s, %s, %s, %s, %s, %s,
@@ -693,7 +693,7 @@ def create_job():
             %s, %s, CURRENT_TIMESTAMP,
             %s, %s, %s,
             %s, %s,
-            %s, %s, %s,
+            %s, %s, %s, %s,
             %s, %s
         ) RETURNING id
     """,
@@ -716,6 +716,7 @@ def create_job():
         True if data.get("includesFood") else False,
         (data.get("coordinates") or {}).get("lat"),
         (data.get("coordinates") or {}).get("lng"),
+        enc(only_digits(data.get("cep") or "")),
         company_info_json,
         data.get("startDate"),
         data.get("startTime")
@@ -819,6 +820,7 @@ def get_jobs():
             item["completedJobs"] = item.pop("completed_jobs", None)
             item["companyOnly"] = bool(item.pop("company_only", 0))
             item["includesFood"] = bool(item.pop("includes_food", 0))
+            item["cep"] = dec(item.get("cep"))
 
             # Manter lat/lng planos para ranking e expor coordinates como extra
             if item.get("lat") is not None and item.get("lng") is not None:
@@ -877,6 +879,7 @@ def update_job(job_id):
                 includes_food = %s,
                 lat = %s,
                 lng = %s,
+                cep = %s,
                 company_info_json = %s,
                 start_date = %s,
                 start_time = %s
@@ -898,6 +901,7 @@ def update_job(job_id):
             1 if data.get("includesFood") else 0,
             (data.get("coordinates") or {}).get("lat"),
             (data.get("coordinates") or {}).get("lng"),
+            enc(only_digits(data.get("cep") or "")),
             company_info_json,
             data.get("startDate"),
             data.get("startTime"),

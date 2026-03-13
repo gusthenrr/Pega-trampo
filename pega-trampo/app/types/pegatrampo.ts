@@ -58,6 +58,7 @@ export interface Job {
     companyOnly?: boolean
     companyInfo?: JobCompanyInfo
     includesFood?: boolean
+    cep?: string
     coordinates?: Coordinates
     startDate?: string
     startTime?: string
