@@ -248,6 +248,8 @@ export default function PegaTrampoApp() {
     const [resumes, setResumes] = useState<Resume[]>([])
     const [isSavingResume, setIsSavingResume] = useState(false)
     const resumeSaveLockedRef = useRef(false)
+    const [isPublishingJob, setIsPublishingJob] = useState(false)
+    const publishJobLockedRef = useRef(false)
     const [showResumeDetails, setShowResumeDetails] = useState(false)
     const [selectedResume, setSelectedResume] = useState<Resume | null>(null)
     const selectedResumeAddress = (() => {
@@ -700,18 +702,28 @@ export default function PegaTrampoApp() {
             setMyApplications,
         })
 
-    const handlePublishJob = () => {
-        if (editingJobId) {
-            logic.handleUpdateJob({
-                jobId: editingJobId,
-                updatedJobPost: newJobPost,
-                userProfile,
-                setJobs,
-                setShowJobPostForm,
-                setEditingJobId
-            })
-        } else {
-            logic.handlePublishJob({ newJobPost, userProfile, setJobs, setShowJobPostForm })
+    const handlePublishJob = async () => {
+        if (publishJobLockedRef.current) return
+
+        publishJobLockedRef.current = true
+        setIsPublishingJob(true)
+
+        try {
+            if (editingJobId) {
+                await logic.handleUpdateJob({
+                    jobId: editingJobId,
+                    updatedJobPost: newJobPost,
+                    userProfile,
+                    setJobs,
+                    setShowJobPostForm,
+                    setEditingJobId
+                })
+            } else {
+                await logic.handlePublishJob({ newJobPost, userProfile, setJobs, setShowJobPostForm })
+            }
+        } finally {
+            publishJobLockedRef.current = false
+            setIsPublishingJob(false)
         }
     }
 
@@ -2330,10 +2342,10 @@ hover:bg-gray-100 rounded-full">
                     <div className="max-w-md mx-auto">
                         <button
                             onClick={handlePublishJob}
-                            className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold 
-hover:bg-blue-600 transition-colors"
+                            disabled={isPublishingJob}
+                            className={`w-full py-3 rounded-lg font-semibold transition-colors ${isPublishingJob ? 'bg-blue-300 text-white cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
                         >
-                            {editingJobId ? 'Salvar Alterações' : 'Publicar Proposta'}
+                            {isPublishingJob ? (editingJobId ? 'Salvando...' : 'Publicando...') : (editingJobId ? 'Salvar Alterações' : 'Publicar Proposta')}
                         </button>
                     </div>
                 </div>
@@ -3089,6 +3101,8 @@ hover:bg-blue-600 transition-colors"
         </div >
     )
 }
+
+
 
 
 
