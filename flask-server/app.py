@@ -532,6 +532,26 @@ except Exception as _e:
 
 def ensure_postgres_runtime_schema():
     statements = [
+        """
+        DO $$
+        DECLARE constraint_name TEXT;
+        BEGIN
+            SELECT tc.constraint_name
+              INTO constraint_name
+              FROM information_schema.table_constraints tc
+              JOIN information_schema.constraint_column_usage ccu
+                ON tc.constraint_name = ccu.constraint_name
+               AND tc.table_schema = ccu.table_schema
+             WHERE tc.table_name = 'usuarios'
+               AND tc.constraint_type = 'UNIQUE'
+               AND ccu.column_name = 'username'
+             LIMIT 1;
+
+            IF constraint_name IS NOT NULL THEN
+                EXECUTE format('ALTER TABLE usuarios DROP CONSTRAINT %I', constraint_name);
+            END IF;
+        END $$;
+        """,
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cep TEXT",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ativa'",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS image_job TEXT[]",
@@ -1998,14 +2018,14 @@ def save_user_profile():
 
             # checagem simples de duplicidade (ideal: UNIQUE no banco)
             existing_users = db.execute(
-                "SELECT id, email_verified FROM usuarios WHERE username = %s OR email = %s",
-                username, user_email
+                "SELECT id, email_verified FROM usuarios WHERE email = %s",
+                user_email
             )
             if existing_users:
                 # Se há algum já verificado, bloqueia
                 verified = [u for u in existing_users if u.get("email_verified")]
                 if verified:
-                    return api_error("username ou email já cadastrado", 409)
+                    return api_error("email já cadastrado", 409)
                 else:
                     # Todos são não-verificados (abandonados). Limpa para recadastro:
                     for u in existing_users:
@@ -2027,7 +2047,7 @@ def save_user_profile():
                 username, senha_hash, user_email, user_type
             )
 
-            row = db.execute("SELECT id FROM usuarios WHERE username = %s LIMIT 1", username)
+            row = db.execute("SELECT id FROM usuarios WHERE email = %s ORDER BY id DESC LIMIT 1", user_email)
             if not row:
                 raise ApiTxError("Falha ao criar usuario", 500)
 
@@ -2315,13 +2335,13 @@ def register_user():
 
         # ====== DUPLICIDADE ======
         existing_users = db.execute(
-            "SELECT id, email_verified FROM usuarios WHERE username = %s OR email = %s",
-            username, user_email
+            "SELECT id, email_verified FROM usuarios WHERE email = %s",
+            user_email
         )
         if existing_users:
             verified = [u for u in existing_users if u.get("email_verified")]
             if verified:
-                return api_error("username ou email já cadastrado", 409)
+                return api_error("email já cadastrado", 409)
             else:
                 for u in existing_users:
                     uid = u["id"]
@@ -2342,7 +2362,7 @@ def register_user():
             username, senha_hash, user_email, user_type
         )
 
-        row = db.execute("SELECT id FROM usuarios WHERE username = %s LIMIT 1", username)
+        row = db.execute("SELECT id FROM usuarios WHERE email = %s ORDER BY id DESC LIMIT 1", user_email)
         if not row:
             raise ApiTxError("Falha ao criar usuario", 500)
         user_id = row[0]["id"]
