@@ -97,31 +97,48 @@ const getCandidateProfileImageUrl = (candidate?: Candidate | null) => {
     ])
 }
 
-const buildResumeFromCandidate = (candidate: Candidate): Resume => ({
-    ...(candidate.resume as unknown as Record<string, unknown>),
-    userId: candidate.candidateId,
-    profilePhoto: getCandidateProfileImageUrl(candidate) || undefined,
-    imageJob: candidate.imageJob || [],
-    personalInfo: {
-        name: candidate.name,
-        email: candidate.email || '',
-        phone: candidate.phone || '',
-        address: '',
-        neighborhood: '',
-        city: '',
-        state: '',
-        birthDate: '',
-        maritalStatus: '',
+const buildResumeFromCandidate = (candidate: Candidate): Resume => {
+    const preview = candidate.resume as Partial<Resume> | undefined
+
+    return {
+        id: preview?.id || candidate.applicationId || candidate.candidateId,
+        userId: candidate.candidateId,
+        personalInfo: {
+            name: candidate.name,
+            email: candidate.email || '',
+            phone: candidate.phone || '',
+            address: preview?.personalInfo?.address || '',
+            neighborhood: preview?.personalInfo?.neighborhood || '',
+            city: preview?.personalInfo?.city || '',
+            state: preview?.personalInfo?.state || '',
+            birthDate: preview?.personalInfo?.birthDate || '',
+            maritalStatus: preview?.personalInfo?.maritalStatus || '',
+            profilePhoto: getCandidateProfileImageUrl(candidate) || undefined,
+        },
+        professionalInfo: preview?.professionalInfo || {
+            category: candidate.category || '',
+            experience: '',
+            contractTypes: [],
+            workSchedule: '',
+            salary: {
+                value: 0,
+                type: 'daily',
+                hideSalary: false,
+            },
+            benefits: [],
+        },
+        workExperience: preview?.workExperience || [],
+        education: preview?.education || [],
+        skills: preview?.skills || [],
+        bio: preview?.bio || '',
+        availability: preview?.availability || [],
+        createdAt: preview?.createdAt || candidate.appliedAt || '',
+        updatedAt: preview?.updatedAt || '',
+        isVisible: preview?.isVisible ?? true,
         profilePhoto: getCandidateProfileImageUrl(candidate) || undefined,
-    },
-    education: [],
-    skills: [],
-    bio: '',
-    availability: [],
-    createdAt: candidate.appliedAt || '',
-    updatedAt: '',
-    isVisible: true,
-}) as Resume
+        imageJob: candidate.imageJob || preview?.imageJob || [],
+    }
+}
 
 const emptyCandidateEvaluations: CandidateEvaluationsPayload = {
     averageRating: 0,
