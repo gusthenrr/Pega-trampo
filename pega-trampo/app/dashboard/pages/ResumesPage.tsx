@@ -15,7 +15,6 @@ export default function ResumesPage(props: any) {
         getResumeProfileImageUrl,
         handleViewResumeDetails,
         handleEditResume,
-        handleDeleteResume,
     } = props
 
     const getResumeExperiencePreview = (resume: any) => {
@@ -182,12 +181,6 @@ export default function ResumesPage(props: any) {
                                         >
                                             <Edit className="h-4 w-4" />
                                             <span>Editar</span>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteResume(resume.id)}
-                                            className="flex items-center justify-center gap-2 bg-red-50 text-red-600 px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-red-100 transition-colors border border-red-200"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
                                         </button>
                                     </div>
                                 </div>

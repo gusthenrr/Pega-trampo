@@ -529,16 +529,26 @@ export const bootstrapInitialData = async (params: {
             }))
 
             if (data.resume) {
-                // Inject imageJob from profile into the resume so photos appear in resume view
+                // Keep resume media in sync with the latest profile data.
                 const resumeWithPhotos = {
                     ...data.resume,
-                    imageJob: data.profile?.image_job || data.resume.imageJob || []
+                    profilePhoto: data.profile?.imagem_profile || data.resume.profilePhoto || data.resume.personalInfo?.profilePhoto || '',
+                    imageJob: data.profile?.image_job || data.resume.imageJob || [],
+                    personalInfo: {
+                        ...(data.resume.personalInfo || {}),
+                        profilePhoto:
+                            data.profile?.imagem_profile ||
+                            data.resume.personalInfo?.profilePhoto ||
+                            data.resume.profilePhoto ||
+                            '',
+                    },
                 }
                 setUserResume(resumeWithPhotos)
                 setResumes([resumeWithPhotos])
             } else if (data.profile) {
                 setUserResume((prev: any) => ({
                     ...prev,
+                    profilePhoto: data.profile.imagem_profile || prev.profilePhoto || prev.personalInfo?.profilePhoto || '',
                     imageJob: data.profile.image_job || prev.imageJob || [],
                     personalInfo: {
                         ...prev.personalInfo,
@@ -550,6 +560,7 @@ export const bootstrapInitialData = async (params: {
                         neighborhood: data.profile.neighborhood || prev.personalInfo.neighborhood,
                         city: data.profile.city || prev.personalInfo.city,
                         state: data.profile.state || prev.personalInfo.state,
+                        profilePhoto: data.profile.imagem_profile || prev.personalInfo.profilePhoto || prev.profilePhoto || '',
                     },
                     professionalInfo: {
                         ...prev.professionalInfo,
