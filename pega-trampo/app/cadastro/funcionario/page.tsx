@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, HelpCircle, User, Utensils, Sparkles, Lock, Check, Eye, EyeOff } from "lucide-react"
+import { ArrowLeft, HelpCircle, User, Utensils, Lock, Check, Eye, EyeOff } from "lucide-react"
 import * as logic from "../../dashboard/pegaTrampo.logic"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || ""
@@ -62,6 +62,12 @@ type RegisterForm = {
     imageJob: string[]
 }
 
+type ImageProcessingOptions = {
+    maxWidth: number
+    maxHeight: number
+    quality: number
+}
+
 function onlyDigits(v: string) {
     return (v || "").replace(/\D/g, "")
 }
@@ -107,17 +113,51 @@ function validateCPF(cpf: string): boolean {
 }
 
 // ✅ Igual ao verificar-email: se success=false, lança erro
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function postJSON(url: string, body: any) {
     const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
     })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const json = await res.json().catch(() => ({} as any))
     if (!res.ok || json?.success === false) {
         throw new Error(json?.error || json?.message || "Erro na requisição")
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return json as any
+}
+
+async function fileToOptimizedDataUrl(file: File, options: ImageProcessingOptions) {
+    const objectUrl = URL.createObjectURL(file)
+
+    try {
+        const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+            const img = new Image()
+            img.onload = () => resolve(img)
+            img.onerror = () => reject(new Error("Nao foi possivel processar a imagem selecionada."))
+            img.src = objectUrl
+        })
+
+        const scale = Math.min(options.maxWidth / image.width, options.maxHeight / image.height, 1)
+        const targetWidth = Math.max(1, Math.round(image.width * scale))
+        const targetHeight = Math.max(1, Math.round(image.height * scale))
+
+        const canvas = document.createElement("canvas")
+        canvas.width = targetWidth
+        canvas.height = targetHeight
+
+        const context = canvas.getContext("2d")
+        if (!context) {
+            throw new Error("Nao foi possivel preparar a imagem para envio.")
+        }
+
+        context.drawImage(image, 0, 0, targetWidth, targetHeight)
+        return canvas.toDataURL("image/jpeg", options.quality)
+    } finally {
+        URL.revokeObjectURL(objectUrl)
+    }
 }
 
 export default function CadastroPage() {
@@ -125,6 +165,7 @@ export default function CadastroPage() {
 
     const [step, setStep] = useState<Step>(1)
     const [loading, setLoading] = useState(false)
+    const [isPreparingImages, setIsPreparingImages] = useState(false)
     const [cepLoading, setCepLoading] = useState(false)
     const [errorMsg, setErrorMsg] = useState<string>("")
     const [successMsg, setSuccessMsg] = useState<string>("")
@@ -187,7 +228,8 @@ export default function CadastroPage() {
         form.imagemProfile.trim().length > 0 &&
         form.imageJob.length > 0 &&
         form.username.trim().length >= 3 &&
-        !/\s/.test(form.username.trim())
+        !/\s/.test(form.username.trim()) &&
+        !isPreparingImages
 
     async function handleCepBlur(rawCep?: string) {
         const cleanCEP = onlyDigits(rawCep ?? form.cep)
@@ -313,6 +355,7 @@ export default function CadastroPage() {
 
             await postJSON(`${API_URL}/api/auth/request-email-verification`, { user_id: userId })
             router.replace(`/verificar-email?user_id=${userId}`)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (err: any) {
             setErrorMsg(err?.message || "Erro ao cadastrar.")
         } finally {
@@ -544,18 +587,29 @@ export default function CadastroPage() {
                             <label className="mt-2 text-sm text-blue-600 font-medium cursor-pointer flex items-center justify-center space-x-1 hover:text-blue-700">
                                 <User className="h-4 w-4" />
                                 <span>Adicionar Foto de Perfil *</span>
-                                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                                    if (e.target.files && e.target.files[0]) {
-                                        const file = e.target.files[0];
-                                        const reader = new FileReader();
-                                        reader.onloadend = () => {
-                                            setForm(p => ({ ...p, imagemProfile: reader.result as string }));
-                                        };
-                                        reader.readAsDataURL(file);
+                                <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                    const file = e.target.files?.[0]
+                                    e.target.value = ""
+                                    if (!file) return
+
+                                    setErrorMsg("")
+                                    setIsPreparingImages(true)
+                                    try {
+                                        const optimized = await fileToOptimizedDataUrl(file, {
+                                            maxWidth: 800,
+                                            maxHeight: 800,
+                                            quality: 0.82,
+                                        })
+                                        setForm(p => ({ ...p, imagemProfile: optimized }))
+                                    } catch (err) {
+                                        setErrorMsg(err instanceof Error ? err.message : "Nao foi possivel preparar a foto de perfil.")
+                                    } finally {
+                                        setIsPreparingImages(false)
                                     }
                                 }} />
                             </label>
                             {!form.imagemProfile ? <p className="mt-2 text-xs text-red-600">A foto de perfil e obrigatoria.</p> : null}
+                            {isPreparingImages ? <p className="mt-2 text-xs text-blue-600">Preparando imagem...</p> : null}
                         </div>
 
                         <div className="space-y-4">
@@ -654,19 +708,33 @@ export default function CadastroPage() {
                                                 accept="image/*" 
                                                 className="hidden" 
                                                 multiple
-                                                onChange={(e) => {
-                                                    if (e.target.files) {
-                                                        const validFiles = Array.from(e.target.files).slice(0, 6 - form.imageJob.length);
-                                                        validFiles.forEach(file => {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => {
-                                                                setForm(p => {
-                                                                    if (p.imageJob.length >= 6) return p;
-                                                                    return { ...p, imageJob: [...p.imageJob, reader.result as string] };
-                                                                });
-                                                            };
-                                                            reader.readAsDataURL(file);
-                                                        });
+                                                onChange={async (e) => {
+                                                    const selectedFiles = e.target.files ? Array.from(e.target.files) : []
+                                                    e.target.value = ""
+                                                    if (selectedFiles.length === 0) return
+
+                                                    const validFiles = selectedFiles.slice(0, 6 - form.imageJob.length)
+                                                    setErrorMsg("")
+                                                    setIsPreparingImages(true)
+                                                    try {
+                                                        const optimizedImages = await Promise.all(
+                                                            validFiles.map((file) =>
+                                                                fileToOptimizedDataUrl(file, {
+                                                                    maxWidth: 1600,
+                                                                    maxHeight: 1600,
+                                                                    quality: 0.72,
+                                                                })
+                                                            )
+                                                        )
+
+                                                        setForm((p) => ({
+                                                            ...p,
+                                                            imageJob: [...p.imageJob, ...optimizedImages].slice(0, 6),
+                                                        }))
+                                                    } catch (err) {
+                                                        setErrorMsg(err instanceof Error ? err.message : "Nao foi possivel preparar as fotos do portfolio.")
+                                                    } finally {
+                                                        setIsPreparingImages(false)
                                                     }
                                                 }} 
                                             />
@@ -674,6 +742,7 @@ export default function CadastroPage() {
                                     )}
                                 </div>
                                 {form.imageJob.length === 0 ? <p className="text-xs text-red-600">Envie pelo menos 1 foto do seu trabalho.</p> : null}
+                                {isPreparingImages ? <p className="text-xs text-blue-600">Otimizando fotos para envio...</p> : null}
                                 <p className="text-[10px] text-gray-400 text-right">{form.imageJob.length}/6 adicionadas</p>
                             </div>
 
@@ -682,7 +751,7 @@ export default function CadastroPage() {
                                 disabled={!canSubmit || loading || cepLoading}
                                 className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700 transition-colors"
                             >
-                                {loading ? "Criando e enviando verificacao..." : cepLoading ? "Validando CEP..." : "Finalizar e verificar e-mail"}
+                                {loading ? "Criando e enviando verificacao..." : isPreparingImages ? "Preparando fotos..." : cepLoading ? "Validando CEP..." : "Finalizar e verificar e-mail"}
                             </button>
 
                             <button
