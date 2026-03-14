@@ -1291,8 +1291,6 @@ shadow-lg flex items-center justify-center space-x-3"
 
     // Modal de Detalhes da Proposta (organizado + CTA fixo)
     if (showJobDetails && selectedJob) {
-        const waNumber = getCompanyWhatsappNumber(selectedJob)
-
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col pt-[60px]">
                 {/* Header */}
@@ -1489,15 +1487,6 @@ shadow-lg flex items-center justify-center space-x-3"
                             </div>
                         )}
 
-                        <button
-                            onClick={() => handleContactCompanyWhatsapp(selectedJob)}
-                            disabled={!waNumber}
-                            className={`flex-1 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 
-                        ${waNumber ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}
-                        >
-                            <Phone className="h-5 w-5" />
-                            <span>WhatsApp</span>
-                        </button>
                     </div>
                 </div>
                 {showRouteModal && (
@@ -2168,14 +2157,11 @@ hover:bg-gray-100 rounded-full">
                                     Tipo de Pagamento *
                                 </label>
                                 <select
-                                    value={newJobPost.paymentType}
-                                    onChange={(e) => setNewJobPost({ ...newJobPost, paymentType: e.target.value as 'hourly' | 'daily' | 'project' | 'monthly' })}
+                                    value="daily"
+                                    onChange={() => setNewJobPost({ ...newJobPost, paymentType: 'daily' })}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder:text-gray-500 focus:ring-blue-500 focus:border-transparent"
                                 >
-                                    <option value="hourly">Por Hora</option>
                                     <option value="daily">Por Dia</option>
-                                    <option value="project">Por Projeto</option>
-                                    <option value="monthly">Por Mês</option>
                                 </select>
                             </div>
                             <div>

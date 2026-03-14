@@ -177,9 +177,10 @@ export default function CompanySignupPage() {
             !!String(businessType).trim() &&
             !!description.trim() &&
             !!phone.trim() &&
+            !!imagemProfile.trim() &&
             usernameOk
         )
-    }, [cnpjIsComplete, cnpj, companyName, businessType, description, phone, usernameOk])
+    }, [cnpjIsComplete, cnpj, companyName, businessType, description, phone, imagemProfile, usernameOk])
 
     const handleCNPJChange = async (value: string) => {
         const formatted = formatCNPJ(value)
@@ -270,7 +271,7 @@ export default function CompanySignupPage() {
             return
         }
         if (!step2Ok) {
-            setSubmitError("Preencha todos os dados da empresa antes de finalizar.")
+            setSubmitError("Preencha todos os dados da empresa, incluindo a logo, antes de finalizar.")
             setStep(2)
             return
         }
@@ -436,7 +437,7 @@ export default function CompanySignupPage() {
                             </div>
                             <label className="mt-2 text-sm text-blue-600 font-medium cursor-pointer flex items-center justify-center space-x-1 hover:text-blue-700">
                                 <User className="h-4 w-4" />
-                                <span>Adicionar Foto de Perfil</span>
+                                <span>Adicionar Logo *</span>
                                 <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                                     if (e.target.files && e.target.files[0]) {
                                         const file = e.target.files[0];
@@ -448,6 +449,7 @@ export default function CompanySignupPage() {
                                     }
                                 }} />
                             </label>
+                            {!imagemProfile ? <p className="mt-2 text-xs text-red-600">A logo da empresa e obrigatoria.</p> : null}
                         </div>
 
                         <div>

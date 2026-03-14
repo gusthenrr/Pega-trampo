@@ -143,9 +143,11 @@ export default function JobsPage(props: any) {
 
                                                     <div className="min-w-0">
                                                         <h4 className="text-base font-bold text-gray-900 leading-snug truncate">
-                                                            {job.companyInfo?.name || job.postedBy || 'Estabelecimento'}
+                                                            {job.title || 'Cargo'}
                                                         </h4>
-                                                        <p className="text-xs text-gray-600 truncate">{job.title || 'Cargo'}</p>
+                                                        <p className="text-xs text-gray-600 truncate">
+                                                            {job.companyInfo?.name || job.postedBy || 'Estabelecimento'}
+                                                        </p>
                                                     </div>
                                                 </div>
 
