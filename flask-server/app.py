@@ -21,6 +21,8 @@ from datetime import datetime, timedelta, timezone
 from itsdangerous import URLSafeTimedSerializer
 import requests
 from urllib.parse import urlparse
+import uuid
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 try:
     from supabase import create_client, Client as SupabaseClient
@@ -419,6 +421,7 @@ def recalculate_user_profile_rating(evaluated_id):
 CONFLICT_CANCELLATION_STATUSES = {"pendente", "pending"}
 ACCEPTED_APPLICATION_STATUSES = {"aprovado", "accepted"}
 CLOSED_APPLICATION_STATUSES = {"cancelado", "cancelled", "canceled", "finalizado", "finished"}
+COMPANY_CLOSED_APPLICATION_HIDE_AFTER = timedelta(hours=24)
 
 
 def parse_job_date(value):
@@ -454,6 +457,43 @@ def extract_hours_decimal(value):
         return float(match.group(1))
     except ValueError:
         return None
+
+
+def parse_api_datetime(value):
+    text = str(value or "").strip()
+    if not text:
+        return None
+
+    normalized = text.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        parsed = None
+        normalized_text = text.replace("T", " ")
+        for candidate in (text, normalized_text):
+            for fmt in ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+                try:
+                    parsed = datetime.strptime(candidate, fmt)
+                    break
+                except ValueError:
+                    continue
+            if parsed is not None:
+                break
+        if parsed is None:
+            return None
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def should_hide_closed_company_application(status, closed_at, now=None):
+    normalized_status = str(status or "").strip().lower()
+    if normalized_status not in CLOSED_APPLICATION_STATUSES or closed_at is None:
+        return False
+
+    reference_now = now or datetime.now(timezone.utc)
+    return closed_at <= (reference_now - COMPANY_CLOSED_APPLICATION_HIDE_AFTER)
 
 
 def build_job_time_window(job_row):
@@ -554,12 +594,62 @@ def ensure_postgres_runtime_schema():
         """,
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cep TEXT",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'ativa'",
+        "ALTER TABLE job_applications ADD COLUMN IF NOT EXISTS reserved_amount NUMERIC(12,2)",
+        "ALTER TABLE job_applications ADD COLUMN IF NOT EXISTS reserved_at TIMESTAMPTZ",
+        "ALTER TABLE job_applications ADD COLUMN IF NOT EXISTS wallet_reserve_tx_id TEXT",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS image_job TEXT[]",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS rating DOUBLE PRECISION NOT NULL DEFAULT 0",
         "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS reviews_count INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE job_sessions ADD COLUMN IF NOT EXISTS wallet_settled_at TIMESTAMPTZ",
+        """
+        CREATE TABLE IF NOT EXISTS wallets (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL UNIQUE,
+            user_type TEXT NOT NULL,
+            balance_total NUMERIC(12,2) NOT NULL DEFAULT 0,
+            balance_reserved NUMERIC(12,2) NOT NULL DEFAULT 0,
+            balance_available NUMERIC(12,2) NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS wallet_transactions (
+            id TEXT PRIMARY KEY,
+            wallet_id TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            direction TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            amount NUMERIC(12,2) NOT NULL,
+            status TEXT NOT NULL,
+            reference_type TEXT,
+            reference_id TEXT,
+            job_id TEXT,
+            application_id TEXT,
+            session_id TEXT,
+            description TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS wallet_requests (
+            id TEXT PRIMARY KEY,
+            wallet_id TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            request_type TEXT NOT NULL,
+            amount NUMERIC(12,2) NOT NULL,
+            status TEXT NOT NULL,
+            note TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """,
         "CREATE INDEX IF NOT EXISTS idx_user_evaluations_evaluator_id ON user_evaluations(evaluator_id)",
         "CREATE INDEX IF NOT EXISTS idx_user_evaluations_job_id ON user_evaluations(job_id)",
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_user_evaluations_unique_review ON user_evaluations(evaluator_id, evaluated_id, job_id)",
+        "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user_id_created_at ON wallet_transactions(user_id, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_application_id ON wallet_transactions(application_id)",
+        "CREATE INDEX IF NOT EXISTS idx_wallet_transactions_session_id ON wallet_transactions(session_id)",
+        "CREATE INDEX IF NOT EXISTS idx_wallet_requests_user_id_created_at ON wallet_requests(user_id, created_at DESC)",
     ]
     for statement in statements:
         try:
@@ -569,6 +659,352 @@ def ensure_postgres_runtime_schema():
 
 
 ensure_postgres_runtime_schema()
+
+TWOPLACES = Decimal("0.01")
+
+
+def money(value):
+    try:
+        return Decimal(str(value or 0)).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    except (InvalidOperation, ValueError, TypeError):
+        return Decimal("0.00")
+
+
+def money_to_float(value):
+    return float(money(value))
+
+
+def wallet_now_iso():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def get_user_account_type(user_id):
+    rows = db.execute("SELECT type FROM usuarios WHERE id = %s", user_id)
+    if not rows:
+        return "professional"
+    return normalize_account_type(rows[0].get("type"))
+
+
+def ensure_wallet(user_id, user_type=None):
+    normalized_type = normalize_account_type(user_type or get_user_account_type(user_id))
+    wallet_id = f"wallet_{user_id}"
+    db_write(
+        """
+        INSERT INTO wallets (id, user_id, user_type, balance_total, balance_reserved, balance_available, created_at, updated_at)
+        VALUES (%s, %s, %s, 0, 0, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id) DO NOTHING
+        """,
+        wallet_id,
+        user_id,
+        normalized_type,
+    )
+    rows = db.execute("SELECT * FROM wallets WHERE user_id = %s", user_id)
+    return rows[0] if rows else None
+
+
+def insert_wallet_transaction(
+    wallet_id,
+    user_id,
+    direction,
+    kind,
+    amount,
+    status="completed",
+    reference_type=None,
+    reference_id=None,
+    job_id=None,
+    application_id=None,
+    session_id=None,
+    description=None,
+):
+    tx_id = str(uuid.uuid4())
+    db_write(
+        """
+        INSERT INTO wallet_transactions (
+            id, wallet_id, user_id, direction, kind, amount, status,
+            reference_type, reference_id, job_id, application_id, session_id, description
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        tx_id,
+        wallet_id,
+        user_id,
+        direction,
+        kind,
+        money(amount),
+        status,
+        reference_type,
+        reference_id,
+        job_id,
+        application_id,
+        session_id,
+        description,
+    )
+    return tx_id
+
+
+def insert_wallet_request(wallet_id, user_id, request_type, amount, note=None, status="completed"):
+    request_id = str(uuid.uuid4())
+    db_write(
+        """
+        INSERT INTO wallet_requests (id, wallet_id, user_id, request_type, amount, status, note)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """,
+        request_id,
+        wallet_id,
+        user_id,
+        request_type,
+        money(amount),
+        status,
+        note,
+    )
+    return request_id
+
+
+def fetch_wallet_locked(user_id):
+    rows = db.execute("SELECT * FROM wallets WHERE user_id = %s FOR UPDATE", user_id)
+    return rows[0] if rows else None
+
+
+def reserve_company_balance(company_user_id, application_id, job_id, amount):
+    wallet = ensure_wallet(company_user_id, "company")
+    wallet = fetch_wallet_locked(company_user_id)
+    amount_dec = money(amount)
+    available = money(wallet.get("balance_available"))
+    if amount_dec <= 0:
+        raise ApiTxError("O valor da proposta precisa ser maior que zero.", 400)
+    if available < amount_dec:
+        raise ApiTxError("Saldo insuficiente para aprovar este candidato.", 400)
+
+    tx_id = insert_wallet_transaction(
+        wallet["id"],
+        company_user_id,
+        "debit",
+        "job_reserve",
+        amount_dec,
+        reference_type="application",
+        reference_id=application_id,
+        job_id=job_id,
+        application_id=application_id,
+        description="Reserva ficticia para aprovacao de candidato",
+    )
+    db_write(
+        """
+        UPDATE wallets
+        SET balance_reserved = balance_reserved + %s,
+            balance_available = balance_available - %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = %s
+        """,
+        amount_dec,
+        amount_dec,
+        company_user_id,
+    )
+    db_write(
+        """
+        UPDATE job_applications
+        SET reserved_amount = %s,
+            reserved_at = %s,
+            wallet_reserve_tx_id = %s
+        WHERE id = %s
+        """,
+        amount_dec,
+        wallet_now_iso(),
+        tx_id,
+        application_id,
+    )
+    return tx_id
+
+
+def release_company_reserve(company_user_id, application_id, job_id, session_id, amount):
+    ensure_wallet(company_user_id, "company")
+    wallet = fetch_wallet_locked(company_user_id)
+    amount_dec = money(amount)
+    reserved = money(wallet.get("balance_reserved"))
+    if amount_dec <= 0 or reserved < amount_dec:
+        return
+
+    insert_wallet_transaction(
+        wallet["id"],
+        company_user_id,
+        "credit",
+        "job_release",
+        amount_dec,
+        reference_type="session",
+        reference_id=session_id,
+        job_id=job_id,
+        application_id=application_id,
+        session_id=session_id,
+        description="Liberacao de reserva ficticia",
+    )
+    db_write(
+        """
+        UPDATE wallets
+        SET balance_reserved = balance_reserved - %s,
+            balance_available = balance_available + %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = %s
+        """,
+        amount_dec,
+        amount_dec,
+        company_user_id,
+    )
+
+
+def settle_validated_wallets(company_user_id, professional_user_id, application_id, job_id, session_id, amount):
+    ensure_wallet(company_user_id, "company")
+    ensure_wallet(professional_user_id, "professional")
+    company_wallet = fetch_wallet_locked(company_user_id)
+    professional_wallet = fetch_wallet_locked(professional_user_id)
+    amount_dec = money(amount)
+    reserved = money(company_wallet.get("balance_reserved"))
+    if amount_dec <= 0:
+        raise ApiTxError("Valor reservado invalido para liquidacao.", 400)
+    if reserved < amount_dec:
+        raise ApiTxError("Reserva insuficiente para concluir o pagamento ficticio.", 400)
+
+    insert_wallet_transaction(
+        company_wallet["id"],
+        company_user_id,
+        "debit",
+        "job_debit",
+        amount_dec,
+        reference_type="session",
+        reference_id=session_id,
+        job_id=job_id,
+        application_id=application_id,
+        session_id=session_id,
+        description="Debito ficticio apos validacao do servico",
+    )
+    db_write(
+        """
+        UPDATE wallets
+        SET balance_total = balance_total - %s,
+            balance_reserved = balance_reserved - %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = %s
+        """,
+        amount_dec,
+        amount_dec,
+        company_user_id,
+    )
+
+    insert_wallet_transaction(
+        professional_wallet["id"],
+        professional_user_id,
+        "credit",
+        "job_payout",
+        amount_dec,
+        reference_type="session",
+        reference_id=session_id,
+        job_id=job_id,
+        application_id=application_id,
+        session_id=session_id,
+        description="Credito ficticio por servico validado",
+    )
+    db_write(
+        """
+        UPDATE wallets
+        SET balance_total = balance_total + %s,
+            balance_available = balance_available + %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = %s
+        """,
+        amount_dec,
+        amount_dec,
+        professional_user_id,
+    )
+    db_write(
+        "UPDATE job_sessions SET wallet_settled_at = %s WHERE id = %s",
+        wallet_now_iso(),
+        session_id,
+    )
+
+
+def get_wallet_summary(user_id):
+    wallet = ensure_wallet(user_id)
+    if not wallet:
+        return None
+
+    user_type = normalize_account_type(wallet.get("user_type"))
+    transactions = db.execute(
+        """
+        SELECT id, direction, kind, amount, status, reference_type, reference_id, description, created_at
+        FROM wallet_transactions
+        WHERE user_id = %s
+        ORDER BY created_at DESC
+        LIMIT 30
+        """,
+        user_id,
+    )
+    requests_rows = db.execute(
+        """
+        SELECT id, request_type, amount, status, note, created_at
+        FROM wallet_requests
+        WHERE user_id = %s
+        ORDER BY created_at DESC
+        LIMIT 20
+        """,
+        user_id,
+    )
+
+    month_start = datetime.now(timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+    balance_month_rows = db.execute(
+        """
+        SELECT COALESCE(SUM(amount), 0) AS total
+        FROM wallet_transactions
+        WHERE user_id = %s
+          AND kind = 'job_payout'
+          AND status = 'completed'
+          AND created_at >= %s
+        """,
+        user_id,
+        month_start,
+    )
+    balance_month = money_to_float(balance_month_rows[0]["total"]) if balance_month_rows else 0.0
+
+    completed_jobs_rows = db.execute(
+        "SELECT COUNT(*) AS total FROM job_sessions WHERE candidate_id = %s AND status = 'validated' AND wallet_settled_at IS NOT NULL",
+        user_id,
+    )
+    hired_workers_rows = db.execute(
+        "SELECT COUNT(DISTINCT candidate_id) AS total FROM job_sessions WHERE company_id = %s AND status = 'validated' AND wallet_settled_at IS NOT NULL",
+        user_id,
+    )
+
+    return {
+        "userType": user_type,
+        "balanceTotal": money_to_float(wallet.get("balance_total")),
+        "balanceReserved": money_to_float(wallet.get("balance_reserved")),
+        "balanceAvailable": money_to_float(wallet.get("balance_available")),
+        "balanceMonth": balance_month,
+        "completedJobs": int((completed_jobs_rows[0]["total"] if completed_jobs_rows else 0) or 0),
+        "hiredWorkersCount": int((hired_workers_rows[0]["total"] if hired_workers_rows else 0) or 0),
+        "transactions": [
+            {
+                "id": row["id"],
+                "direction": row["direction"],
+                "kind": row["kind"],
+                "amount": money_to_float(row["amount"]),
+                "status": row["status"],
+                "referenceType": row.get("reference_type"),
+                "referenceId": row.get("reference_id"),
+                "description": row.get("description"),
+                "createdAt": str(row.get("created_at") or ""),
+            }
+            for row in transactions
+        ],
+        "requests": [
+            {
+                "id": row["id"],
+                "requestType": row["request_type"],
+                "amount": money_to_float(row["amount"]),
+                "status": row["status"],
+                "note": row.get("note"),
+                "createdAt": str(row.get("created_at") or ""),
+            }
+            for row in requests_rows
+        ],
+    }
 
 
 def ensure_jobs_cep_column():
@@ -1423,6 +1859,7 @@ def forgot_password():
             email,
         )
         if not rows:
+            db.execute("ROLLBACK")
             return GENERIC_OK  # E-mail não cadastrado → 200 silencioso
 
         user = rows[0]
@@ -2709,6 +3146,7 @@ def get_company_applications():
         import json
         job_ids = [job["id"] for job in my_jobs if job.get("id")]
         applications_by_job = {}
+        application_rows = []
 
         if job_ids:
             placeholders = ", ".join(["%s"] * len(job_ids))
@@ -2739,6 +3177,38 @@ def get_company_applications():
             for app in application_rows:
                 applications_by_job.setdefault(app["job_id"], []).append(app)
 
+        closed_notification_lookup = {}
+        if application_rows:
+            candidate_ids = sorted({
+                int(app["candidate_id"])
+                for app in application_rows
+                if app.get("candidate_id") is not None
+            })
+            if candidate_ids:
+                job_placeholders = ", ".join(["%s"] * len(job_ids))
+                candidate_placeholders = ", ".join(["%s"] * len(candidate_ids))
+                notification_rows = db.execute(
+                    f"""
+                    SELECT user_id, reference_id, type, created_at
+                    FROM notifications
+                    WHERE type IN ('session_validated', 'session_cancelled')
+                      AND reference_id IN ({job_placeholders})
+                      AND user_id IN ({candidate_placeholders})
+                    ORDER BY created_at DESC
+                    """,
+                    *job_ids, *candidate_ids
+                )
+                for notification in notification_rows:
+                    key = (
+                        str(notification.get("user_id") or "").strip(),
+                        str(notification.get("reference_id") or "").strip(),
+                        str(notification.get("type") or "").strip().lower(),
+                    )
+                    if key not in closed_notification_lookup:
+                        closed_notification_lookup[key] = parse_api_datetime(notification.get("created_at"))
+
+        reference_now = datetime.now(timezone.utc)
+
         for job in my_jobs:
             job_id = job["id"]
             
@@ -2768,6 +3238,22 @@ def get_company_applications():
             
             candidates = []
             for app in applications:
+                app_status = str(app.get("status") or "").strip().lower()
+                notification_type = None
+                if app_status in {"finalizado", "finished"}:
+                    notification_type = "session_validated"
+                elif app_status in {"cancelado", "cancelled", "canceled"}:
+                    notification_type = "session_cancelled"
+
+                if notification_type:
+                    closed_at = closed_notification_lookup.get((
+                        str(app.get("candidate_id") or "").strip(),
+                        str(job_id or "").strip(),
+                        notification_type,
+                    )) or parse_api_datetime(app.get("app_date"))
+                    if should_hide_closed_company_application(app_status, closed_at, reference_now):
+                        continue
+
                 # Decrypt profile info
                 c_name = "Anônimo"
                 c_phone = ""
@@ -2860,27 +3346,40 @@ def accept_application(app_id):
         return api_error("Não autorizado", 401)
 
     try:
-        app_rows = db.execute("SELECT job_id, candidate_id, status FROM job_applications WHERE id = %s", app_id)
+        ensure_wallet(company_user_id, "company")
+        db.execute("BEGIN")
+        app_rows = db.execute(
+            "SELECT job_id, candidate_id, status, reserved_amount, wallet_reserve_tx_id FROM job_applications WHERE id = %s FOR UPDATE",
+            app_id,
+        )
         if not app_rows:
+            db.execute("ROLLBACK")
             return api_error("Candidatura não encontrada", 404)
 
         app_row = app_rows[0]
         current_status = str(app_row.get("status") or "").strip().lower()
         if current_status in CLOSED_APPLICATION_STATUSES:
+            db.execute("ROLLBACK")
             return api_error("Essa candidatura já foi encerrada e não pode ser aprovada.", 400)
+
+        if current_status in ACCEPTED_APPLICATION_STATUSES or app_row.get("wallet_reserve_tx_id"):
+            db.execute("ROLLBACK")
+            return api_error("Essa candidatura jÃ¡ foi aprovada.", 400)
 
         job_id = app_row["job_id"]
         candidate_id = app_row["candidate_id"]
 
         job_rows = db.execute(
-            "SELECT title, posted_by_user_id, start_date, start_time, work_hours FROM jobs WHERE id = %s",
+            "SELECT title, posted_by_user_id, start_date, start_time, work_hours, rate FROM jobs WHERE id = %s",
             job_id,
         )
         if not job_rows or str(job_rows[0]["posted_by_user_id"]) != str(company_user_id):
+            db.execute("ROLLBACK")
             return api_error("Permissão negada ou vaga não encontrada", 403)
 
         accepted_job_row = dict(job_rows[0])
         job_title = accepted_job_row["title"]
+        reserve_company_balance(company_user_id, app_id, job_id, accepted_job_row.get("rate"))
 
         db_write("UPDATE job_applications SET status = 'aprovado' WHERE id = %s", app_id)
 
@@ -2909,12 +3408,23 @@ def accept_application(app_id):
                 session_id, app_id, candidate_id, company_user_id, job_id
             )
 
+        db.execute("COMMIT")
         return api_ok(
             message="Candidato aprovado com sucesso",
             cancelledApplicationIds=[row["id"] for row in cancelled_applications],
         )
 
+    except ApiTxError as e:
+        try:
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        return api_error(e.message, e.status)
     except Exception as e:
+        try:
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
         print(f"Erro ao aceitar candidatura: {e}")
         return api_error("Erro ao aceitar candidatura", 500)
 
@@ -3166,6 +3676,194 @@ def validate_session(session_id):
     except Exception as e:
         print(f"Erro ao validar sessÃ£o: {e}")
         return api_error("Erro ao validar sessÃ£o", 500)
+@app.route("/api/sessions/<session_id>/validate-wallet", methods=["PUT"])
+def validate_session_with_wallet(session_id):
+    user_id = current_user_id()
+    if not user_id:
+        return api_error("Nao autorizado", 401)
+
+    try:
+        data = request.get_json(silent=True) or {}
+        completed = data.get("completed")
+        if completed is None:
+            completed = True
+
+        db.execute("BEGIN")
+        rows = db.execute(
+            "SELECT * FROM job_sessions WHERE id = %s AND company_id = %s FOR UPDATE",
+            session_id, user_id,
+        )
+        if not rows:
+            db.execute("ROLLBACK")
+            return api_error("Sessao nao encontrada", 404)
+
+        session_row = rows[0]
+        if session_row["status"] != "checked_out":
+            db.execute("ROLLBACK")
+            return api_error(f"So e possivel validar apos o check-out. Status atual: {session_row['status']}", 409)
+
+        app_rows = db.execute(
+            "SELECT reserved_amount FROM job_applications WHERE id = %s FOR UPDATE",
+            session_row["application_id"],
+        )
+        reserved_amount = app_rows[0].get("reserved_amount") if app_rows else None
+        now = wallet_now_iso()
+
+        if completed:
+            if session_row.get("wallet_settled_at"):
+                db.execute("ROLLBACK")
+                return api_error("Esse servico ja foi liquidado na carteira.", 409)
+
+            db_write(
+                "UPDATE job_sessions SET validated_at = %s, status = 'validated' WHERE id = %s",
+                now,
+                session_id,
+            )
+            db_write("UPDATE job_applications SET status = 'finalizado' WHERE id = %s", session_row["application_id"])
+            db_write("UPDATE jobs SET status = 'finalizada' WHERE id = %s", session_row["job_id"])
+            settle_validated_wallets(
+                session_row["company_id"],
+                session_row["candidate_id"],
+                session_row["application_id"],
+                session_row["job_id"],
+                session_id,
+                reserved_amount,
+            )
+            db_write(
+                "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (%s, 'session_validated', %s, %s)",
+                session_row["candidate_id"],
+                "Seu servico foi validado pela empresa!",
+                session_row["job_id"],
+            )
+            db.execute("COMMIT")
+            return api_ok(message="Servico validado com sucesso!", status="validated")
+
+        db_write("UPDATE job_sessions SET validated_at = NULL, status = 'cancelled' WHERE id = %s", session_id)
+        db_write("UPDATE job_applications SET status = 'cancelado' WHERE id = %s", session_row["application_id"])
+        db_write("UPDATE jobs SET status = 'inativa' WHERE id = %s", session_row["job_id"])
+        if not session_row.get("wallet_settled_at") and reserved_amount:
+            release_company_reserve(
+                session_row["company_id"],
+                session_row["application_id"],
+                session_row["job_id"],
+                session_id,
+                reserved_amount,
+            )
+        db_write(
+            "INSERT INTO notifications (user_id, type, message, reference_id) VALUES (%s, 'session_cancelled', %s, %s)",
+            session_row["candidate_id"],
+            "A empresa informou que o servico nao foi concluido.",
+            session_row["job_id"],
+        )
+        db.execute("COMMIT")
+        return api_ok(message="Servico marcado como nao concluido.", status="cancelled")
+    except ApiTxError as e:
+        try:
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        return api_error(e.message, e.status)
+    except Exception as e:
+        try:
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        print(f"Erro ao validar sessao com carteira: {e}")
+        return api_error("Erro ao validar sessao", 500)
+
+
+@app.route("/api/wallet", methods=["GET"])
+def get_wallet():
+    user_id = current_user_id()
+    if not user_id:
+        return api_error("Nao autorizado", 401)
+
+    try:
+        return api_ok(wallet=get_wallet_summary(user_id))
+    except Exception as e:
+        print(f"Erro ao buscar carteira: {e}")
+        return api_error("Erro ao buscar carteira", 500)
+
+
+@app.route("/api/wallet/deposit-requests", methods=["POST"])
+def create_wallet_deposit_request():
+    user_id = current_user_id()
+    if not user_id:
+        return api_error("Nao autorizado", 401)
+
+    try:
+        if get_user_account_type(user_id) != "company":
+            return api_error("Somente empresas podem adicionar saldo ficticio.", 403)
+
+        data = request.get_json(silent=True) or {}
+        amount = money(data.get("amount"))
+        note = (data.get("note") or "").strip() or None
+        if amount <= 0:
+            return api_error("Informe um valor valido para adicionar saldo.", 400)
+
+        ensure_wallet(user_id, "company")
+        db.execute("BEGIN")
+        wallet = fetch_wallet_locked(user_id)
+        request_id = insert_wallet_request(wallet["id"], user_id, "deposit", amount, note, "completed")
+        insert_wallet_transaction(
+            wallet["id"], user_id, "credit", "manual_deposit", amount,
+            reference_type="manual", reference_id=request_id, description=note or "Adicao de saldo ficticio"
+        )
+        db_write(
+            "UPDATE wallets SET balance_total = balance_total + %s, balance_available = balance_available + %s, updated_at = CURRENT_TIMESTAMP WHERE user_id = %s",
+            amount, amount, user_id,
+        )
+        db.execute("COMMIT")
+        return api_ok(message="Saldo ficticio adicionado com sucesso.", wallet=get_wallet_summary(user_id))
+    except Exception as e:
+        try:
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        print(f"Erro ao adicionar saldo ficticio: {e}")
+        return api_error("Erro ao adicionar saldo ficticio", 500)
+
+
+@app.route("/api/wallet/withdraw-requests", methods=["POST"])
+def create_wallet_withdraw_request():
+    user_id = current_user_id()
+    if not user_id:
+        return api_error("Nao autorizado", 401)
+
+    try:
+        data = request.get_json(silent=True) or {}
+        amount = money(data.get("amount"))
+        note = (data.get("note") or "").strip() or None
+        if amount <= 0:
+            return api_error("Informe um valor valido para saque.", 400)
+
+        ensure_wallet(user_id)
+        db.execute("BEGIN")
+        wallet = fetch_wallet_locked(user_id)
+        if money(wallet.get("balance_available")) < amount:
+            db.execute("ROLLBACK")
+            return api_error("Saldo disponivel insuficiente para esse saque ficticio.", 400)
+
+        request_id = insert_wallet_request(wallet["id"], user_id, "withdraw", amount, note, "completed")
+        insert_wallet_transaction(
+            wallet["id"], user_id, "debit", "manual_withdraw", amount,
+            reference_type="manual", reference_id=request_id, description=note or "Saque ficticio"
+        )
+        db_write(
+            "UPDATE wallets SET balance_total = balance_total - %s, balance_available = balance_available - %s, updated_at = CURRENT_TIMESTAMP WHERE user_id = %s",
+            amount, amount, user_id,
+        )
+        db.execute("COMMIT")
+        return api_ok(message="Saque ficticio realizado com sucesso.", wallet=get_wallet_summary(user_id))
+    except Exception as e:
+        try:
+            db.execute("ROLLBACK")
+        except Exception:
+            pass
+        print(f"Erro ao sacar saldo ficticio: {e}")
+        return api_error("Erro ao sacar saldo ficticio", 500)
+
+
 @app.route("/api/get_dados", methods=["GET"])
 def get_dados():
     user_id = current_user_id()

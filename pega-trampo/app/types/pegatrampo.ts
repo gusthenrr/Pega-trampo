@@ -168,6 +168,39 @@ export interface UserProfile {
     id?: string
 }
 
+export interface WalletTransaction {
+    id: string
+    direction: 'credit' | 'debit'
+    kind: 'manual_deposit' | 'manual_withdraw' | 'job_reserve' | 'job_release' | 'job_debit' | 'job_payout'
+    amount: number
+    status: 'completed' | 'cancelled'
+    referenceType?: 'job' | 'application' | 'session' | 'manual'
+    referenceId?: string | null
+    description?: string | null
+    createdAt: string
+}
+
+export interface WalletRequest {
+    id: string
+    requestType: 'deposit' | 'withdraw'
+    amount: number
+    status: 'completed'
+    note?: string | null
+    createdAt: string
+}
+
+export interface WalletSummary {
+    userType: UserType
+    balanceTotal: number
+    balanceReserved: number
+    balanceAvailable: number
+    balanceMonth: number
+    completedJobs: number
+    hiredWorkersCount: number
+    transactions: WalletTransaction[]
+    requests: WalletRequest[]
+}
+
 export interface Notification {
     id: string | number
     title?: string

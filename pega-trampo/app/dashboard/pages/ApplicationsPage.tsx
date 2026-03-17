@@ -1,4 +1,4 @@
-﻿import { Calendar, Clock, ChevronRight, Eye } from 'lucide-react'
+﻿import { Calendar, Clock, ChevronRight, Eye, Briefcase } from 'lucide-react'
 
 export default function ApplicationsPage(props: any) {
     const { userProfile, myApplications, openSessionPanel, handleViewJobDetails } = props
@@ -16,10 +16,19 @@ export default function ApplicationsPage(props: any) {
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-6xl mx-auto px-4 pt-4 pb-2">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-5 shadow-lg max-w-md md:max-w-none">
-                    <h2 className="text-lg font-bold text-white">{userProfile?.userType === 'company' ? 'Candidaturas nas Minhas Vagas' : 'Minhas Candidaturas'}</h2>
-                    <p className="text-blue-100 text-sm mt-1">{userProfile?.userType === 'company' ? 'Usuarios que se candidataram nas suas vagas' : 'Trampos que voce ja se candidatou'}</p>
-                </div>
+                <div className="rounded-3xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-blue-100 text-slate-900 p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-xs uppercase tracking-[0.3em] text-violet-500">Painel de propostas</p>
+                                    <h2 className="text-lg font-bold mt-1">
+                                        {userProfile.userType === 'company' ? 'Candidaturas nas Minhas Vagas' : 'Minhas Candidaturas'}
+                                    </h2>
+                                </div>
+                                <div className="w-10 h-10 rounded-2xl bg-white border border-sky-100 flex items-center justify-center shadow-sm shrink-0">
+                                    <Briefcase className="h-5 w-5 text-sky-700" />
+                                </div>
+                            </div>
+                        </div>
             </div>
 
             <div className="max-w-6xl mx-auto p-4 space-y-3">

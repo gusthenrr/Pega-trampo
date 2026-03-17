@@ -137,6 +137,9 @@ CREATE TABLE IF NOT EXISTS job_applications (
   status TEXT DEFAULT 'pendente',
   created_at TEXT DEFAULT (now()::text),
   resume_id TEXT,
+  reserved_amount NUMERIC(12,2),
+  reserved_at TIMESTAMPTZ,
+  wallet_reserve_tx_id TEXT,
 
   CONSTRAINT fk_job_app_job
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
@@ -162,6 +165,59 @@ CREATE TABLE IF NOT EXISTS notifications (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_job_app_unique
   ON job_applications(job_id, candidate_id);
 
+-- 6b) wallets
+CREATE TABLE IF NOT EXISTS wallets (
+  id TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL UNIQUE,
+  user_type TEXT NOT NULL,
+  balance_total NUMERIC(12,2) NOT NULL DEFAULT 0,
+  balance_reserved NUMERIC(12,2) NOT NULL DEFAULT 0,
+  balance_available NUMERIC(12,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_wallets_user
+    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+  id TEXT PRIMARY KEY,
+  wallet_id TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  direction TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  amount NUMERIC(12,2) NOT NULL,
+  status TEXT NOT NULL,
+  reference_type TEXT,
+  reference_id TEXT,
+  job_id TEXT,
+  application_id TEXT,
+  session_id TEXT,
+  description TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_wallet_transactions_wallet
+    FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
+  CONSTRAINT fk_wallet_transactions_user
+    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS wallet_requests (
+  id TEXT PRIMARY KEY,
+  wallet_id TEXT NOT NULL,
+  user_id INTEGER NOT NULL,
+  request_type TEXT NOT NULL,
+  amount NUMERIC(12,2) NOT NULL,
+  status TEXT NOT NULL,
+  note TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT fk_wallet_requests_wallet
+    FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
+  CONSTRAINT fk_wallet_requests_user
+    FOREIGN KEY (user_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_cnpj ON user_profiles(cnpj);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_cpf ON user_profiles(cpf);
@@ -171,6 +227,10 @@ CREATE INDEX IF NOT EXISTS idx_jobs_posted_by_user_id ON jobs(posted_by_user_id)
 CREATE INDEX IF NOT EXISTS idx_jobs_lat_lng ON jobs(lat, lng);
 CREATE INDEX IF NOT EXISTS idx_profiles_lat_lng ON user_profiles(lat, lng);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_user_id_created_at ON wallet_transactions(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_application_id ON wallet_transactions(application_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_transactions_session_id ON wallet_transactions(session_id);
+CREATE INDEX IF NOT EXISTS idx_wallet_requests_user_id_created_at ON wallet_requests(user_id, created_at DESC);
 
 -- 8) user_evaluations
 CREATE TABLE IF NOT EXISTS user_evaluations (
@@ -197,3 +257,6 @@ CREATE INDEX IF NOT EXISTS idx_user_evaluations_evaluator_id ON user_evaluations
 CREATE INDEX IF NOT EXISTS idx_user_evaluations_job_id ON user_evaluations(job_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_evaluations_unique_review
   ON user_evaluations(evaluator_id, evaluated_id, job_id);
+
+ALTER TABLE job_sessions
+  ADD COLUMN IF NOT EXISTS wallet_settled_at TIMESTAMPTZ;

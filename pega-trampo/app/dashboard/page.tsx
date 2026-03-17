@@ -22,6 +22,7 @@ import type {
     Candidate,
     JobSession,
     CandidateEvaluationsPayload,
+    WalletSummary,
 } from '../types/pegatrampo'
 
 import * as logic from './pegaTrampo.logic'
@@ -33,6 +34,7 @@ import SupportPage from './pages/SupportPage'
 import JobsPage from './pages/JobsPage'
 import ApplicationsPage from './pages/ApplicationsPage'
 import ResumesPage from './pages/ResumesPage'
+import WalletPage from './pages/WalletPage'
 
 const categoryData = logic.catagory_work
 
@@ -95,6 +97,18 @@ const getCandidateProfileImageUrl = (candidate?: Candidate | null) => {
         resumeAny?.personalInfo?.photo,
         resumeAny?.personalInfo?.image,
     ])
+}
+
+const normalizeMojibakeText = (value?: string | null) => {
+    if (!value) return ''
+    if (!/[ÃÂâ€œ]/.test(value)) return value
+
+    try {
+        const bytes = Uint8Array.from(Array.from(value), (char) => char.charCodeAt(0))
+        return new TextDecoder('utf-8').decode(bytes)
+    } catch {
+        return value
+    }
 }
 
 const buildResumeFromCandidate = (candidate: Candidate): Resume => {
@@ -532,6 +546,9 @@ export default function PegaTrampoApp() {
 
     const [myApplications, setMyApplications] = useState<MyApplication[]>([])
     const [isEditingProfile, setIsEditingProfile] = useState(false)
+    const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null)
+    const [walletLoading, setWalletLoading] = useState(true)
+    const [walletActionLoading, setWalletActionLoading] = useState(false)
 
 
     const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -560,7 +577,7 @@ export default function PegaTrampoApp() {
         hourlyRate: 0,
         dailyRate: 0,
         acceptedTerms: true,
-        userType: 'professional',
+        userType: '' as unknown as UserProfile['userType'],
         rating: 0,
         reviews: 0,
         completedJobs: 0,
@@ -655,6 +672,22 @@ export default function PegaTrampoApp() {
             setUserResume,
             setResumes,
         })
+    }, [])
+
+    const loadWalletSummary = async () => {
+        setWalletLoading(true)
+        try {
+            const wallet = await logic.fetchWalletSummary()
+            setWalletSummary(wallet)
+        } catch (err) {
+            console.error('Erro ao buscar carteira', err)
+        } finally {
+            setWalletLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        loadWalletSummary()
     }, [])
 
     useEffect(() => {
@@ -889,7 +922,7 @@ export default function PegaTrampoApp() {
         if (!confirm(completed ? 'Confirmar que o servico foi realizado com sucesso?' : 'Confirmar que o funcionario nao concluiu o servico?')) return
         setSessionLoading(true)
         try {
-            const res = await logic.fetchWithAuth(`${logic.API_BASE}/api/sessions/${sessionId}/validate`, {
+            const res = await logic.fetchWithAuth(`${logic.API_BASE}/api/sessions/${sessionId}/validate-wallet`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ completed }),
@@ -911,6 +944,7 @@ export default function PegaTrampoApp() {
                             setCompanyJobsWithCandidates(appsData.jobs)
                         }
                     }
+                    await loadWalletSummary()
                     if (nextStatus === 'validated' || nextStatus === 'cancelled') {
                         openEvaluationModalForSession(updatedSession, companySessionView.candidateName)
                     }
@@ -920,6 +954,18 @@ export default function PegaTrampoApp() {
             }
         } catch (e) { console.error(e) }
         setSessionLoading(false)
+    }
+
+    const handleWalletAction = async (params: { requestType: 'deposit' | 'withdraw', amount: number, note?: string }) => {
+        setWalletActionLoading(true)
+        try {
+            const wallet = await logic.createWalletRequest(params)
+            setWalletSummary(wallet)
+        } catch (err: any) {
+            alert(err.message || 'Erro ao processar carteira')
+        } finally {
+            setWalletActionLoading(false)
+        }
     }
 
     const handleSubmitEvaluation = async () => {
@@ -1069,8 +1115,29 @@ export default function PegaTrampoApp() {
     }
 
     const unreadNotifications = notifications.filter(n => !n.read).length
+    const hasResolvedUserType =
+        userProfile.userType === 'company' || userProfile.userType === 'professional'
 
     // Funcao para visualizar curriculo completo
+
+    if (loading || !hasResolvedUserType) {
+        return (
+            <div className="min-h-screen bg-gray-50 pt-[60px]">
+                <div className="fixed top-0 left-0 right-0 z-50 border-b border-white/20 bg-gradient-to-r from-violet-600 via-indigo-500 to-sky-500 px-4 py-3 shadow-[0_12px_30px_rgba(99,102,241,0.22)]">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <Briefcase className="h-6 w-6 text-white" />
+                            <h1 className="text-xl font-bold leading-tight text-white">PegaTrampo</h1>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex min-h-[calc(100vh-60px)] items-center justify-center">
+                    <Loader2 className="h-10 w-10 animate-spin text-violet-600" />
+                </div>
+            </div>
+        )
+    }
 
     // Modal de Detalhes do Curriculo Completo - MELHORADO COM BOTO DE CHAMAR 
     if (showResumeDetails && selectedResume) {
@@ -1121,9 +1188,6 @@ mb-1">{selectedResume.personalInfo.name}</h2>
                         <p className="text-lg text-blue-600 font-semibold 
 mb-3">{logic.getWorkerCategoryLabel({ workerCategory: (selectedResume as any).workerCategory || selectedResume.professionalInfo.category })}</p>
                         <div className="flex items-center justify-center space-x-2 text-gray-600 mb-4">
-                            <Clock className="h-4 w-4" />
-                            <span className="text-sm">{selectedResume.professionalInfo.experience} de
-                                experiência</span>
                         </div>
 
                         {/* Botão de Chamar em DESTAQUE */}
@@ -1187,7 +1251,8 @@ text-gray-900">{selectedResumeAddress}</p>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div>
+
                     {/* Experiência Profissional */}
                     {selectedResume.workExperience && selectedResume.workExperience.length > 0 && (
                         <div className="bg-white rounded-xl shadow-md border border-gray-100 p-5">
@@ -2392,23 +2457,15 @@ hover:bg-gray-100 rounded-full">
     // App Principal - PegaTrampo Style 
     return (
         <div className="min-h-screen bg-gray-50 pt-[60px]">
-            <div className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'} bg-blue-600 shadow-sm border-b px-4 py-3`}>
+            <div className={`fixed top-0 left-0 right-0 z-50 border-b border-white/20 bg-gradient-to-r from-violet-600 via-indigo-500 to-sky-500 px-4 py-3 shadow-[0_12px_30px_rgba(99,102,241,0.22)] transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                        <Briefcase className="h-6 w-6 text-white" />
-                        <div className="flex flex-col md:flex-row md:items-center md:gap-2">
-                            <h1 className="text-xl font-bold text-white leading-tight">PegaTrampo</h1>
-                            <p className="text-blue-100 text-sm md:text-base font-medium leading-tight">
-                                Ola, {userProfile.userType === 'company'
-                                    ? (userProfile.companyInfo?.companyName || 'Empresa')
-                                    : (userProfile.name || 'Usuario')}
-                            </p>
-                        </div>
+                        <h1 className="text-xl font-bold text-white leading-tight">PegaTrampo</h1>
                     </div>
                     <div className="flex items-center space-x-3">
                         <button
                             onClick={() => setShowNotifications(!showNotifications)}
-                            className="p-2 hover:bg-blue-700 rounded-full relative"
+                            className="relative rounded-full p-2 transition hover:bg-white/15"
                         >
                             <Bell className="h-5 w-5 text-white" />
                             {unreadNotifications > 0 && (
@@ -2418,7 +2475,7 @@ hover:bg-gray-100 rounded-full">
                             )}
                         </button>
                         <button
-                            className="p-2 hover:bg-blue-700 rounded-full"
+                            className="rounded-full p-2 transition hover:bg-white/15"
                             onClick={() => setShowMenu(true)}
                         >
                             <Menu className="h-5 w-5 text-white" />
@@ -2428,46 +2485,55 @@ hover:bg-gray-100 rounded-full">
             </div>
 
             {showNotifications && (
-                <div className="bg-white border-b shadow-lg">
-                    <div className="max-w-md mx-auto">
-                        <div className="p-4 border-b">
-                            <div className="flex items-center justify-between">
-                                <h2 className="font-semibold text-gray-900">Notificacoes</h2>
+                <div
+                    className="fixed inset-0 z-[70] bg-slate-950/10"
+                    onClick={() => setShowNotifications(false)}
+                >
+                    <div className="px-4 pt-[72px] sm:pt-[78px]">
+                        <div
+                            className="mx-auto w-full max-w-sm overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]"
+                            onClick={(event) => event.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                                <div>
+                                    <h2 className="font-semibold text-slate-900">Notificacoes</h2>
+                                    <p className="text-xs text-slate-500">Atualizacoes recentes da sua conta</p>
+                                </div>
                                 <button
                                     onClick={() => setShowNotifications(false)}
-                                    className="text-gray-500 hover:text-gray-700"
+                                    className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                                 >
-                                    ?
+                                    <X className="h-4 w-4" />
                                 </button>
                             </div>
-                        </div>
-                        <div className="max-h-[220px] overflow-y-auto">
-                            {notifications.length === 0 ? (
-                                <div className="p-4 text-center text-gray-500">
-                                    Nenhuma notificacao ainda
-                                </div>
-                            ) : (
-                                notifications.map((notification) => (
-                                    <div
-                                        key={notification.id}
-                                        onClick={() => handleNotificationClick(notification)}
-                                        className={`p-4 border-b cursor-pointer transition-colors hover:bg-gray-50 ${!notification.read ? 'bg-blue-50/60 font-semibold' : ''}`}
-                                    >
-                                        <div className="flex items-start space-x-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${!notification.read ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                                <Bell className="h-4 w-4" />
-                                            </div>
-                                            <div className="flex-1">
-                                                {notification.title && <h3 className="text-gray-900 text-sm mb-0.5">{notification.title}</h3>}
-                                                <p className={`text-xs ${!notification.read ? 'text-gray-800' : 'text-gray-600'}`}>{notification.message}</p>
-                                                <p className="text-gray-400 text-xs mt-1">
-                                                    {new Date(notification.timestamp).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
-                                                </p>
+                            <div className="max-h-[320px] overflow-y-auto">
+                                {notifications.length === 0 ? (
+                                    <div className="px-4 py-8 text-center text-sm text-slate-500">
+                                        Nenhuma notificacao ainda
+                                    </div>
+                                ) : (
+                                    notifications.map((notification) => (
+                                        <div
+                                            key={notification.id}
+                                            onClick={() => handleNotificationClick(notification)}
+                                            className={`cursor-pointer border-b border-slate-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-slate-50 ${!notification.read ? 'bg-blue-50/60 font-semibold' : ''}`}
+                                        >
+                                            <div className="flex items-start space-x-3">
+                                                <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${!notification.read ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                                    <Bell className="h-4 w-4" />
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    {notification.title && <h3 className="mb-0.5 text-sm text-slate-900">{normalizeMojibakeText(notification.title)}</h3>}
+                                                    <p className={`text-xs leading-5 ${!notification.read ? 'text-slate-800' : 'text-slate-600'}`}>{normalizeMojibakeText(notification.message)}</p>
+                                                    <p className="mt-1 text-xs text-slate-400">
+                                                        {new Date(notification.timestamp).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2476,6 +2542,7 @@ hover:bg-gray-100 rounded-full">
             {activeTab === 'jobs' && (
                 <JobsPage
                     userProfile={userProfile}
+                    setShowProfile={setShowProfile}
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
                     selectedDate={selectedDate}
@@ -2765,6 +2832,16 @@ hover:bg-gray-100 rounded-full">
                         handleDeleteResume={handleDeleteResume}
                     />
                 )}
+
+                {activeTab === 'wallet' && (
+                    <WalletPage
+                        userProfile={userProfile}
+                        walletSummary={walletSummary}
+                        walletLoading={walletLoading}
+                        walletActionLoading={walletActionLoading}
+                        onSubmitAction={handleWalletAction}
+                    />
+                )}
             <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-purple-100 px-0 py-2 pb-safe shadow-[0_-10px_40px_rgba(99,102,241,0.1)] z-40">
                 <div className="flex items-center w-full max-w-md mx-auto relative pb-2 pt-1">
                     <div style={{ flexGrow: 2 }}></div>
@@ -2807,6 +2884,18 @@ hover:bg-gray-100 rounded-full">
                         </div>
                         <span className={`absolute -bottom-1 text-[10px] font-bold transition-all duration-300 text-center w-full ${activeTab === 'resumes' && !showProfile && !showSupport ? 'text-purple-700 opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100'}`}>
                             Currículo
+                        </span>
+                    </button>
+                    <div style={{ flexGrow: 1 }}></div>
+                    <button
+                        onClick={() => { setShowProfile(false); setShowSupport(false); setActiveTab('wallet'); }}
+                        className="flex flex-col items-center p-2 relative group w-16 shrink-0"
+                    >
+                        <div className={`relative p-2.5 rounded-2xl transition-all duration-300 flex items-center justify-center ${activeTab === 'wallet' && !showProfile && !showSupport ? 'bg-gradient-to-tr from-blue-600 to-purple-600 text-white shadow-lg shadow-purple-500/40 -translate-y-4 scale-110' : 'text-gray-400 bg-transparent group-hover:text-purple-500 hover:bg-purple-50'}`}>
+                            <Wallet className="h-6 w-6" />
+                        </div>
+                        <span className={`absolute -bottom-1 text-[10px] font-bold transition-all duration-300 text-center w-full ${activeTab === 'wallet' && !showProfile && !showSupport ? 'text-purple-700 opacity-100' : 'text-gray-400 opacity-0 group-hover:opacity-100'}`}>
+                            Saldo
                         </span>
                     </button>
                     <div style={{ flexGrow: 2 }}></div>
@@ -2861,6 +2950,16 @@ hover:bg-gray-100 rounded-full">
                                         <HelpCircle className="h-5 w-5 text-blue-600" />
                                     </div>
                                     <span className="text-lg">Suporte</span>
+                                </button>
+
+                                <button
+                                    onClick={() => { setShowMenu(false); setShowProfile(false); setShowSupport(false); setActiveTab('wallet'); }}
+                                    className="w-full flex items-center space-x-3 p-4 hover:bg-blue-50 rounded-xl text-gray-700 font-medium transition-colors border border-transparent hover:border-blue-100"
+                                >
+                                    <div className="bg-blue-100 p-2 rounded-lg">
+                                        <Wallet className="h-5 w-5 text-blue-600" />
+                                    </div>
+                                    <span className="text-lg">Saldo</span>
                                 </button>
                             </div>
 
@@ -3004,12 +3103,15 @@ hover:bg-gray-100 rounded-full">
                                                         onClick={async (e) => {
                                                             e.stopPropagation();
                                                             setAcceptingApplicationId(candidate.applicationId)
-                                                            await logic.handleAcceptApplication({
+                                                            const accepted = await logic.handleAcceptApplication({
                                                                 applicationId: candidate.applicationId,
                                                                 setCompanyJobsWithCandidates,
                                                                 setCandidatesModalJob,
                                                                 setNotifications
                                                             })
+                                                            if (accepted) {
+                                                                await loadWalletSummary()
+                                                            }
                                                             setAcceptingApplicationId((current) =>
                                                                 current === candidate.applicationId ? null : current
                                                             )

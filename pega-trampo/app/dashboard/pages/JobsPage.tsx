@@ -1,5 +1,4 @@
 ﻿import {
-    Search,
     Calendar,
     Filter,
     Building2,
@@ -10,11 +9,14 @@
     MapPin,
     DollarSign,
     Utensils,
+    Star,
+    Home,
 } from 'lucide-react'
 
 export default function JobsPage(props: any) {
     const {
         userProfile,
+        setShowProfile,
         searchTerm,
         setSearchTerm,
         selectedDate,
@@ -35,6 +37,19 @@ export default function JobsPage(props: any) {
         handleDeleteJob,
         formatRelativeDate,
     } = props
+
+    const profileImage =
+        userProfile?.userType === 'professional'
+            ? userProfile?.imagem_profile || userProfile?.profilePhoto || null
+            : null
+
+    const profileName =
+        userProfile?.userType === 'company'
+            ? userProfile?.companyInfo?.companyName || userProfile?.name || 'Empresa'
+            : userProfile?.name || userProfile?.username || 'Usuario'
+
+    const roundedRating = Math.round(Number(userProfile?.rating || 0))
+    const reviewsCount = Number(userProfile?.reviews || 0)
 
     const getJobStatusBadge = (status?: string) => {
         const normalizedStatus = String(status || 'ativa').trim().toLowerCase()
@@ -62,59 +77,40 @@ export default function JobsPage(props: any) {
     return (
         <>
             {userProfile.userType === 'professional' && (
-                <div className="bg-white border-b p-4 space-y-3">
-                    <div className="max-w-6xl mx-auto space-y-3">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Buscar por: cozinheiro, padeiro, diarista..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 text-black placeholder-gray-600 focus:ring-blue-500 focus:border-transparent"
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
-                            <div className="flex items-center space-x-2 flex-shrink-0">
-                                <button
-                                    ref={btnAgendaRef}
-                                    onClick={() => setOpenAgenda(true)}
-                                    className={`h-9 w-9 rounded-full flex items-center justify-center border transition-all shadow-sm ${selectedDate ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
-                                >
-                                    <Calendar className="h-4 w-4" />
-                                </button>
-
-                                <div className="flex items-center border border-gray-300/80 rounded-full bg-gray-50/50 hover:bg-gray-100/50 transition-colors px-1 h-9">
-                                    <div className="pl-3 pr-1 flex items-center h-full">
-                                        <Filter className="h-3.5 w-3.5 text-gray-500" />
-                                    </div>
-                                    <select
-                                        value={selectedCategory}
-                                        onChange={(e) => setSelectedCategory(e.target.value)}
-                                        className="pr-2 py-1.5 text-xs font-medium text-gray-700 focus:ring-0 min-w-[100px] border-none outline-none bg-transparent appearance-none cursor-pointer"
-                                        style={{ WebkitAppearance: 'none' }}
-                                    >
-                                        {categories.map((category: string) => (
-                                            <option key={category} value={category}>{category}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                <div className="px-4 pt-3 pb-2">
+                    <div className="max-w-6xl mx-auto">
+                        <button
+                            type="button"
+                            onClick={() => setShowProfile?.(true)}
+                            className="flex items-start gap-2.5 text-left transition-opacity hover:opacity-85"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                                {profileImage ? (
+                                    <img src={profileImage} alt={profileName} className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-sm font-bold text-gray-700">
+                                        {String(profileName).trim().charAt(0).toUpperCase() || 'U'}
+                                    </span>
+                                )}
                             </div>
 
-                            {(searchTerm || selectedDate || selectedCategory !== 'Recomendado') && (
-                                <button
-                                    onClick={() => {
-                                        setSearchTerm('')
-                                        setSelectedDate('')
-                                        setSelectedCategory('Recomendado')
-                                    }}
-                                    className="text-xs font-bold text-blue-600 hover:text-blue-800 whitespace-nowrap bg-blue-50 px-3 py-1.5 rounded-full"
-                                >
-                                    Limpar
-                                </button>
-                            )}
-                        </div>
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <Star
+                                            key={star}
+                                            className={`h-4 w-4 ${star <= roundedRating ? 'fill-amber-500 text-amber-500' : 'text-amber-200'}`}
+                                        />
+                                    ))}
+                                    <span className="ml-1 text-sm font-semibold text-slate-500">
+                                        ({reviewsCount})
+                                    </span>
+                                </div>
+                                <p className="text-sm font-semibold text-slate-700">
+                                    Ola, {profileName}
+                                </p>
+                            </div>
+                        </button>
                     </div>
                 </div>
             )}
@@ -122,9 +118,62 @@ export default function JobsPage(props: any) {
             <div className="p-4">
                 <div className="max-w-6xl mx-auto">
                     <div className="space-y-4">
-                        <h2 className="text-gray-900 font-bold text-xl mb-4">
-                            {userProfile.userType === 'company' ? 'Minhas propostas de trabalho' : 'Propostas de trabalho'}
-                        </h2>
+                        <div className="rounded-3xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-blue-100 text-slate-900 p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-xs uppercase tracking-[0.3em] text-violet-500">Painel de propostas</p>
+                                    <h2 className="text-lg font-bold mt-1">
+                                        {userProfile.userType === 'company' ? 'Minhas propostas de trabalho' : 'Propostas de trabalho'}
+                                    </h2>
+                                </div>
+                                <div className="w-10 h-10 rounded-2xl bg-white border border-sky-100 flex items-center justify-center shadow-sm shrink-0">
+                                    <Home className="h-5 w-5 text-sky-700" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {userProfile.userType === 'professional' && (
+                            <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1">
+                                <div className="flex items-center space-x-2 flex-shrink-0">
+                                    <button
+                                        ref={btnAgendaRef}
+                                        onClick={() => setOpenAgenda(true)}
+                                        className={`h-9 w-9 rounded-full flex items-center justify-center border transition-all shadow-sm ${selectedDate ? 'bg-blue-600 text-white border-blue-600 shadow-blue-500/30' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+                                    >
+                                        <Calendar className="h-4 w-4" />
+                                    </button>
+
+                                    <div className="flex items-center border border-gray-300/80 rounded-full bg-gray-50/50 hover:bg-gray-100/50 transition-colors px-1 h-9">
+                                        <div className="pl-3 pr-1 flex items-center h-full">
+                                            <Filter className="h-3.5 w-3.5 text-gray-500" />
+                                        </div>
+                                        <select
+                                            value={selectedCategory}
+                                            onChange={(e) => setSelectedCategory(e.target.value)}
+                                            className="pr-2 py-1.5 text-xs font-medium text-gray-700 focus:ring-0 min-w-[100px] border-none outline-none bg-transparent appearance-none cursor-pointer"
+                                            style={{ WebkitAppearance: 'none' }}
+                                        >
+                                            {categories.map((category: string) => (
+                                                <option key={category} value={category}>{category}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {(selectedDate || selectedCategory !== 'Recomendado') && (
+                                    <button
+                                        onClick={() => {
+                                            setSearchTerm('')
+                                            setSelectedDate('')
+                                            setSelectedCategory('Recomendado')
+                                        }}
+                                        className="text-xs font-bold text-blue-600 hover:text-blue-800 whitespace-nowrap bg-blue-50 px-3 py-1.5 rounded-full"
+                                    >
+                                        Limpar
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
                         {userProfile.userType === 'professional' && (
                             <>
@@ -210,20 +259,22 @@ export default function JobsPage(props: any) {
 
                         {userProfile.userType === 'company' && (
                             <div className="space-y-4">
-                                <div className="flex justify-end">
-                                    <button
-                                        onClick={() => {
-                                            setEditingJobId(null)
-                                            setNewJobPost(initialJobPostState)
-                                            setShowJobPostForm(true)
-                                            updateDuration(1, 'dia')
-                                        }}
-                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center space-x-2"
-                                    >
-                                        <Plus className="h-5 w-5" />
-                                        <span>Publicar Nova Vaga</span>
-                                    </button>
-                                </div>
+                                {filteredJobs.length > 0 && (
+                                    <div className="flex justify-end">
+                                        <button
+                                            onClick={() => {
+                                                setEditingJobId(null)
+                                                setNewJobPost(initialJobPostState)
+                                                setShowJobPostForm(true)
+                                                updateDuration(1, 'dia')
+                                            }}
+                                            className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                                        >
+                                            <Plus className="h-5 w-5" />
+                                            <span>Publicar Nova Vaga</span>
+                                        </button>
+                                    </div>
+                                )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start">
                                     {filteredJobs.map((job: any) => {

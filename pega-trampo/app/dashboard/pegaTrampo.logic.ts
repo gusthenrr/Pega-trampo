@@ -11,6 +11,7 @@ import {
     CompanyJobApplications,
     JobCompanyInfo,
     CandidateEvaluationsPayload,
+    WalletSummary,
 } from '../../app/types/pegatrampo'
 
 import {
@@ -1710,6 +1711,45 @@ export const handleAcceptApplication = async (params: {
         showToastMessage('Erro de conexão ao aceitar candidatura.')
         return false
     }
+}
+
+export const fetchWalletSummary = async (): Promise<WalletSummary> => {
+    const res = await fetchWithAuth(`${API_BASE}/api/wallet`)
+    const data = await res.json()
+
+    if (!res.ok || data.success === false || !data.wallet) {
+        throw new Error(data.error || 'Erro ao buscar carteira')
+    }
+
+    return data.wallet as WalletSummary
+}
+
+export const createWalletRequest = async (params: {
+    requestType: 'deposit' | 'withdraw'
+    amount: number
+    note?: string
+}): Promise<WalletSummary> => {
+    const { requestType, amount, note } = params
+    const endpoint = requestType === 'deposit'
+        ? `${API_BASE}/api/wallet/deposit-requests`
+        : `${API_BASE}/api/wallet/withdraw-requests`
+
+    const res = await fetchWithAuth(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            amount,
+            note: note || '',
+        }),
+    })
+    const data = await res.json()
+
+    if (!res.ok || data.success === false || !data.wallet) {
+        throw new Error(data.error || 'Erro ao processar movimentacao da carteira')
+    }
+
+    showToastMessage(data.message || 'Movimentacao concluida com sucesso!')
+    return data.wallet as WalletSummary
 }
 
 export const normalizeBRPhoneToWa = (raw?: string | null): string | null => {

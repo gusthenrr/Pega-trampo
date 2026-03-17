@@ -33,12 +33,15 @@ export default function ResumesPage(props: any) {
 
         return 'Experiencia nao informada'
     }
-
     return (
-        <div className="max-w-6xl mx-auto space-y-4 px-4 sm:px-0">
+        <div className="max-w-6xl mx-auto space-y-4 px-4 pt-4 sm:px-0 sm:pt-5">
             {userProfile.userType === 'company' ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 space-y-3 max-w-3xl mx-auto">
-                    <h2 className="text-lg font-bold text-gray-900">Curriculos</h2>
+                <div className="rounded-3xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-blue-100 text-slate-900 p-5 shadow-sm space-y-3 max-w-3xl mx-auto">
+                    <div>
+                        <p className="text-xs uppercase tracking-[0.3em] text-violet-500">Painel de curriculos</p>
+                        <h2 className="text-xl font-bold mt-1.5 text-slate-900">Curriculos</h2>
+                        <p className="text-sm text-slate-600 mt-1">Busque profissionais interessados nas suas propostas.</p>
+                    </div>
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                         <input
@@ -51,9 +54,19 @@ export default function ResumesPage(props: any) {
                     </div>
                 </div>
             ) : (
-                <div className="flex items-center justify-between pt-4 lg:px-1">
-                    <h2 className="text-2xl font-bold text-gray-900">Meu Curriculo</h2>
-                </div>
+                <div className="rounded-3xl border border-sky-100 bg-gradient-to-br from-white via-sky-50 to-blue-100 text-slate-900 p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-xs uppercase tracking-[0.3em] text-violet-500">Painel de currículo</p>
+                                    <h2 className="text-lg font-bold mt-1">
+                                        Meu Currículo
+                                    </h2>
+                                </div>
+                                <div className="w-10 h-10 rounded-2xl bg-white border border-sky-100 flex items-center justify-center shadow-sm shrink-0">
+                                    <FileText className="h-5 w-5 text-sky-700" />
+                                </div>
+                            </div>
+                        </div>
             )}
 
             {filteredResumes.length === 0 ? (
