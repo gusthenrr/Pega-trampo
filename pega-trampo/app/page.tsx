@@ -101,7 +101,7 @@ export default function App() {
 
               <div className="relative w-[132px] shrink-0 sm:hidden">
                 <Image
-                  src="/images/joao-confeiteiro-cards.jpeg"
+                  src="/images/joao-confeiteiro-cards.png"
                   alt="Perfil de profissional no PegaTrampo"
                   width={900}
                   height={1200}
@@ -164,7 +164,7 @@ export default function App() {
             <div className="relative z-10 overflow-hidden rounded-[2rem] border border-white/60 bg-white/40 p-2 shadow-[0_20px_60px_rgba(76,29,149,0.15)] backdrop-blur-sm">
               <div className="overflow-hidden rounded-[1.5rem] bg-slate-100 shadow-inner">
                 <Image
-                  src="/images/joao-confeiteiro-cards.jpeg"
+                  src="/images/joao-confeiteiro-cards.png"
                   alt="Perfil de profissional no PegaTrampo"
                   width={900}
                   height={1200}
