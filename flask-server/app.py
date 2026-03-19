@@ -3379,7 +3379,6 @@ def accept_application(app_id):
 
         accepted_job_row = dict(job_rows[0])
         job_title = accepted_job_row["title"]
-        reserve_company_balance(company_user_id, app_id, job_id, accepted_job_row.get("rate"))
 
         db_write("UPDATE job_applications SET status = 'aprovado' WHERE id = %s", app_id)
 
