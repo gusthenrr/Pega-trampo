@@ -1083,8 +1083,6 @@ export default function PegaTrampoApp() {
     const handleDeleteResume = (resumeId: string) =>
         logic.handleDeleteResume({ resumeId, setResumes })
 
-    const handleCallPerson = (resume: Resume) => logic.handleCallPerson({ resume })
-
     // helpers usados no JSX
     const formatRelativeDate = logic.formatRelativeDate
 
@@ -1190,16 +1188,6 @@ mb-3">{logic.getWorkerCategoryLabel({ workerCategory: (selectedResume as any).wo
                         <div className="flex items-center justify-center space-x-2 text-gray-600 mb-4">
                         </div>
 
-                        {/* Botão de Chamar em DESTAQUE */}
-                        <button
-                            onClick={() => handleCallPerson(selectedResume)}
-                            className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 
-rounded-xl font-bold text-lg hover:from-green-600 hover:to-green-700 transition-all 
-shadow-lg flex items-center justify-center space-x-3 transform hover:scale-105"
-                        >
-                            <Phone className="h-6 w-6" />
-                            <span>Chamar no WhatsApp</span>
-                        </button>
                     </div>
                 </div>
 
@@ -1322,18 +1310,6 @@ justify-center">
                             </div>
                         </div>
                     )}
-                    {/* Botão fixo no final */}
-                    <div className="sticky bottom-0 bg-white border-t p-4 -mx-4">
-                        <button
-                            onClick={() => handleCallPerson(selectedResume)}
-                            className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-4 
-rounded-xl font-bold text-lg hover:from-green-600 hover:to-green-700 transition-all 
-shadow-lg flex items-center justify-center space-x-3"
-                        >
-                            <Phone className="h-6 w-6" />
-                            <span>Chamar no WhatsApp</span>
-                        </button>
-                    </div>
                 </div>
 
                 {/* Modal Enlarge Photo */}
