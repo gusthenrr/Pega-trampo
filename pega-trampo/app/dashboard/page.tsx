@@ -1215,14 +1215,6 @@ justify-center">
                         </div>
                         <div className="space-y-3">
                             <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                                <Phone className="h-5 w-5 text-gray-600" />
-                                <div>
-                                    <p className="text-xs text-gray-600">Telefone</p>
-                                    <p className="font-semibold 
-text-gray-900">{selectedResume.personalInfo.phone}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
                                 <Mail className="h-5 w-5 text-gray-600" />
                                 <div>
                                     <p className="text-xs text-gray-600">E-mail</p>
